@@ -340,8 +340,11 @@ export default function AdminSettingsPage() {
       }
       invalidateAllPublicSettings(queryClient)
       toast.success('Settings saved')
-    } catch {
-      toast.error('Save failed')
+    } catch (err: unknown) {
+      const ax = err as { response?: { status?: number; data?: { message?: string } } }
+      const msg = ax.response?.data?.message
+      const status = ax.response?.status
+      toast.error(msg || (status === 403 ? 'Save forbidden (403) — check role / license' : 'Save failed'))
     } finally {
       setSaving(false)
     }

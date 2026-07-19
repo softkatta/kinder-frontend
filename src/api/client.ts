@@ -2,8 +2,26 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { store } from '@/store'
 import { logout } from '@/store/slices/authSlice'
 
+/**
+ * On kinder.softkatta.in always use same-origin /api/v1 (api-proxy.php → kinder-api).
+ * Never call kinder-api cross-origin from the SPA — Hostinger returns bare 403s without CORS.
+ */
+function resolveApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase()
+    if (host === 'kinder.softkatta.in' || host === 'www.kinder.softkatta.in') {
+      return '/api/v1'
+    }
+  }
+  const fromEnv = (import.meta.env.VITE_API_BASE_URL || '').trim()
+  if (fromEnv.startsWith('https://kinder-api.softkatta.in')) {
+    return '/api/v1'
+  }
+  return fromEnv || '/api/v1'
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -12,6 +30,14 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // Re-assert same-origin base on every request (covers HMR / stale env).
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase()
+    if (host === 'kinder.softkatta.in' || host === 'www.kinder.softkatta.in') {
+      config.baseURL = '/api/v1'
+    }
+  }
+
   const token = localStorage.getItem('auth_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
