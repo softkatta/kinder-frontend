@@ -131,4 +131,5 @@ export const licenseApi = {
   entitlements: () => getData('/license/entitlements'),
   verify: (force = false) => postData('/license/verify', { force }),
   activate: (license_key: string) => postData('/license/activate', { license_key }),
+  companyApi: (payload: CompanyApiPayload) => postData('/license/company-api', payload),
 }
