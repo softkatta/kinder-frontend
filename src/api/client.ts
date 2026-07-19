@@ -71,6 +71,7 @@ const LICENSE_PATHS: Record<string, string> = {
   EXPIRED_SUBSCRIPTION: 'license/expired',
   SUSPENDED_LICENSE: 'license/suspended',
   DOMAIN_NOT_AUTHORIZED: 'license/domain-not-authorized',
+  TENANT_DOMAINS_REQUIRED: 'license/domain-not-authorized',
   PRODUCT_DISABLED: 'license/product-disabled',
   UNSUPPORTED_VERSION: 'license/unsupported-version',
   SERVER_VERIFICATION_FAILED: 'license/server-verification-failed',
