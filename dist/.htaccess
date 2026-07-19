@@ -25,6 +25,17 @@
   ForceType application/wasm
 </FilesMatch>
 
+# Best-effort ModSecurity off for API proxy (Hostinger shared often ignores — use hPanel).
+<Files "api-proxy.php">
+  <IfModule mod_security.c>
+    SecFilterEngine Off
+    SecFilterScanPOST Off
+  </IfModule>
+  <IfModule mod_security2.c>
+    SecRuleEngine Off
+  </IfModule>
+</Files>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
