@@ -183,7 +183,19 @@ export function InstallWizard() {
         await installApi.migrate();
       }
       if (step === 5) {
-        await installApi.admin(admin);
+        if (!admin.name.trim() || !admin.email.trim() || admin.password.length < 8) {
+          setError('Enter admin name, email, and a password with at least 8 characters.');
+          return;
+        }
+        const created = await installApi.admin({
+          name: admin.name.trim(),
+          email: admin.email.trim().toLowerCase(),
+          password: admin.password,
+        }) as { email?: string };
+        window.sessionStorage.setItem(
+          'kg_install_admin_email',
+          created.email ?? admin.email.trim().toLowerCase(),
+        );
       }
       if (step === 6) {
         const result = await installApi.activate(licenseKey);
@@ -470,21 +482,46 @@ export function InstallWizard() {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">Administrator Account</h2>
               <p className="text-sm text-slate-600">
-                This creates the only super admin for this installation. Choose a strong password — it is not seeded from
-                .env.
+                This creates the only super admin for this installation. After install finishes, log in with{' '}
+                <strong>this email and password</strong> — nothing else is seeded.
               </p>
               <div className="grid gap-3">
-                {(['name', 'email', 'password'] as const).map((field) => (
-                  <label key={field} className="block text-sm">
-                    <span className="mb-1 block capitalize text-slate-600">{field}</span>
-                    <input
-                      type={field === 'password' ? 'password' : field === 'email' ? 'email' : 'text'}
-                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                      value={admin[field]}
-                      onChange={(e) => setAdmin((a) => ({ ...a, [field]: e.target.value }))}
-                    />
-                  </label>
-                ))}
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-600">Name</span>
+                  <input
+                    type="text"
+                    name="admin_name"
+                    autoComplete="name"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                    value={admin.name}
+                    onChange={(e) => setAdmin((a) => ({ ...a, name: e.target.value }))}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-600">Email (login)</span>
+                  <input
+                    type="email"
+                    name="admin_email"
+                    autoComplete="username"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                    value={admin.email}
+                    onChange={(e) => setAdmin((a) => ({ ...a, email: e.target.value.trim() }))}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block text-slate-600">Password (min 8)</span>
+                  <input
+                    type="password"
+                    name="admin_password"
+                    autoComplete="new-password"
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                    value={admin.password}
+                    onChange={(e) => setAdmin((a) => ({ ...a, password: e.target.value }))}
+                  />
+                  <span className="mt-1 block text-xs text-slate-500">
+                    Disable browser autofill if it pastes your MySQL password here.
+                  </span>
+                </label>
               </div>
             </section>
           )}
@@ -540,8 +577,12 @@ export function InstallWizard() {
             <section className="space-y-4">
               <h2 className="text-2xl font-semibold">Installation Complete</h2>
               <p className="text-slate-600">
-                Click finish to lock the installer and open the login screen. Sign in with the administrator account you
-                created in this wizard.
+                Click finish to lock the installer and open the login screen.
+              </p>
+              <p className="rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-900">
+                Log in with wizard admin:{' '}
+                <strong>{window.sessionStorage.getItem('kg_install_admin_email') || admin.email || 'your admin email'}</strong>
+                {' '}and the password you set in the Administrator step. No separate password reset is needed.
               </p>
             </section>
           )}
