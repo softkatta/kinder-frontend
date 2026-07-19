@@ -19,6 +19,7 @@ import { ImageCropUpload } from '@/components/ui/ImageCropUpload'
 import { adminImages } from '@/config/adminCatalog'
 import { mediaUrl } from '@/utils/mediaUrl'
 import { invalidateAllPublicSettings } from '@/hooks/useSchoolBranding'
+import { apiErrorMessage } from '@/api/client'
 import {
   dashboardApi,
   settingsApi,
@@ -341,10 +342,7 @@ export default function AdminSettingsPage() {
       invalidateAllPublicSettings(queryClient)
       toast.success('Settings saved')
     } catch (err: unknown) {
-      const ax = err as { response?: { status?: number; data?: { message?: string } } }
-      const msg = ax.response?.data?.message
-      const status = ax.response?.status
-      toast.error(msg || (status === 403 ? 'Save forbidden (403) — check role / license' : 'Save failed'))
+      toast.error(apiErrorMessage(err, 'Save failed'))
     } finally {
       setSaving(false)
     }

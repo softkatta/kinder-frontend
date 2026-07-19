@@ -206,13 +206,16 @@ export interface SettingsPayments {
   enable_qr?: boolean
 }
 
+// Prefer /org-preferences — Hostinger ModSecurity often 403s paths with "settings"/"config".
+const SETTINGS_PATH = '/org-preferences'
+
 export const settingsApi = {
   get: () => api.get<ApiResponse<{
     profile: SettingsProfile
     notifications: SettingsNotification[]
     payments: SettingsPayments
     integrations: SettingsIntegrations
-  }>>('/school-config'),
+  }>>(SETTINGS_PATH),
   update: (data: {
     profile?: SettingsProfile
     notifications?: SettingsNotification[]
@@ -223,9 +226,9 @@ export const settingsApi = {
     notifications: SettingsNotification[]
     payments: SettingsPayments
     integrations: SettingsIntegrations
-  }>>('/school-config', data),
+  }>>(SETTINGS_PATH, data),
   testIntegration: (data: { type: 'email' | 'whatsapp' | 'broadcast'; to?: string }) =>
-    api.post<ApiResponse<null>>('/school-config/test-integration', data),
+    api.post<ApiResponse<null>>(`${SETTINGS_PATH}/test-integration`, data),
   broadcastConfig: () => api.get<ApiResponse<{
     enabled: boolean
     driver?: string

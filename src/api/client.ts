@@ -2,22 +2,39 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { store } from '@/store'
 import { logout } from '@/store/slices/authSlice'
 
+const API_HOST = 'kinder-api.softkatta.in'
+const SPA_HOSTS = new Set(['kinder.softkatta.in', 'www.kinder.softkatta.in'])
+
 /**
- * On kinder.softkatta.in always use same-origin /api/v1 (api-proxy.php → kinder-api).
- * Never call kinder-api cross-origin from the SPA — Hostinger returns bare 403s without CORS.
+ * Production SPA must call same-origin /api/v1 (api-proxy.php).
+ * Cross-origin POSTs to kinder-api often get bare Hostinger 403s without CORS bodies.
  */
 function resolveApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase()
-    if (host === 'kinder.softkatta.in' || host === 'www.kinder.softkatta.in') {
-      return '/api/v1'
+    if (SPA_HOSTS.has(host)) {
+      return `${window.location.origin}/api/v1`
     }
   }
   const fromEnv = (import.meta.env.VITE_API_BASE_URL || '').trim()
-  if (fromEnv.startsWith('https://kinder-api.softkatta.in')) {
-    return '/api/v1'
+  if (fromEnv.includes(API_HOST)) {
+    return typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '/api/v1'
   }
   return fromEnv || '/api/v1'
+}
+
+function rewriteAwayFromApiHost(config: InternalAxiosRequestConfig): void {
+  if (typeof window === 'undefined') return
+  const host = window.location.hostname.toLowerCase()
+  if (!SPA_HOSTS.has(host)) return
+
+  const sameOrigin = `${window.location.origin}/api/v1`
+  config.baseURL = sameOrigin
+
+  const raw = config.url || ''
+  if (raw.includes(API_HOST)) {
+    config.url = raw.replace(/^https?:\/\/kinder-api\.softkatta\.in\/api\/v1/i, '')
+  }
 }
 
 const api = axios.create({
@@ -30,13 +47,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  // Re-assert same-origin base on every request (covers HMR / stale env).
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname.toLowerCase()
-    if (host === 'kinder.softkatta.in' || host === 'www.kinder.softkatta.in') {
-      config.baseURL = '/api/v1'
-    }
-  }
+  rewriteAwayFromApiHost(config)
 
   const token = localStorage.getItem('auth_token')
   if (token) {
@@ -112,4 +123,27 @@ export interface ApiResponse<T> {
     per_page: number
     total: number
   }
+}
+
+/** Best-effort message from axios / WAF / Laravel error shapes. */
+export function apiErrorMessage(err: unknown, fallback = 'Request failed'): string {
+  const ax = err as {
+    response?: { status?: number; data?: unknown }
+    message?: string
+  }
+  const data = ax.response?.data
+  if (data && typeof data === 'object' && data !== null && 'message' in data) {
+    const msg = (data as { message?: unknown }).message
+    if (typeof msg === 'string' && msg.trim()) return msg
+  }
+  if (typeof data === 'string' && data.trim()) {
+    const plain = data.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    if (plain) return plain.slice(0, 160)
+  }
+  const status = ax.response?.status
+  if (status === 403) {
+    return 'Save blocked (403). If Network shows empty/HTML body, disable ModSecurity for API or use the latest /org-preferences build.'
+  }
+  if (status) return `${fallback} (${status})`
+  return ax.message || fallback
 }
