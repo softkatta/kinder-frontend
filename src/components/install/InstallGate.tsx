@@ -27,6 +27,7 @@ function licenseRestorePath(lastErrorCode?: string | null): string {
     PRODUCT_DISABLED: '/license/product-disabled',
     INVALID_INSTALL_TOKEN: '/license/invalid-install-token',
     DOMAIN_NOT_AUTHORIZED: '/license/domain-not-authorized',
+    TENANT_DOMAINS_REQUIRED: '/license/domain-not-authorized',
     GRACE_EXPIRED: '/license/grace-expired',
     COMPANY_API_UNAVAILABLE: '/license/company-api-unavailable',
     DATABASE_UNAVAILABLE: '/license/database-unavailable',
