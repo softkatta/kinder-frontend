@@ -118,7 +118,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
               disabled={busy || !licenseKey.trim()}
               className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-50"
             >
-              {busy ? 'Restoring?' : 'Restore access'}
+              {busy ? 'Restoring...' : 'Restore access'}
             </button>
             <p className="text-xs text-stone-500">
               SoftKatta Admin must Activate the license first. The install wizard never opens after the first successful install.
@@ -126,7 +126,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
           </form>
         )}
 
-        {done && <p className="mt-6 text-sm text-emerald-700">License restored. Redirecting?</p>}
+        {done && <p className="mt-6 text-sm text-emerald-700">License restored. Redirecting...</p>}
 
         <div className="mt-8 flex justify-center">
           <Link to="/login" className="rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-700">

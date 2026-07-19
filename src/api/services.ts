@@ -218,7 +218,7 @@ export const settingsApi = {
     notifications?: SettingsNotification[]
     payments?: SettingsPayments
     integrations?: SettingsIntegrations
-  }) => api.put<ApiResponse<{
+  }) => api.post<ApiResponse<{
     profile: SettingsProfile
     notifications: SettingsNotification[]
     payments: SettingsPayments

@@ -69,15 +69,19 @@ async function resolveGate(): Promise<GateResult> {
     }
     return { kind: 'install' };
   } catch (err) {
-    const code = (err as { error_code?: string })?.error_code;
+    const code = (err as { error_code?: string; status?: number })?.error_code;
+    const status = (err as { status?: number })?.status;
     if (code === 'DATABASE_UNAVAILABLE') {
       return { kind: 'database' };
     }
-    // Network/API failure on an already-deployed site must not reopen the installer.
     if (code === 'NOT_INSTALLED') {
       return { kind: 'install' };
     }
-    return { kind: 'database' };
+    // Network/CORS/5xx on a fresh site → allow installer; never pretend DB is broken.
+    if (status === 503 || status === 404 || status === 0 || status === undefined) {
+      return { kind: 'install' };
+    }
+    return { kind: 'license', path: '/license/company-api-unavailable' };
   }
 }
 

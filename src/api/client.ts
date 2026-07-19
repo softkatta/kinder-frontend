@@ -54,7 +54,7 @@ api.interceptors.response.use(
 
     if (status === 503 && errorCode === 'NOT_INSTALLED') {
       const installPath = `${import.meta.env.BASE_URL}install`.replace(/\/{2,}/g, '/')
-      if (!path.includes('/install')) {
+      if (!path.includes('/install') && !path.includes('/license/')) {
         window.location.replace(installPath)
       }
     }

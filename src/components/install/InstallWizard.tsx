@@ -105,10 +105,15 @@ export function InstallWizard() {
         // Already installed: never show the full wizard again — license restore page only.
         if (s.installed) {
           const map: Record<string, string> = {
+            INVALID_LICENSE: '/license/invalid',
             SUSPENDED_LICENSE: '/license/suspended',
             EXPIRED_SUBSCRIPTION: '/license/expired',
             PRODUCT_DISABLED: '/license/product-disabled',
             INVALID_INSTALL_TOKEN: '/license/invalid-install-token',
+            DOMAIN_NOT_AUTHORIZED: '/license/domain-not-authorized',
+            GRACE_EXPIRED: '/license/grace-expired',
+            COMPANY_API_UNAVAILABLE: '/license/company-api-unavailable',
+            DATABASE_UNAVAILABLE: '/license/database-unavailable',
           };
           navigate(map[s.last_error_code ?? ''] ?? '/license/invalid-install-token', { replace: true });
           return;
@@ -145,6 +150,34 @@ export function InstallWizard() {
         }
       });
   }, [navigate]);
+
+  useEffect(() => {
+    if (step !== 8 || configuration) {
+      return;
+    }
+    let cancelled = false;
+    setBusy(true);
+    installApi
+      .configuration()
+      .then((config) => {
+        if (!cancelled) {
+          setConfiguration(config);
+        }
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setError((e as { message?: string })?.message ?? 'Failed to load configuration.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setBusy(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [step, configuration]);
 
   const progress = useMemo(() => ((step + 1) / STEPS.length) * 100, [step]);
 
@@ -200,10 +233,6 @@ export function InstallWizard() {
       if (step === 6) {
         const result = await installApi.activate(licenseKey);
         setActivation(result as typeof activation);
-      }
-      if (step === 8) {
-        const config = await installApi.configuration();
-        setConfiguration(config);
       }
       if (step === 9) {
         await installApi.complete();
@@ -438,22 +467,30 @@ export function InstallWizard() {
                       max={90}
                       className="w-full rounded-lg border border-slate-200 px-3 py-2"
                       value={softkatta.offline_grace_days}
-                      onChange={(e) =>
-                        setSoftkatta((s) => ({ ...s, offline_grace_days: Number(e.target.value) || 5 }))
-                      }
+                      onChange={(e) => {
+                        const n = Number(e.target.value)
+                        setSoftkatta((s) => ({
+                          ...s,
+                          offline_grace_days: Number.isFinite(n) && n >= 1 ? n : 1,
+                        }))
+                      }}
                     />
                   </label>
                   <label className="block text-sm">
                     <span className="mb-1 block text-slate-600">Verify interval (hours)</span>
                     <input
                       type="number"
-                      min={1}
+                      min={0}
                       max={168}
                       className="w-full rounded-lg border border-slate-200 px-3 py-2"
                       value={softkatta.verify_interval_hours}
-                      onChange={(e) =>
-                        setSoftkatta((s) => ({ ...s, verify_interval_hours: Number(e.target.value) || 24 }))
-                      }
+                      onChange={(e) => {
+                        const n = Number(e.target.value)
+                        setSoftkatta((s) => ({
+                          ...s,
+                          verify_interval_hours: Number.isFinite(n) && n >= 0 ? n : 0,
+                        }))
+                      }}
                     />
                   </label>
                   <label className="flex items-center gap-2 text-sm sm:col-span-2">
