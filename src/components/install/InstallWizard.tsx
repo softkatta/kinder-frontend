@@ -17,7 +17,7 @@ const STEPS = [
 ] as const;
 
 const SOFTKATTA_COMPANY_API_PLACEHOLDER = 'https://api.softkatta.in/api/v1/company';
-const PRODUCT_SLUG = 'kindergarten';
+const PRODUCT_SLUG = 'nursery-school-management-software';
 
 function isLoopbackHost(host: string): boolean {
   const h = host.toLowerCase();
