@@ -1,6 +1,11 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { store } from '@/store'
 import { logout } from '@/store/slices/authSlice'
+import {
+  clearLicenseRedirectSuppress,
+  lockLicenseGate,
+  shouldSuppressLicenseRedirect,
+} from '@/api/licenseRedirectGate'
 
 const API_HOST = 'kinder-api.softkatta.in'
 const SPA_HOSTS = new Set(['kinder.softkatta.in', 'www.kinder.softkatta.in'])
@@ -71,9 +76,20 @@ const LICENSE_PATHS: Record<string, string> = {
   SERVER_VERIFICATION_FAILED: 'license/server-verification-failed',
   GRACE_EXPIRED: 'license/grace-expired',
   COMPANY_API_UNAVAILABLE: 'license/company-api-unavailable',
+  COMPANY_API_NOT_CONFIGURED: 'license/company-api-unavailable',
+  INVALID_SIGNATURE: 'license/company-api-unavailable',
+  INVALID_API_KEY: 'license/company-api-unavailable',
   INVALID_INSTALL_TOKEN: 'license/invalid-install-token',
   DATABASE_UNAVAILABLE: 'license/database-unavailable',
 }
+
+/** SoftKatta Admin Suspend/Disable/Expire must stop the site immediately (ignore Restore grace). */
+const IMMEDIATE_REMOTE_LICENSE_CODES = new Set([
+  'SUSPENDED_LICENSE',
+  'PRODUCT_DISABLED',
+  'EXPIRED_SUBSCRIPTION',
+  'REVOKED_LICENSE',
+])
 
 api.interceptors.response.use(
   (response) => response,
@@ -97,8 +113,16 @@ api.interceptors.response.use(
     }
 
     if (status === 403 && errorCode && LICENSE_PATHS[errorCode]) {
-      const dest = `${import.meta.env.BASE_URL}${LICENSE_PATHS[errorCode]}`.replace(/\/{2,}/g, '/')
-      if (!path.includes('/license/')) {
+      const bypassGrace = IMMEDIATE_REMOTE_LICENSE_CODES.has(errorCode)
+      const suppressing = shouldSuppressLicenseRedirect()
+      const onLicensePage = path.includes('/license/')
+      const willRedirect = (bypassGrace || !suppressing) && !onLicensePage
+      if (willRedirect) {
+        const dest = `${import.meta.env.BASE_URL}${LICENSE_PATHS[errorCode]}`.replace(/\/{2,}/g, '/')
+        if (bypassGrace) {
+          clearLicenseRedirectSuppress()
+        }
+        lockLicenseGate(dest.startsWith('/') ? dest : `/${dest}`)
         window.location.replace(dest)
       }
     }
@@ -148,12 +172,9 @@ export function apiErrorMessage(err: unknown, fallback = 'Request failed'): stri
       return plain.slice(0, 160)
     }
   }
-  if (status === 403) {
-    if (contentType.includes('text/html') || data == null || data === '') {
-      return 'Save blocked by host firewall (ModSecurity 403). Disable ModSecurity for kinder + kinder-api, then retry.'
-    }
-    return 'Forbidden (403). Re-login as Super Admin, or check Network → Response for details.'
+  if (contentType.includes('text/html') && (status === 403 || status === 406)) {
+    return 'Save blocked by host firewall (ModSecurity). Disable ModSecurity for kinder domains in Hostinger, then retry.'
   }
-  if (status) return `${fallback} (${status})`
-  return ax.message || fallback
+  if (typeof ax.message === 'string' && ax.message.trim()) return ax.message
+  return fallback
 }

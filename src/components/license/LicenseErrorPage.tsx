@@ -1,12 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { installApi, licenseApi, type CompanyApiPayload } from '@/api/installApi'
+import { clearLicenseGateLock } from '@/api/licenseRedirectGate'
 import { markInstallVerified, resetInstallVerificationCache } from '@/components/install/InstallGate'
 
 const COPY: Record<string, { title: string; body: string }> = {
   invalid: {
     title: 'Invalid License',
-    body: 'This installation does not have a valid SoftKatta license. After SoftKatta Admin activates the license, enter the key below to restore access.',
+    body: 'Enter your SoftKatta license key below to restore access on this server. SoftKatta Admin must show this key as Active with the correct domains.',
   },
   expired: {
     title: 'Expired Subscription',
@@ -14,7 +15,7 @@ const COPY: Record<string, { title: string; body: string }> = {
   },
   suspended: {
     title: 'Suspended License',
-    body: 'SoftKatta Admin has suspended this license. Do not run the install wizard. When Admin Activates again, restore with your license key below (or wait for automatic heartbeat restore).',
+    body: 'SoftKatta Admin has suspended this license. After Admin Activates again, enter the license key below to restore — or wait a moment for automatic recovery.',
   },
   'domain-not-authorized': {
     title: 'Domain Not Authorized',
@@ -79,28 +80,66 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
     app_url: typeof window !== 'undefined' ? window.location.origin : '',
   })
 
+  const [checkingHealth, setCheckingHealth] = useState(true)
+
   useEffect(() => {
-    if (!showCompanyApi) return
     let cancelled = false
-    installApi
-      .status()
-      .then((s) => {
+    ;(async () => {
+      try {
+        const s = await installApi.status()
         if (cancelled) return
         setSoftkatta((prev) => ({
           ...prev,
           company_api_url: s.company_api?.company_api_url || prev.company_api_url,
+          public_api_key: (s.company_api?.public_api_key || '').trim(),
           product_slug: s.company_api?.product_slug || s.product_slug || prev.product_slug,
           product_version: s.company_api?.product_version || s.product_version || prev.product_version,
           app_url: s.company_api?.app_url || prev.app_url,
         }))
-      })
-      .catch(() => {
-        /* keep defaults */
-      })
+
+        const shouldLiveRecover =
+          code === 'suspended' ||
+          code === 'product-disabled' ||
+          code === 'expired' ||
+          code === 'invalid' ||
+          code === 'invalid-install-token'
+        if (shouldLiveRecover) {
+          try {
+            await licenseApi.verify(true)
+            if (cancelled) return
+            clearLicenseGateLock()
+            resetInstallVerificationCache()
+            markInstallVerified()
+            window.location.replace('/')
+            return
+          } catch {
+            /* still blocked */
+          }
+        }
+
+        if (
+          s.installed &&
+          s.has_license &&
+          s.company_api_configured !== false &&
+          !s.needs_reactivation &&
+          !s.last_error_code
+        ) {
+          clearLicenseGateLock()
+          resetInstallVerificationCache()
+          markInstallVerified()
+          window.location.replace('/')
+          return
+        }
+      } catch {
+        /* keep page */
+      } finally {
+        if (!cancelled) setCheckingHealth(false)
+      }
+    })()
     return () => {
       cancelled = true
     }
-  }, [showCompanyApi])
+  }, [code])
 
   async function onReactivate(e: FormEvent) {
     e.preventDefault()
@@ -156,12 +195,26 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
   async function onConfigureCompanyApi(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    const publicKey = softkatta.public_api_key.trim()
+    const secret = softkatta.api_secret.trim()
+    if (!/^sk_pub_[a-z0-9]+$/i.test(publicKey)) {
+      setError(
+        'Public API Key must be sk_pub_... from SoftKatta Admin → Product Integrations. Do not paste your SoftKatta login email.',
+      )
+      return
+    }
+    if (!/^sk_sec_[a-z0-9]+$/i.test(secret)) {
+      setError(
+        'API Secret must be sk_sec_... from SoftKatta Admin → Product Integrations → Reveal. Do not paste your SoftKatta password.',
+      )
+      return
+    }
     setBusy(true)
     try {
       const payload: CompanyApiPayload = {
         company_api_url: softkatta.company_api_url.trim(),
-        public_api_key: softkatta.public_api_key.trim(),
-        api_secret: softkatta.api_secret.trim(),
+        public_api_key: publicKey,
+        api_secret: secret,
         product_slug: softkatta.product_slug.trim(),
         product_version: softkatta.product_version.trim() || '1.0.0',
         app_url: softkatta.app_url.trim() || window.location.origin,
@@ -199,6 +252,14 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
     } finally {
       setBusy(false)
     }
+  }
+
+  if (checkingHealth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,_#f3e9e4_0%,_#f8f6f2_50%,_#e8ecea_100%)] px-6">
+        <p className="text-sm text-stone-500">Checking SoftKatta license…</p>
+      </div>
+    )
   }
 
   return (

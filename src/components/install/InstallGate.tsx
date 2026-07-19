@@ -1,22 +1,30 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { installApi, licenseApi } from '@/api/installApi';
+import { useEffect, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { installApi, licenseApi } from '@/api/installApi'
+import {
+  clearLicenseGateLock,
+  getInstallVerified,
+  isLicenseGateLocked,
+  lockLicenseGate,
+  lockedLicensePath,
+  setInstallVerified,
+  suppressLicenseRedirect,
+} from '@/api/licenseRedirectGate'
 
-const EXEMPT_PREFIXES = ['/install', '/license/'];
-
-/** Cached after first successful check — avoids "Checking installation…" on every route change. */
-let installVerified: boolean | null = null;
+const EXEMPT_PREFIXES = ['/install', '/license/']
 
 export function resetInstallVerificationCache(): void {
-  installVerified = null;
+  setInstallVerified(null)
 }
 
 export function markInstallVerified(): void {
-  installVerified = true;
+  setInstallVerified(true)
+  clearLicenseGateLock()
+  suppressLicenseRedirect(90000)
 }
 
 function isExemptPath(pathname: string): boolean {
-  return EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  return EXEMPT_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
 function licenseRestorePath(lastErrorCode?: string | null): string {
@@ -30,116 +38,167 @@ function licenseRestorePath(lastErrorCode?: string | null): string {
     TENANT_DOMAINS_REQUIRED: '/license/domain-not-authorized',
     GRACE_EXPIRED: '/license/grace-expired',
     COMPANY_API_UNAVAILABLE: '/license/company-api-unavailable',
+    COMPANY_API_NOT_CONFIGURED: '/license/company-api-unavailable',
+    INVALID_SIGNATURE: '/license/company-api-unavailable',
+    INVALID_API_KEY: '/license/company-api-unavailable',
     DATABASE_UNAVAILABLE: '/license/database-unavailable',
-  };
-  return map[lastErrorCode ?? ''] ?? '/license/invalid-install-token';
+  }
+  return map[lastErrorCode ?? ''] ?? '/license/invalid-install-token'
 }
 
 type GateResult =
   | { kind: 'ok' }
   | { kind: 'install' }
   | { kind: 'license'; path: string }
-  | { kind: 'database' };
+  | { kind: 'database' }
 
-/**
- * Fail closed: incomplete install → wizard. Installed but license/DB dead → never wizard again.
- */
 async function resolveGate(): Promise<GateResult> {
-  if (installVerified === true) {
-    return { kind: 'ok' };
+  if (isLicenseGateLocked()) {
+    try {
+      const status = await installApi.status()
+      if (
+        status.installed &&
+        status.has_license &&
+        status.company_api_configured !== false &&
+        !status.needs_reactivation &&
+        !status.last_error_code
+      ) {
+        clearLicenseGateLock()
+        setInstallVerified(true)
+        return { kind: 'ok' }
+      }
+    } catch {
+      /* keep lock */
+    }
+    return { kind: 'license', path: lockedLicensePath() }
+  }
+
+  if (getInstallVerified() === true) {
+    return { kind: 'ok' }
   }
 
   try {
-    const status = await installApi.status();
+    const status = await installApi.status()
     if (status.database_unavailable || status.last_error_code === 'DATABASE_UNAVAILABLE') {
-      return { kind: 'database' };
+      return { kind: 'database' }
     }
-    if (status.installed && status.has_license && status.company_api_configured !== false && !status.needs_reactivation) {
-      installVerified = true;
-      return { kind: 'ok' };
+
+    if (status.installed && status.last_error_code) {
+      if (status.company_api_configured === false) {
+        return { kind: 'license', path: '/license/company-api-unavailable' }
+      }
+      try {
+        await licenseApi.verify(true)
+        clearLicenseGateLock()
+        setInstallVerified(true)
+        return { kind: 'ok' }
+      } catch {
+        return { kind: 'license', path: licenseRestorePath(status.last_error_code) }
+      }
     }
+
+    if (
+      status.installed &&
+      status.has_license &&
+      status.company_api_configured !== false &&
+      !status.needs_reactivation &&
+      !status.last_error_code
+    ) {
+      setInstallVerified(true)
+      return { kind: 'ok' }
+    }
+
     if (status.installed) {
       if (status.company_api_configured === false) {
-        return { kind: 'license', path: '/license/company-api-unavailable' };
+        return { kind: 'license', path: '/license/company-api-unavailable' }
       }
-      // SoftKatta Admin may have Activated — try online recover before the restore page.
       try {
-        await licenseApi.verify(true);
-        installVerified = true;
-        return { kind: 'ok' };
+        await licenseApi.verify(true)
+        setInstallVerified(true)
+        return { kind: 'ok' }
       } catch {
-        return { kind: 'license', path: licenseRestorePath(status.last_error_code) };
+        const path = licenseRestorePath(status.last_error_code)
+        lockLicenseGate(path)
+        return { kind: 'license', path }
       }
     }
-    return { kind: 'install' };
+    return { kind: 'install' }
   } catch (err) {
-    const code = (err as { error_code?: string })?.error_code;
+    const code = (err as { error_code?: string })?.error_code
     if (code === 'DATABASE_UNAVAILABLE') {
-      return { kind: 'database' };
+      return { kind: 'database' }
     }
-    // Network/API/CORS failure on an already-deployed site must not reopen the installer.
     if (code === 'NOT_INSTALLED') {
-      return { kind: 'install' };
+      return { kind: 'install' }
     }
-    return { kind: 'database' };
+    return { kind: 'database' }
   }
 }
 
-/**
- * Blocks the entire app until SoftKatta install + license are complete.
- * Already-installed products never reopen the install wizard.
- */
 export function InstallGate({ children }: { children: ReactNode }) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const exempt = isExemptPath(location.pathname);
+  const location = useLocation()
+  const navigate = useNavigate()
+  const exempt = isExemptPath(location.pathname)
 
-  const [ready, setReady] = useState(() => exempt || installVerified === true);
-  const [blockingMessage, setBlockingMessage] = useState('Checking installation…');
+  const [ready, setReady] = useState(() => exempt || getInstallVerified() === true)
+  const [blockingMessage, setBlockingMessage] = useState('Checking installation…')
 
   useEffect(() => {
     if (exempt) {
-      setReady(true);
-      return;
+      setReady(true)
+      return
     }
 
-    if (installVerified === true) {
-      setReady(true);
-      return;
+    if (getInstallVerified() === true && !isLicenseGateLocked()) {
+      setReady(true)
+      return
     }
 
-    let cancelled = false;
+    let cancelled = false
 
-    setReady(false);
-    setBlockingMessage('Checking installation…');
+    setReady(false)
+    setBlockingMessage('Checking installation…')
 
     resolveGate().then((result) => {
-      if (cancelled) return;
+      if (cancelled) return
       if (result.kind === 'ok') {
-        setReady(true);
-        return;
+        setReady(true)
+        return
       }
       if (result.kind === 'license') {
-        setBlockingMessage('License restore required. Redirecting…');
-        navigate(result.path, { replace: true });
-        return;
+        lockLicenseGate(result.path)
+        setBlockingMessage('License restore required. Redirecting…')
+        navigate(result.path, { replace: true })
+        return
       }
       if (result.kind === 'database') {
-        setBlockingMessage('Database unavailable. Redirecting…');
-        navigate('/license/database-unavailable', { replace: true });
-        return;
+        setBlockingMessage('Database unavailable. Redirecting…')
+        navigate('/license/database-unavailable', { replace: true })
+        return
       }
-      setBlockingMessage('Installation required. Redirecting…');
-      navigate('/install', { replace: true });
-    });
+      setBlockingMessage('Installation required. Redirecting…')
+      navigate('/install', { replace: true })
+    })
 
     return () => {
-      cancelled = true;
-    };
-  }, [exempt, location.pathname, navigate]);
+      cancelled = true
+    }
+  }, [exempt, location.pathname, navigate])
+
+  useEffect(() => {
+    if (exempt || !ready) {
+      return
+    }
+    const timer = window.setInterval(() => {
+      licenseApi.verify(true).catch(() => {
+        /* axios interceptor redirects on SoftKatta Suspend / Disable */
+      })
+    }, 12000)
+    return () => window.clearInterval(timer)
+  }, [exempt, ready])
 
   if (exempt) {
-    return <>{children}</>;
+    return <>{children}</>
   }
 
   if (!ready) {
@@ -148,8 +207,8 @@ export function InstallGate({ children }: { children: ReactNode }) {
         <p>{blockingMessage}</p>
         <p className="text-xs text-stone-400">Kindergarten is locked until SoftKatta installation and license are valid.</p>
       </div>
-    );
+    )
   }
 
-  return <>{children}</>;
+  return <>{children}</>
 }
