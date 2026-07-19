@@ -212,7 +212,7 @@ export const settingsApi = {
     notifications: SettingsNotification[]
     payments: SettingsPayments
     integrations: SettingsIntegrations
-  }>>('/settings'),
+  }>>('/school-config'),
   update: (data: {
     profile?: SettingsProfile
     notifications?: SettingsNotification[]
@@ -223,9 +223,9 @@ export const settingsApi = {
     notifications: SettingsNotification[]
     payments: SettingsPayments
     integrations: SettingsIntegrations
-  }>>('/settings', data),
+  }>>('/school-config', data),
   testIntegration: (data: { type: 'email' | 'whatsapp' | 'broadcast'; to?: string }) =>
-    api.post<ApiResponse<null>>('/settings/test-integration', data),
+    api.post<ApiResponse<null>>('/school-config/test-integration', data),
   broadcastConfig: () => api.get<ApiResponse<{
     enabled: boolean
     driver?: string
