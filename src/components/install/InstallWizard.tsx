@@ -26,8 +26,7 @@ function isLoopbackHost(host: string): boolean {
 
 function resolveProductSlug(fromApi?: string, current?: string): string {
   const slug = (fromApi || current || '').trim()
-  if (slug === PRODUCT_SLUG || slug.includes('kindergarten')) return slug || PRODUCT_SLUG
-  return PRODUCT_SLUG
+  return slug || PRODUCT_SLUG
 }
 
 function resolveDetectedDomain(apiDomain?: string): string {
@@ -166,9 +165,14 @@ export function InstallWizard() {
         await installApi.database(db);
       }
       if (step === 3) {
+        const productSlug = softkatta.product_slug.trim()
+        if (!productSlug) {
+          setError('Enter the SoftKatta product slug (must match SoftKatta Admin).')
+          return
+        }
         await installApi.companyApi({
           ...softkatta,
-          product_slug: PRODUCT_SLUG,
+          product_slug: productSlug,
           offline_grace_days: Number(softkatta.offline_grace_days),
           verify_interval_hours: Number(softkatta.verify_interval_hours),
         });
@@ -376,10 +380,21 @@ export function InstallWizard() {
                     <span className="mb-1 block text-slate-600">Product Slug</span>
                     <input
                       type="text"
-                      readOnly
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700"
-                      value={PRODUCT_SLUG}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                      value={softkatta.product_slug}
+                      onChange={(e) =>
+                        setSoftkatta((s) => ({
+                          ...s,
+                          product_slug: e.target.value.trim().toLowerCase(),
+                        }))
+                      }
+                      placeholder={PRODUCT_SLUG}
+                      autoComplete="off"
+                      spellCheck={false}
                     />
+                    <span className="mt-1 block text-xs text-slate-500">
+                      Must match SoftKatta Admin → Products → slug exactly.
+                    </span>
                   </label>
                   <label className="block text-sm">
                     <span className="mb-1 block text-slate-600">Product Version</span>
