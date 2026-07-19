@@ -53,11 +53,14 @@ async function resolveGate(): Promise<GateResult> {
     if (status.database_unavailable || status.last_error_code === 'DATABASE_UNAVAILABLE') {
       return { kind: 'database' };
     }
-    if (status.installed && status.has_license && !status.needs_reactivation) {
+    if (status.installed && status.has_license && status.company_api_configured !== false && !status.needs_reactivation) {
       installVerified = true;
       return { kind: 'ok' };
     }
     if (status.installed) {
+      if (status.company_api_configured === false) {
+        return { kind: 'license', path: '/license/company-api-unavailable' };
+      }
       // SoftKatta Admin may have Activated — try online recover before the restore page.
       try {
         await licenseApi.verify(true);
