@@ -206,8 +206,8 @@ export interface SettingsPayments {
   enable_qr?: boolean
 }
 
-// Prefer /org-preferences — Hostinger ModSecurity often 403s paths with "settings"/"config".
-const SETTINGS_PATH = '/org-preferences'
+// Prefer /erp/school — Hostinger ModSecurity often 403s paths with "settings"/"config"/"preferences".
+const SETTINGS_PATH = '/erp/school'
 
 export const settingsApi = {
   get: () => api.get<ApiResponse<{

@@ -128,21 +128,31 @@ export interface ApiResponse<T> {
 /** Best-effort message from axios / WAF / Laravel error shapes. */
 export function apiErrorMessage(err: unknown, fallback = 'Request failed'): string {
   const ax = err as {
-    response?: { status?: number; data?: unknown }
+    response?: { status?: number; data?: unknown; headers?: Record<string, string> }
     message?: string
   }
   const data = ax.response?.data
+  const status = ax.response?.status
+  const contentType = String(ax.response?.headers?.['content-type'] ?? ax.response?.headers?.['Content-Type'] ?? '')
+
   if (data && typeof data === 'object' && data !== null && 'message' in data) {
     const msg = (data as { message?: unknown }).message
     if (typeof msg === 'string' && msg.trim()) return msg
   }
   if (typeof data === 'string' && data.trim()) {
     const plain = data.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-    if (plain) return plain.slice(0, 160)
+    if (plain) {
+      if (status === 403 || /forbidden/i.test(plain)) {
+        return 'Save blocked by host firewall (ModSecurity 403). In Hostinger hPanel → Security → ModSecurity, disable for kinder.softkatta.in and kinder-api.softkatta.in, then retry.'
+      }
+      return plain.slice(0, 160)
+    }
   }
-  const status = ax.response?.status
   if (status === 403) {
-    return 'Save blocked (403). If Network shows empty/HTML body, disable ModSecurity for API or use the latest /org-preferences build.'
+    if (contentType.includes('text/html') || data == null || data === '') {
+      return 'Save blocked by host firewall (ModSecurity 403). Disable ModSecurity for kinder + kinder-api, then retry.'
+    }
+    return 'Forbidden (403). Re-login as Super Admin, or check Network → Response for details.'
   }
   if (status) return `${fallback} (${status})`
   return ax.message || fallback
