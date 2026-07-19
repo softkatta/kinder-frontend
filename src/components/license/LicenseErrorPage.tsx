@@ -50,7 +50,15 @@ const COPY: Record<string, { title: string; body: string }> = {
   },
 }
 
-const CAN_REACTIVATE = new Set(['suspended', 'invalid-install-token', 'invalid', 'product-disabled', 'expired'])
+const CAN_REACTIVATE = new Set([
+  'suspended',
+  'invalid-install-token',
+  'invalid',
+  'product-disabled',
+  'expired',
+  'domain-not-authorized',
+  'server-verification-failed',
+])
 const CAN_CONFIGURE_COMPANY_API = new Set(['company-api-unavailable'])
 
 export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
@@ -111,15 +119,34 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
         response?: { data?: { message?: string; error_code?: string } }
         message?: string
         error_code?: string
+        original?: { response?: { data?: { message?: string; error_code?: string } } }
       }
-      const msg = ax.response?.data?.message ?? ax.message ?? 'Activation failed.'
-      const errCode = ax.response?.data?.error_code ?? ax.error_code
+      const msg =
+        ax.message ??
+        ax.response?.data?.message ??
+        ax.original?.response?.data?.message ??
+        'Activation failed.'
+      const errCode =
+        ax.error_code ?? ax.response?.data?.error_code ?? ax.original?.response?.data?.error_code
       if (errCode === 'SUSPENDED_LICENSE' || /suspend/i.test(msg)) {
         setError(
-          'License is still suspended on SoftKatta. Ask SoftKatta Admin to Activate first, then try Restore again. Install wizard will not open.',
+          'License is still suspended on SoftKatta. Ask SoftKatta Admin to Activate first, then try Restore again.',
+        )
+      } else if (errCode === 'DOMAIN_NOT_AUTHORIZED' || /domain/i.test(msg)) {
+        setError(
+          msg ||
+            'Domain mismatch. SoftKatta Admin → Tenants must include kinder.softkatta.in (frontend) and the API host (backend).',
+        )
+      } else if (errCode === 'EXPIRED_SUBSCRIPTION' || /subscription is not active/i.test(msg)) {
+        setError(
+          'Subscription is not active on SoftKatta. Set subscription status to Active, then try Restore again.',
+        )
+      } else if (errCode === 'TENANT_DOMAINS_REQUIRED') {
+        setError(
+          'Assign frontend + backend domains for this subscription in SoftKatta Admin → Tenants, then try again.',
         )
       } else {
-        setError(msg)
+        setError(typeof msg === 'string' ? msg : 'Activation failed.')
       }
     } finally {
       setBusy(false)
