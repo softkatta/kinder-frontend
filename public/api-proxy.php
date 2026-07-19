@@ -3,7 +3,8 @@
 /**
  * Same-origin API proxy for Hostinger SPA hosting.
  * Browser → https://kinder.softkatta.in/api/... → this script → kinder-api.softkatta.in
- * Eliminates cross-origin CORS failures when the API host returns bare 403s (WAF/ModSecurity).
+ *
+ * Supports JSON and multipart file uploads (FormData).
  */
 
 declare(strict_types=1);
@@ -22,7 +23,6 @@ if ($path === '' || ! str_starts_with($path, 'v1/')) {
 
 $target = $apiOrigin.'/api/'.$path;
 if (! empty($_SERVER['QUERY_STRING'])) {
-    // Strip our internal path= param if present; forward the rest.
     parse_str($_SERVER['QUERY_STRING'], $qs);
     unset($qs['path']);
     if ($qs !== []) {
@@ -31,33 +31,25 @@ if (! empty($_SERVER['QUERY_STRING'])) {
 }
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-$body = file_get_contents('php://input');
-if ($body === false) {
-    $body = '';
-}
+$contentType = (string) ($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '');
+$isMultipart = str_contains(strtolower($contentType), 'multipart/form-data');
 
 $headers = [];
-$forward = [
+$forwardHeaderNames = [
     'Accept',
     'Authorization',
-    'Content-Type',
     'X-Tenant-ID',
     'X-Requested-With',
     'X-XSRF-TOKEN',
 ];
 
-foreach ($forward as $name) {
+foreach ($forwardHeaderNames as $name) {
     $key = 'HTTP_'.strtoupper(str_replace('-', '_', $name));
-    if ($name === 'Content-Type' && isset($_SERVER['CONTENT_TYPE'])) {
-        $headers[] = 'Content-Type: '.$_SERVER['CONTENT_TYPE'];
-        continue;
-    }
     if (! empty($_SERVER[$key])) {
         $headers[] = $name.': '.$_SERVER[$key];
     }
 }
 
-// Also pick Authorization from REDIRECT_ / CGI variants Hostinger sometimes uses.
 if (! preg_grep('/^Authorization:/i', $headers)) {
     foreach (['HTTP_AUTHORIZATION', 'REDIRECT_HTTP_AUTHORIZATION'] as $authKey) {
         if (! empty($_SERVER[$authKey])) {
@@ -67,25 +59,52 @@ if (! preg_grep('/^Authorization:/i', $headers)) {
     }
 }
 
-$headers[] = 'Origin: '.$apiOrigin;
 $headers[] = 'X-Forwarded-For: '.($_SERVER['REMOTE_ADDR'] ?? 'unknown');
 $headers[] = 'X-Forwarded-Host: '.($_SERVER['HTTP_HOST'] ?? 'kinder.softkatta.in');
 $headers[] = 'X-Forwarded-Proto: https';
 
 $ch = curl_init($target);
-curl_setopt_array($ch, [
+$curlOpts = [
     CURLOPT_CUSTOMREQUEST => $method,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_HEADER => true,
-    CURLOPT_HTTPHEADER => $headers,
-    CURLOPT_TIMEOUT => 120,
+    CURLOPT_TIMEOUT => 180,
     CURLOPT_FOLLOWLOCATION => false,
     CURLOPT_SSL_VERIFYPEER => true,
-]);
+];
 
-if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) && $body !== '') {
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+if (in_array($method, ['POST', 'PUT', 'PATCH'], true) && $isMultipart) {
+    // PHP already parsed multipart into $_POST/$_FILES — rebuild for curl.
+    $postFields = $_POST;
+    foreach ($_FILES as $field => $fileInfo) {
+        if (is_array($fileInfo['name'])) {
+            // Multi-file fields not used by this app; skip nested for now.
+            continue;
+        }
+        if (($fileInfo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            continue;
+        }
+        $postFields[$field] = new CURLFile(
+            $fileInfo['tmp_name'],
+            $fileInfo['type'] ?: 'application/octet-stream',
+            $fileInfo['name'] ?: 'upload.bin',
+        );
+    }
+    // Let cURL set multipart Content-Type + boundary.
+    $curlOpts[CURLOPT_POSTFIELDS] = $postFields;
+} elseif (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+    $body = file_get_contents('php://input');
+    if ($body === false) {
+        $body = '';
+    }
+    if ($contentType !== '') {
+        $headers[] = 'Content-Type: '.$contentType;
+    }
+    $curlOpts[CURLOPT_POSTFIELDS] = $body;
 }
+
+$curlOpts[CURLOPT_HTTPHEADER] = $headers;
+curl_setopt_array($ch, $curlOpts);
 
 $raw = curl_exec($ch);
 if ($raw === false) {
@@ -105,7 +124,16 @@ $respBody = substr($raw, $headerSize);
 
 http_response_code($status > 0 ? $status : 502);
 
-$skip = ['transfer-encoding', 'connection', 'keep-alive', 'content-encoding', 'access-control-allow-origin', 'access-control-allow-credentials', 'access-control-allow-methods', 'access-control-allow-headers'];
+$skip = [
+    'transfer-encoding',
+    'connection',
+    'keep-alive',
+    'content-encoding',
+    'access-control-allow-origin',
+    'access-control-allow-credentials',
+    'access-control-allow-methods',
+    'access-control-allow-headers',
+];
 foreach (explode("\r\n", $respHeaders) as $line) {
     if (! str_contains($line, ':')) {
         continue;
@@ -118,5 +146,11 @@ foreach (explode("\r\n", $respHeaders) as $line) {
     header($hNameTrim.': '.trim($hVal), false);
 }
 
-header('Content-Type: application/json', true);
+if (! headers_sent()) {
+    // Prefer upstream JSON content-type when present; otherwise default.
+    if (! preg_match('/^Content-Type:/mi', $respHeaders)) {
+        header('Content-Type: application/json', true);
+    }
+}
+
 echo $respBody;

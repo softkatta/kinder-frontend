@@ -29,8 +29,13 @@ export function ImageUpload({ value, onChange, label = 'Upload Image', className
         onChange(stored)
         toast.success('Image uploaded')
       }
-    } catch {
-      toast.error('Upload failed — check login & permissions')
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+      const msg =
+        ax.response?.data?.errors?.file?.[0]
+        ?? ax.response?.data?.message
+        ?? 'Upload failed'
+      toast.error(msg)
     } finally {
       setUploading(false)
     }
