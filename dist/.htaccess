@@ -1,19 +1,45 @@
-# Hostinger / Apache — SPA fallback for React Router
+<IfModule mod_mime.c>
+  AddType text/javascript .js .mjs
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType application/wasm .wasm
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|mjs)$">
+    Header set Content-Type "application/javascript; charset=UTF-8"
+  </FilesMatch>
+  <FilesMatch "\.wasm$">
+    Header set Content-Type "application/wasm"
+  </FilesMatch>
+  <FilesMatch "\.(js|css|png|jpg|jpeg|gif|svg|webp|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+<FilesMatch "\.(js|mjs)$">
+  ForceType application/javascript
+</FilesMatch>
+
+<FilesMatch "\.wasm$">
+  ForceType application/wasm
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # Serve existing files/directories as-is
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
+  # Same-origin API proxy to kinder-api (avoids CORS 403 on Hostinger)
+  RewriteRule ^api/(.*)$ api-proxy.php?path=$1 [QSA,L]
 
-  # Everything else → index.html
+  # Never SPA-fallback static assets (prevents JS served as HTML/text/plain)
+  RewriteRule \.(js|mjs|css|wasm|map|png|jpe?g|gif|svg|ico|webp|woff2?|ttf|eot)$ - [L]
+
+  # Do not rewrite existing files/directories (important for /assets/*.js and api-proxy.php)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # SPA fallback
   RewriteRule ^ index.html [L]
-</IfModule>
-
-# Optional: cache static assets
-<IfModule mod_headers.c>
-  <FilesMatch "\.(js|css|png|jpg|jpeg|gif|svg|webp|woff2?)$">
-    Header set Cache-Control "public, max-age=31536000, immutable"
-  </FilesMatch>
 </IfModule>
