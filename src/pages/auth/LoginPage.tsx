@@ -60,7 +60,7 @@ export default function LoginPage() {
       const ax = err as { response?: { status?: number; data?: { message?: string; errors?: Record<string, string[]> } } }
       const msg = ax.response?.data?.errors?.email?.[0]
         ?? ax.response?.data?.message
-        ?? (ax.response?.status === 422 ? p.error : p.offlineNote)
+        ?? (ax.response?.status === 401 || ax.response?.status === 422 ? p.error : p.offlineNote)
       toast.error(msg)
     }
   }
