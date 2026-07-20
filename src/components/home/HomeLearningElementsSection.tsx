@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { FadeIn } from '@/components/ui/Motion'
-import { learningActivityIconMap } from '@/components/home/LearningActivityIcons'
+import { resolveLearningActivityIcon } from '@/components/home/LearningActivityIcons'
 import { useT } from '@/i18n/LanguageContext'
 import type { HomeProfileContent } from '@/utils/homeProfile'
 
@@ -58,7 +58,7 @@ export function HomeLearningElementsSection({ content }: HomeLearningElementsSec
                 </svg>
 
                 {items.map((item, i) => {
-                  const Icon = learningActivityIconMap[item.key as keyof typeof learningActivityIconMap]
+                  const Icon = resolveLearningActivityIcon(item.key, item.title)
                   const isActive = i === selected
                   return (
                     <button
@@ -72,7 +72,7 @@ export function HomeLearningElementsSection({ content }: HomeLearningElementsSec
                     >
                       <span className="home-learning-orbit-node-counter">
                         <span className="home-learning-orbit-node-icon">
-                          {Icon ? <Icon className="home-learning-orbit-node-svg" /> : null}
+                          <Icon className="home-learning-orbit-node-svg" />
                         </span>
                         <span className="home-learning-orbit-node-label">{item.title}</span>
                       </span>

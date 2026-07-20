@@ -108,6 +108,8 @@ export default function HomePage() {
       learningLabel: h.learningElements.label,
       learningTitleAccent: h.learningElements.titleAccent,
       learningTitleRest: h.learningElements.titleRest,
+      learningParagraphs: [...h.learningElements.paragraphs],
+      learningItems: h.learningElements.items.map((item) => ({ ...item })),
       ctaTitle: h.ctaTitle,
       ctaSubtitle: h.ctaSubtitle,
     }),

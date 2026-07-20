@@ -70,6 +70,8 @@ export function homeContentFromProfile(
     learningLabel: string
     learningTitleAccent: string
     learningTitleRest: string
+    learningParagraphs?: string[]
+    learningItems?: { key: string; title: string; desc: string }[]
     ctaTitle: string
     ctaSubtitle: string
   },
@@ -79,6 +81,9 @@ export function homeContentFromProfile(
     const v = p[key]
     return typeof v === 'string' && v.trim() ? v : fallback
   }
+
+  const learningParagraphs = parseTextLines(p.home_learning_paragraphs)
+  const learningItems = parseLearningItems(p.home_learning_items)
 
   return {
     aboutLabel: str('home_about_label', ui.aboutLabel),
@@ -92,8 +97,8 @@ export function homeContentFromProfile(
     learningLabel: str('home_learning_label', ui.learningLabel),
     learningTitleAccent: str('home_learning_title_accent', ui.learningTitleAccent),
     learningTitleRest: str('home_learning_title_rest', ui.learningTitleRest),
-    learningParagraphs: parseTextLines(p.home_learning_paragraphs),
-    learningItems: parseLearningItems(p.home_learning_items),
+    learningParagraphs: learningParagraphs.length > 0 ? learningParagraphs : (ui.learningParagraphs ?? []),
+    learningItems: learningItems.length > 0 ? learningItems : (ui.learningItems ?? []),
     enrollSteps: parsePipePairs(p.home_enroll_steps),
     ctaTitle: str('home_cta_title', ui.ctaTitle),
     ctaSubtitle: str('home_cta_subtitle', ui.ctaSubtitle),
