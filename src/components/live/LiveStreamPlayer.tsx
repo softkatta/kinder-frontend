@@ -3,7 +3,7 @@ import { Maximize2, Minimize2, Radio, RotateCw } from 'lucide-react'
 import { LiveKitViewer, type WebrtcAuthMode } from '@/components/live/LiveKitViewer'
 import type { LivePlayback } from '@/types/liveStream'
 
-type Rotation = 0 | 90 | 180 | 270
+type PlayerOrientation = 'landscape' | 'portrait'
 
 interface LiveStreamPlayerProps {
   playback?: LivePlayback | null
@@ -187,10 +187,6 @@ function FeedEmbed({
   )
 }
 
-function nextRotation(current: Rotation): Rotation {
-  return ((current + 90) % 360) as Rotation
-}
-
 export function LiveStreamPlayer({
   playback,
   playbacks,
@@ -213,7 +209,7 @@ export function LiveStreamPlayer({
   const [outgoingId, setOutgoingId] = useState<string | null>(null)
   const [fadeActive, setFadeActive] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [rotation, setRotation] = useState<Rotation>(0)
+  const [orientation, setOrientation] = useState<PlayerOrientation>('landscape')
   const visibleIdRef = useRef<string | null>(null)
   const pendingIdRef = useRef<string | null>(null)
 
@@ -222,6 +218,7 @@ export function LiveStreamPlayer({
   // Layout from actual active feeds only — do not reserve empty slots for unused layout_mode.
   const gridMode = Math.min(4, Math.max(1, panes.length)) as 1 | 2 | 3 | 4
   const rotateEnabled = showRotate ?? immersive
+  const isPortrait = orientation === 'portrait'
   const primaryPane = panes[0]
   const primaryKey = primaryPane?.id ?? null
 
@@ -334,7 +331,6 @@ export function LiveStreamPlayer({
   }
 
   const isPaused = status === 'paused'
-  const sideways = rotation === 90 || rotation === 270
 
   return (
     <div
@@ -345,16 +341,13 @@ export function LiveStreamPlayer({
         immersive ? 'live-player--immersive' : '',
         isPaused ? 'is-paused' : '',
         fadeActive ? 'is-fading' : '',
-        sideways ? 'live-player--sideways' : '',
+        isPortrait ? 'live-player--portrait' : 'live-player--landscape',
         className,
       ].filter(Boolean).join(' ')}
-      data-rotation={rotation}
+      data-orientation={orientation}
       onDoubleClick={toggleFullscreen}
     >
-      <div
-        className={`live-player-rotate-inner live-player-rotate-inner--${rotation}`}
-        data-rot={rotation}
-      >
+      <div className="live-player-stage">
         {status === 'live' && (
           <span className="live-player-live-badge">
             <Radio className="h-3 w-3" /> LIVE
@@ -372,12 +365,12 @@ export function LiveStreamPlayer({
                 className="live-player-fs-btn live-player-rotate-btn"
                 onClick={(e) => {
                   e.stopPropagation()
-                  setRotation((r) => nextRotation(r))
+                  setOrientation((o) => (o === 'landscape' ? 'portrait' : 'landscape'))
                 }}
-                aria-label="Rotate player"
+                aria-label={isPortrait ? 'Switch to landscape' : 'Switch to portrait'}
               >
                 <RotateCw className="h-4 w-4" />
-                <span className="live-player-fs-label">Rotate</span>
+                <span className="live-player-fs-label">{isPortrait ? 'Landscape' : 'Portrait'}</span>
               </button>
             )}
             <button

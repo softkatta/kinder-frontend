@@ -4052,39 +4052,19 @@ h1, h2, h3, h4, h5, h6 {
 .live-player-fs-label {
   @apply text-[11px] font-semibold hidden sm:inline;
 }
-.live-player-rotate-inner {
+.live-player-stage {
   @apply absolute inset-0;
-  transform-origin: center center;
-  transition: transform 0.35s ease;
 }
-.live-player-rotate-inner--90 {
-  transform: rotate(90deg);
+.live-player--landscape {
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
 }
-.live-player-rotate-inner--180 {
-  transform: rotate(180deg);
-}
-.live-player-rotate-inner--270 {
-  transform: rotate(270deg);
-}
-.live-player--sideways {
+.live-player--portrait {
   aspect-ratio: 9 / 16;
+  width: 100%;
   max-width: min(100%, 420px);
   margin-inline: auto;
-}
-.live-player--sideways .live-player-rotate-inner--90,
-.live-player--sideways .live-player-rotate-inner--270 {
-  inset: auto;
-  left: 50%;
-  top: 50%;
-  width: 177.78%;
-  height: 56.25%;
-  margin: 0;
-}
-.live-player--sideways .live-player-rotate-inner--90 {
-  transform: translate(-50%, -50%) rotate(90deg);
-}
-.live-player--sideways .live-player-rotate-inner--270 {
-  transform: translate(-50%, -50%) rotate(270deg);
+  transition: aspect-ratio 0.25s ease, max-width 0.25s ease;
 }
 .live-player-grid {
   @apply absolute inset-0 grid gap-0.5 bg-black;
@@ -4102,6 +4082,20 @@ h1, h2, h3, h4, h5, h6 {
   grid-row: 1 / -1;
 }
 .live-player-grid--4 {
+  grid-template: 1fr 1fr / 1fr 1fr;
+}
+/* Portrait: stack feeds so they fill the upright frame */
+.live-player--portrait .live-player-grid--2 {
+  grid-template: 1fr 1fr / 1fr;
+}
+.live-player--portrait .live-player-grid--3 {
+  grid-template: 1.35fr 1fr / 1fr 1fr;
+}
+.live-player--portrait .live-player-grid--3 .live-player-pane:first-child {
+  grid-row: auto;
+  grid-column: 1 / -1;
+}
+.live-player--portrait .live-player-grid--4 {
   grid-template: 1fr 1fr / 1fr 1fr;
 }
 .live-player-pane {
@@ -4154,9 +4148,13 @@ h1, h2, h3, h4, h5, h6 {
   aspect-ratio: 16 / 9;
   margin-inline: auto;
 }
-.live-viewer-screen .live-player.live-player--sideways {
+.live-viewer-screen .live-player.live-player--portrait {
   aspect-ratio: 9 / 16;
   max-width: min(100%, 420px);
+}
+.live-viewer-screen .live-player.live-player--landscape {
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
 }
 .live-player--immersive {
   width: 100%;
