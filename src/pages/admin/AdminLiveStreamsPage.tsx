@@ -1087,7 +1087,7 @@ export default function AdminLiveStreamsPage() {
                 />
               </FormGrid>
               <p className="text-xs text-slate-500 -mt-2">
-                Add a start date & time to schedule this event for the public website countdown.
+                Add a start date & time in the school timezone (Admin → Settings → Branding → Timezone). This drives the public website countdown.
               </p>
               <Input
                 label="Notify Before (minutes, comma-separated)"

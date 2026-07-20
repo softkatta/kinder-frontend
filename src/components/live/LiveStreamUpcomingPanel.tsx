@@ -9,6 +9,7 @@ interface LiveStreamUpcomingPanelProps {
   scheduledStartAt?: string | null
   countdownSeconds?: number | null
   enableCountdown?: boolean
+  timeZone?: string | null
   onCountdownComplete?: () => void
   badgeLabel?: string
 }
@@ -20,6 +21,7 @@ export function LiveStreamUpcomingPanel({
   scheduledStartAt,
   countdownSeconds,
   enableCountdown = true,
+  timeZone,
   onCountdownComplete,
   badgeLabel = 'UPCOMING LIVE',
 }: LiveStreamUpcomingPanelProps) {
@@ -50,6 +52,7 @@ export function LiveStreamUpcomingPanel({
               variant="overlay"
               targetIso={scheduledStartAt}
               initialSeconds={countdownSeconds}
+              timeZone={timeZone}
               onComplete={onCountdownComplete}
             />
           )}

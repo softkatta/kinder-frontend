@@ -108,6 +108,7 @@ export type SettingsProfile = {
   address?: string | null
   city?: string | null
   hours?: string | null
+  timezone?: string | null
   facebook_url?: string | null
   instagram_url?: string | null
   youtube_url?: string | null

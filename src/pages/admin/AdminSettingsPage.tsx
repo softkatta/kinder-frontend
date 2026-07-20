@@ -29,6 +29,7 @@ import {
   type SettingsProfile,
 } from '@/api/services'
 import { SETTINGS_TAB_IMAGES, WEBSITE_PAGE_TABS, type ProfileImageKey, type WebsitePageTabId } from '@/config/pageImages'
+import { DEFAULT_SCHOOL_TIMEZONE, SCHOOL_TIMEZONES } from '@/config/timezones'
 import { ensureEcho, resetEchoConfig } from '@/realtime/echo'
 
 type TabId =
@@ -111,6 +112,7 @@ const emptyProfile: SettingsProfile = {
   address: '',
   city: '',
   hours: '',
+  timezone: DEFAULT_SCHOOL_TIMEZONE,
   facebook_url: '',
   instagram_url: '',
   youtube_url: '',
@@ -534,6 +536,29 @@ export default function AdminSettingsPage() {
                           />
                         </div>
                         <BilingualInput profile={profile} setProfile={setProfile} field="short_name" label="Short name (navbar)" placeholder="e.g. Little Stars" />
+                      </FormGrid>
+                    </div>
+                  </div>
+
+                  <div className="admin-settings-form-card">
+                    <div className="admin-settings-form-section">
+                      <h3 className="admin-settings-form-section-title">School timezone</h3>
+                      <p className="admin-settings-form-section-desc">
+                        Live stream schedules, countdown, and auto-start use this timezone for every visitor worldwide.
+                      </p>
+                      <FormGrid>
+                        <div className="span-2">
+                          <Select
+                            label="Timezone"
+                            value={profile.timezone || DEFAULT_SCHOOL_TIMEZONE}
+                            onChange={(e) => setProfile((p) => ({ ...p, timezone: e.target.value }))}
+                            hint="Example: India → Asia/Kolkata (IST). Change this if your school operates in another country."
+                          >
+                            {SCHOOL_TIMEZONES.map((tz) => (
+                              <option key={tz.value} value={tz.value}>{tz.label}</option>
+                            ))}
+                          </Select>
+                        </div>
                       </FormGrid>
                     </div>
                   </div>

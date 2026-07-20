@@ -4,12 +4,16 @@ import { PublicPageHero } from '@/components/design/PublicPageHero'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
 import { usePublicLiveStream } from '@/hooks/usePublicLiveStream'
+import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { useT } from '@/i18n/LanguageContext'
 import { FadeIn } from '@/components/ui/Motion'
+import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
 
 export default function PublicLivePage() {
   const { t } = useT()
+  const { profile } = useSchoolBranding()
   const { active, watch, upcoming, cameraId, isLive, isUpcoming, reload } = usePublicLiveStream()
+  const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
   const showWaiting = Boolean(active && !active.is_watchable)
 
@@ -43,6 +47,7 @@ export default function PublicLivePage() {
                 scheduledStartAt={active.scheduled_start_at}
                 countdownSeconds={active.countdown_seconds}
                 enableCountdown={active.enable_countdown}
+                timeZone={timeZone}
                 onCountdownComplete={reload}
                 badgeLabel={isUpcoming ? 'UPCOMING LIVE' : 'STARTING SOON'}
               />

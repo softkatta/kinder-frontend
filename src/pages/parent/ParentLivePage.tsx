@@ -2,9 +2,13 @@ import { Radio, Wifi, WifiOff, Calendar } from 'lucide-react'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
 import { useActiveLiveStream } from '@/hooks/useLiveStreamRealtime'
+import { useSchoolBranding } from '@/hooks/useSchoolBranding'
+import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
 
 export default function ParentLivePage() {
+  const { profile } = useSchoolBranding()
   const { active, watch, cameraId, connected, reload } = useActiveLiveStream()
+  const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
   const isLive = active?.status === 'live' || active?.status === 'paused'
   const isUpcoming = Boolean(active?.is_upcoming || active?.display_status === 'upcoming')
@@ -71,6 +75,7 @@ export default function ParentLivePage() {
               scheduledStartAt={active.scheduled_start_at}
               countdownSeconds={active.countdown_seconds}
               enableCountdown={active.enable_countdown}
+              timeZone={timeZone}
               onCountdownComplete={reload}
               badgeLabel={
                 isUpcoming ? 'UPCOMING LIVE' : isScheduled ? 'SCHEDULED' : 'STARTING SOON'
