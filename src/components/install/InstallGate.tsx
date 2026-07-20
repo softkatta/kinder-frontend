@@ -87,13 +87,13 @@ async function resolveGate(): Promise<GateResult> {
 
   let last: GateResult = { kind: 'database' }
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
     try {
       const status = await installApi.status()
       if (status.database_unavailable || status.last_error_code === 'DATABASE_UNAVAILABLE') {
         last = { kind: 'database' }
-        if (attempt < 2) {
-          await sleep(250 * (attempt + 1))
+        if (attempt < 5) {
+          await sleep(300 + attempt * 200)
           continue
         }
         return last
@@ -146,8 +146,8 @@ async function resolveGate(): Promise<GateResult> {
       }
       // Network / transient DB — retry before treating as hard database outage
       last = { kind: 'database' }
-      if (attempt < 2) {
-        await sleep(250 * (attempt + 1))
+      if (attempt < 5) {
+        await sleep(300 + attempt * 200)
         continue
       }
       return last

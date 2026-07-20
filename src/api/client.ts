@@ -94,7 +94,8 @@ const IMMEDIATE_REMOTE_LICENSE_CODES = new Set([
 ])
 
 const DB_UNAVAILABLE_STREAK_KEY = 'sk_db_unavailable_streak'
-const DB_UNAVAILABLE_REDIRECT_AFTER = 3
+/** Need several consecutive 503s before hard-redirect (shared hosting flakes). */
+const DB_UNAVAILABLE_REDIRECT_AFTER = 5
 
 function noteDatabaseUnavailableStreak(): number {
   try {

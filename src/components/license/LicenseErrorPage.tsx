@@ -49,7 +49,7 @@ const COPY: Record<string, { title: string; body: string }> = {
   },
   'database-unavailable': {
     title: 'Database Unavailable',
-    body: 'Kindergarten is installed, but MySQL did not respond (common on shared hosting for a moment). Wait a few seconds and retry. If it keeps failing, check DB_* credentials in .env — do not run the install wizard again.',
+    body: 'Kindergarten is installed, but MySQL did not respond (common on shared hosting for a moment). Wait a few seconds — Retry tries many times automatically. If it keeps failing, check DB_* credentials in .env — do not run the install wizard again.',
   },
 }
 
@@ -63,6 +63,42 @@ const CAN_REACTIVATE = new Set([
   'server-verification-failed',
 ])
 const CAN_CONFIGURE_COMPANY_API = new Set(['company-api-unavailable'])
+
+const DB_RETRY_ATTEMPTS = 10
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
+async function tryRecoverFromDatabaseOutage(): Promise<boolean> {
+  clearDatabaseUnavailableStreak()
+  for (let attempt = 0; attempt < DB_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      const s = await installApi.status()
+      const dbDown = Boolean(
+        s?.database_unavailable || s?.last_error_code === 'DATABASE_UNAVAILABLE',
+      )
+      if (!dbDown && s?.installed) {
+        try {
+          await publicApi.schoolProfile()
+        } catch {
+          // Status recovered; profile may still be warming — continue home.
+        }
+        clearLicenseGateLock()
+        resetInstallVerificationCache()
+        markInstallVerified()
+        clearDatabaseUnavailableStreak()
+        return true
+      }
+    } catch {
+      /* keep trying */
+    }
+    if (attempt < DB_RETRY_ATTEMPTS - 1) {
+      await sleep(400 + attempt * 250)
+    }
+  }
+  return false
+}
 
 function activationErrorMessage(errCode: string | undefined, msg: string): string {
   if (errCode === 'SUSPENDED_LICENSE' || /suspend/i.test(msg)) {
@@ -120,11 +156,28 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
   })
 
   const [checkingHealth, setCheckingHealth] = useState(true)
+  const [dbRetrying, setDbRetrying] = useState(false)
+  const [dbRetryLabel, setDbRetryLabel] = useState('Retry connection')
+  const [dbRetryHint, setDbRetryHint] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
+        if (code === 'database-unavailable') {
+          setDbRetrying(true)
+          setDbRetryLabel('Connecting…')
+          const ok = await tryRecoverFromDatabaseOutage()
+          if (cancelled) return
+          if (ok) {
+            window.location.replace('/')
+            return
+          }
+          setDbRetrying(false)
+          setDbRetryLabel('Retry connection')
+          setDbRetryHint('Still reconnecting — click Retry once and wait; we try several times automatically.')
+        }
+
         const s = await installApi.status()
         if (cancelled) return
         setSoftkatta((prev) => ({
@@ -157,23 +210,6 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
           }
         }
 
-        if (code === 'database-unavailable') {
-          if (!s?.database_unavailable && s?.installed) {
-            try {
-              await publicApi.schoolProfile()
-              if (cancelled) return
-              clearLicenseGateLock()
-              resetInstallVerificationCache()
-              markInstallVerified()
-              clearDatabaseUnavailableStreak()
-              window.location.replace('/')
-              return
-            } catch {
-              /* still flaky — stay and let user retry */
-            }
-          }
-        }
-
         if (
           s?.installed &&
           s?.has_license &&
@@ -196,13 +232,52 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
       } catch {
         /* keep page */
       } finally {
-        if (!cancelled) setCheckingHealth(false)
+        if (!cancelled) {
+          setCheckingHealth(false)
+          setDbRetrying(false)
+        }
       }
     })()
     return () => {
       cancelled = true
     }
   }, [code])
+
+  async function onRetryDatabase() {
+    if (dbRetrying) return
+    setDbRetryHint(null)
+    setDbRetrying(true)
+    for (let attempt = 0; attempt < DB_RETRY_ATTEMPTS; attempt += 1) {
+      setDbRetryLabel(`Retrying… ${attempt + 1}/${DB_RETRY_ATTEMPTS}`)
+      try {
+        const s = await installApi.status()
+        const dbDown = Boolean(
+          s?.database_unavailable || s?.last_error_code === 'DATABASE_UNAVAILABLE',
+        )
+        if (!dbDown && s?.installed) {
+          try {
+            await publicApi.schoolProfile()
+          } catch {
+            /* ignore warm-up flake */
+          }
+          clearLicenseGateLock()
+          resetInstallVerificationCache()
+          markInstallVerified()
+          clearDatabaseUnavailableStreak()
+          window.location.replace('/')
+          return
+        }
+      } catch {
+        /* keep trying */
+      }
+      if (attempt < DB_RETRY_ATTEMPTS - 1) {
+        await sleep(400 + attempt * 250)
+      }
+    }
+    setDbRetrying(false)
+    setDbRetryLabel('Retry connection')
+    setDbRetryHint('MySQL still not responding. Wait a few seconds and try once more.')
+  }
 
   async function onReactivate(e: FormEvent) {
     e.preventDefault()
@@ -412,19 +487,22 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
           {code === 'database-unavailable' && (
             <button
               type="button"
+              disabled={dbRetrying || checkingHealth}
               onClick={() => {
-                clearDatabaseUnavailableStreak()
-                window.location.reload()
+                void onRetryDatabase()
               }}
-              className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white"
+              className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-60"
             >
-              Retry connection
+              {dbRetrying || checkingHealth ? dbRetryLabel : 'Retry connection'}
             </button>
           )}
           <Link to="/login" className="rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-700">
             Back to login
           </Link>
         </div>
+        {code === 'database-unavailable' && dbRetryHint && (
+          <p className="mt-3 text-center text-xs text-stone-500">{dbRetryHint}</p>
+        )}
       </div>
     </div>
   )
