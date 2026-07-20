@@ -4150,11 +4150,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 .live-viewer-screen .live-player.live-player--portrait {
   aspect-ratio: 9 / 16;
-  max-width: min(100%, 420px);
+  max-width: min(100%, 380px);
+  max-height: min(72vh, 640px);
 }
 .live-viewer-screen .live-player.live-player--landscape {
   aspect-ratio: 16 / 9;
+  width: min(100%, calc(58vh * 16 / 9));
   max-width: 100%;
+  max-height: 58vh;
+}
+.live-player--immersive.live-player--landscape {
+  width: min(100%, calc(58vh * 16 / 9));
+  max-height: 58vh;
+  margin-inline: auto;
 }
 .live-player--immersive {
   width: 100%;
