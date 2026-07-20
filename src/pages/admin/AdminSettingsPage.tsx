@@ -220,7 +220,11 @@ function SettingsImageFields({
 
 export default function AdminSettingsPage() {
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<TabId>('branding')
+  const [tab, setTab] = useState<TabId>(() => {
+    const q = new URLSearchParams(window.location.search).get('tab')
+    const ids = tabs.map((t) => t.id)
+    return (q && ids.includes(q as TabId) ? q : 'branding') as TabId
+  })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)

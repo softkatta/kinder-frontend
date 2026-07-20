@@ -85,7 +85,7 @@ export default function TemplateDesignerEditorPage() {
   const loadMeta = useCallback(async () => {
     const [cRes, stuRes] = await Promise.all([
       templateDesignerApi.categories.list(),
-      idCardApi.list({ type: 'student', status: 'active' }),
+      idCardApi.list({ type: 'student', status: 'active' }).catch(() => ({ data: { data: [] } })),
     ])
     setCategories(cRes.data.data ?? [])
     const list = (stuRes.data.data ?? []) as { id: number; full_name: string; meta?: Record<string, unknown> }[]

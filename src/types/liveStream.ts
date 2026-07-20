@@ -2,9 +2,8 @@ export type LiveStreamStatus = 'draft' | 'scheduled' | 'live' | 'paused' | 'stop
 export type LiveDisplayStatus = 'draft' | 'upcoming' | 'scheduled' | 'live' | 'paused' | 'ended' | 'cancelled'
 export type LiveStreamMode = 'instant' | 'scheduled'
 export type LiveVisibility = 'public' | 'parents_only'
-export type StreamType = 'hls' | 'youtube' | 'vimeo' | 'embed' | 'facebook' | 'rtmp' | 'builtin_camera'
+export type StreamType = 'hls' | 'youtube' | 'vimeo' | 'embed' | 'facebook' | 'rtmp'
 export type StreamSource =
-  | 'builtin_camera'
   | 'mobile_camera'
   | 'external_camera'
   | 'obs'
@@ -141,13 +140,9 @@ export interface LiveStreamViewer {
 }
 
 export interface LivePlayback {
-  mode: 'youtube' | 'vimeo' | 'signed_redirect' | 'builtin_camera'
+  mode: 'youtube' | 'vimeo' | 'signed_redirect'
   video_id?: string
   src?: string
-  stream_id?: number
-  camera_id?: number
-  room_name?: string
-  participant_identity?: string
 }
 
 export interface LiveStreamWatch extends LiveStreamViewer {
@@ -165,7 +160,6 @@ export interface LiveStreamRealtimePayload {
 }
 
 export const STREAM_SOURCES: { id: StreamSource; label: string; needsUrl: boolean }[] = [
-  { id: 'builtin_camera', label: 'Built-In Camera (Browser)', needsUrl: false },
   { id: 'mobile_camera', label: 'Mobile Camera', needsUrl: true },
   { id: 'external_camera', label: 'External Camera', needsUrl: true },
   { id: 'obs', label: 'OBS Studio', needsUrl: true },

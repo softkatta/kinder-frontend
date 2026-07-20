@@ -82,7 +82,6 @@ const TeacherAttendancePage = lazy(() => import('@/pages/teacher/TeacherAttendan
 const TeacherHomeworkPage = lazy(() => import('@/pages/teacher/TeacherHomeworkPage'))
 const TeacherStudentsPage = lazy(() => import('@/pages/teacher/TeacherStudentsPage'))
 const TeacherNoticesPage = lazy(() => import('@/pages/teacher/TeacherNoticesPage'))
-const TeacherMobileLivePage = lazy(() => import('@/pages/teacher/TeacherMobileLivePage'))
 
 const ParentDashboard = lazy(() => import('@/pages/parent/ParentDashboard'))
 const ParentChildrenPage = lazy(() => import('@/pages/parent/ParentChildrenPage'))
@@ -209,8 +208,6 @@ export default function App() {
                   <Route path="homework" element={<Shell><TeacherHomeworkPage /></Shell>} />
                   <Route path="students" element={<Shell><TeacherStudentsPage /></Shell>} />
                   <Route path="notices" element={<Shell><TeacherNoticesPage /></Shell>} />
-                  <Route path="live" element={<Shell><TeacherMobileLivePage /></Shell>} />
-                  <Route path="live/setup-guide" element={<Shell><LiveStreamSetupGuidePage /></Shell>} />
                   <Route path="notifications" element={<Shell><NotificationsPage /></Shell>} />
                 </Route>
               </Route>
