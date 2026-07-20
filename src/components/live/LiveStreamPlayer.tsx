@@ -23,6 +23,8 @@ interface LiveStreamPlayerProps {
   webrtcAuth?: WebrtcAuthMode
   /** Show viewer rotate control (public/parent). Default true when immersive. */
   showRotate?: boolean
+  /** Block pause/seek/YouTube UI for public viewers. Default true when immersive. */
+  lockPlayback?: boolean
 }
 
 interface FeedLayer {
@@ -47,16 +49,35 @@ function readyDelay(mode: LivePlayback['mode']): number {
   return 300
 }
 
-function youtubeEmbedSrc(videoId: string, muted: boolean): string {
+function youtubeEmbedSrc(videoId: string, muted: boolean, lockPlayback: boolean): string {
   const params = new URLSearchParams({
     autoplay: '1',
     mute: muted ? '1' : '0',
     rel: '0',
     playsinline: '1',
     modestbranding: '1',
-    fs: '1',
+    fs: lockPlayback ? '0' : '1',
+    controls: lockPlayback ? '0' : '1',
+    disablekb: lockPlayback ? '1' : '0',
+    iv_load_policy: '3',
   })
   return `https://www.youtube.com/embed/${videoId}?${params.toString()}`
+}
+
+function vimeoEmbedSrc(videoId: string, muted: boolean, lockPlayback: boolean): string {
+  const params = new URLSearchParams({
+    autoplay: '1',
+    muted: muted ? '1' : '0',
+    playsinline: '1',
+  })
+  if (lockPlayback) {
+    params.set('controls', '0')
+    params.set('background', '1')
+    params.set('title', '0')
+    params.set('byline', '0')
+    params.set('portrait', '0')
+  }
+  return `https://player.vimeo.com/video/${videoId}?${params.toString()}`
 }
 
 function resolvePanes(
@@ -85,11 +106,13 @@ function FeedEmbed({
   onReady,
   muted,
   webrtcAuth,
+  lockPlayback,
 }: {
   layer: FeedLayer
   onReady?: () => void
   muted: boolean
   webrtcAuth: WebrtcAuthMode
+  lockPlayback: boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const readyRef = useRef(false)
@@ -129,61 +152,71 @@ function FeedEmbed({
     play()
   }, [layer.id, layer.playback.mode, layer.playback.src, muted])
 
-  if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
-    return (
-      <iframe
-        title={layer.cameraName || 'Live stream'}
-        src={youtubeEmbedSrc(layer.playback.video_id, muted)}
-        className="live-player-iframe"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-        allowFullScreen
-        onLoad={markReady}
-      />
-    )
-  }
+  const media = (() => {
+    if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
+      return (
+        <iframe
+          title={layer.cameraName || 'Live stream'}
+          src={youtubeEmbedSrc(layer.playback.video_id, muted, lockPlayback)}
+          className={`live-player-iframe ${lockPlayback ? 'live-player-iframe--locked' : ''}`}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen={!lockPlayback}
+          tabIndex={lockPlayback ? -1 : undefined}
+          onLoad={markReady}
+        />
+      )
+    }
 
-  if (
-    layer.playback.mode === 'builtin_camera'
-    && layer.playback.stream_id
-    && layer.playback.participant_identity
-  ) {
+    if (
+      layer.playback.mode === 'builtin_camera'
+      && layer.playback.stream_id
+      && layer.playback.participant_identity
+    ) {
+      return (
+        <LiveKitViewer
+          streamId={layer.playback.stream_id}
+          participantIdentity={layer.playback.participant_identity}
+          muted={muted}
+          webrtcAuth={webrtcAuth}
+          onReady={markReady}
+          className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
+        />
+      )
+    }
+
+    if (layer.playback.mode === 'vimeo' && layer.playback.video_id) {
+      return (
+        <iframe
+          title={layer.cameraName || 'Live stream'}
+          src={vimeoEmbedSrc(layer.playback.video_id, muted, lockPlayback)}
+          className={`live-player-iframe ${lockPlayback ? 'live-player-iframe--locked' : ''}`}
+          allow="autoplay; fullscreen; picture-in-picture"
+          allowFullScreen={!lockPlayback}
+          tabIndex={lockPlayback ? -1 : undefined}
+          onLoad={markReady}
+        />
+      )
+    }
+
     return (
-      <LiveKitViewer
-        streamId={layer.playback.stream_id}
-        participantIdentity={layer.playback.participant_identity}
+      <video
+        ref={videoRef}
+        className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
+        controls={!lockPlayback}
+        playsInline
+        autoPlay
         muted={muted}
-        webrtcAuth={webrtcAuth}
-        onReady={markReady}
-        className="live-player-video"
+        onLoadedData={markReady}
+        onCanPlay={markReady}
       />
     )
-  }
-
-  if (layer.playback.mode === 'vimeo' && layer.playback.video_id) {
-    const mutedParam = muted ? '1' : '0'
-    return (
-      <iframe
-        title={layer.cameraName || 'Live stream'}
-        src={`https://player.vimeo.com/video/${layer.playback.video_id}?autoplay=1&muted=${mutedParam}`}
-        className="live-player-iframe"
-        allow="autoplay; fullscreen; picture-in-picture"
-        allowFullScreen
-        onLoad={markReady}
-      />
-    )
-  }
+  })()
 
   return (
-    <video
-      ref={videoRef}
-      className="live-player-video"
-      controls
-      playsInline
-      autoPlay
-      muted={muted}
-      onLoadedData={markReady}
-      onCanPlay={markReady}
-    />
+    <>
+      {media}
+      {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
+    </>
   )
 }
 
@@ -201,6 +234,7 @@ export function LiveStreamPlayer({
   muted = false,
   webrtcAuth = 'authenticated',
   showRotate,
+  lockPlayback,
 }: LiveStreamPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [layers, setLayers] = useState<FeedLayer[]>([])
@@ -218,6 +252,7 @@ export function LiveStreamPlayer({
   // Layout from actual active feeds only — do not reserve empty slots for unused layout_mode.
   const gridMode = Math.min(4, Math.max(1, panes.length)) as 1 | 2 | 3 | 4
   const rotateEnabled = showRotate ?? immersive
+  const playbackLocked = lockPlayback ?? immersive
   const isPortrait = orientation === 'portrait'
   const primaryPane = panes[0]
   const primaryKey = primaryPane?.id ?? null
@@ -395,10 +430,11 @@ export function LiveStreamPlayer({
               return (
               <div key={pane.id} className="live-player-pane">
                 <FeedEmbed
-                  key={`${pane.id}-${paneMuted ? 'muted' : 'unmuted'}`}
+                  key={`${pane.id}-${paneMuted ? 'muted' : 'unmuted'}-${playbackLocked ? 'lock' : 'free'}`}
                   layer={pane}
                   muted={paneMuted}
                   webrtcAuth={webrtcAuth}
+                  lockPlayback={playbackLocked}
                 />
                 {(pane.cameraName || pane.cameraLocation) && (
                   <div className="live-player-pane-caption">
@@ -430,10 +466,11 @@ export function LiveStreamPlayer({
             return (
               <div key={layer.id} className={`live-player-layer ${roleClass}`}>
                 <FeedEmbed
-                  key={`${layer.id}-${(muted || Boolean(layer.playback.audio_muted)) ? 'muted' : 'unmuted'}`}
+                  key={`${layer.id}-${(muted || Boolean(layer.playback.audio_muted)) ? 'muted' : 'unmuted'}-${playbackLocked ? 'lock' : 'free'}`}
                   layer={layer}
                   muted={muted || Boolean(layer.playback.audio_muted)}
                   webrtcAuth={webrtcAuth}
+                  lockPlayback={playbackLocked}
                   onReady={() => handleReady(layer.id)}
                 />
               </div>

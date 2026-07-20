@@ -88,6 +88,7 @@ export default function ParentLivePage() {
             <div className="live-viewer-screen">
             <LiveStreamPlayer
               immersive
+              lockPlayback
               cameraId={cameraId}
               playback={watch?.playback}
               playbacks={watch?.playbacks}

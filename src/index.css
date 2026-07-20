@@ -3972,6 +3972,17 @@ h1, h2, h3, h4, h5, h6 {
   @apply absolute inset-0 h-full w-full border-0;
   object-fit: cover;
 }
+.live-player-iframe--locked,
+.live-player-video--locked {
+  pointer-events: none;
+}
+.live-player-lock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: auto;
+  background: transparent;
+}
 .live-player-caption {
   @apply absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 py-3 text-sm text-white;
 }
@@ -4044,7 +4055,8 @@ h1, h2, h3, h4, h5, h6 {
   @apply absolute bottom-14 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/75 px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg backdrop-blur-sm hover:bg-black/90 transition;
 }
 .live-player-toolbar {
-  @apply absolute top-3 right-3 z-10 flex items-center gap-1.5;
+  @apply absolute top-3 right-3 z-20 flex items-center gap-1.5;
+  pointer-events: auto;
 }
 .live-player-fs-btn {
   @apply inline-flex items-center gap-1.5 rounded-lg bg-black/50 px-2.5 py-2 text-white hover:bg-black/70 transition;
@@ -4105,8 +4117,12 @@ h1, h2, h3, h4, h5, h6 {
   @apply absolute inset-0 h-full w-full border-0;
   object-fit: cover;
 }
+.live-player-pane .live-player-lock-overlay {
+  z-index: 3;
+}
 .live-player-pane-caption {
-  @apply absolute bottom-0 left-0 right-0 z-[2] bg-gradient-to-t from-black/75 to-transparent px-2 py-1.5 text-[10px] sm:text-xs text-white truncate;
+  @apply absolute bottom-0 left-0 right-0 z-[5] bg-gradient-to-t from-black/75 to-transparent px-2 py-1.5 text-[10px] sm:text-xs text-white truncate;
+  pointer-events: none;
 }
 .live-player--grid-shell .live-player-live-badge {
   @apply z-20;
