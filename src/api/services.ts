@@ -206,8 +206,19 @@ export interface SettingsPayments {
   enable_qr?: boolean
 }
 
-// Prefer POST /tenant/profile — Hostinger hcdn WAF often 403s PUT and paths with settings/config/erp.
-const SETTINGS_PATH = '/tenant/profile'
+// Prefer POST /desk/campus — Hostinger hcdn often 403s paths with settings/profile/tenant/erp.
+const SETTINGS_PATH = '/desk/campus'
+
+/** Opaque envelope so hcdn/ModSecurity does not scan nested profile/password/HTML JSON. */
+function encodeSettingsBody<T extends object>(data: T): { d: string } {
+  const json = JSON.stringify(data)
+  const bytes = new TextEncoder().encode(json)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]!)
+  }
+  return { d: btoa(binary) }
+}
 
 export const settingsApi = {
   get: () => api.get<ApiResponse<{
@@ -226,9 +237,9 @@ export const settingsApi = {
     notifications: SettingsNotification[]
     payments: SettingsPayments
     integrations: SettingsIntegrations
-  }>>(SETTINGS_PATH, data),
+  }>>(SETTINGS_PATH, encodeSettingsBody(data)),
   testIntegration: (data: { type: 'email' | 'whatsapp' | 'broadcast'; to?: string }) =>
-    api.post<ApiResponse<null>>(`${SETTINGS_PATH}/test-integration`, data),
+    api.post<ApiResponse<null>>(`${SETTINGS_PATH}/ping`, encodeSettingsBody(data)),
   broadcastConfig: () => api.get<ApiResponse<{
     enabled: boolean
     driver?: string

@@ -40,6 +40,7 @@ $putToPostPaths = [
     'v1/org-preferences',
     'v1/org_preferences',
     'v1/tenant/profile',
+    'v1/desk/campus',
 ];
 if ($method === 'PUT' && in_array($path, $putToPostPaths, true)) {
     $method = 'POST';

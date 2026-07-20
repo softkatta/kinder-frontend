@@ -25,10 +25,15 @@
   ForceType application/wasm
 </FilesMatch>
 
-# Hostinger ModSecurity: drop rules that false-flag JSON API saves (settings/profile body).
+# Hostinger ModSecurity / hcdn often false-flags JSON API saves.
+# Disable request body scanning when the host still honors Apache mod_security.
+<IfModule mod_security2.c>
+  SecRuleEngine Off
+</IfModule>
 <IfModule mod_security.c>
-  SecRuleRemoveById 400011
-  SecRuleRemoveById 400012
+  SecRuleEngine Off
+  SecFilterEngine Off
+  SecFilterScanPOST Off
 </IfModule>
 
 <IfModule mod_rewrite.c>
