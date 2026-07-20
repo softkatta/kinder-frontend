@@ -276,8 +276,9 @@ export default function AdminLiveStreamsPage() {
         if (prev.length <= 1) return prev
         return prev.filter((id) => id !== cameraId)
       }
-      if (prev.length >= layoutMode) {
-        return [...prev.slice(1), cameraId].slice(0, layoutMode)
+      if (prev.length >= maxScreens) {
+        toast.error(`Maximum ${maxScreens} cameras can be activated`)
+        return prev
       }
       return [...prev, cameraId]
     })
@@ -285,7 +286,7 @@ export default function AdminLiveStreamsPage() {
 
   const applyLayoutCameras = async () => {
     if (!selected || busy) return
-    const ids = layoutDraftIds.slice(0, layoutMode)
+    const ids = layoutDraftIds.slice(0, maxScreens)
     if (ids.length === 0) {
       toast.error('Select at least one camera')
       return
@@ -854,10 +855,10 @@ export default function AdminLiveStreamsPage() {
                         ))}
                       </div>
                     </div>
-                    {layoutMode > 1 && (
+                    {maxScreens > 1 && (
                       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-3">
                         <p className="text-xs text-slate-500 mr-auto">
-                          Select up to {layoutMode} cameras, then activate for the live grid.
+                          Select up to {maxScreens} cameras (max 4), then activate for the live grid.
                         </p>
                         <AdminBtn
                           variant="primary"
@@ -865,8 +866,8 @@ export default function AdminLiveStreamsPage() {
                           disabled={busy || layoutDraftIds.length === 0}
                           onClick={applyLayoutCameras}
                         >
-                          Activate {Math.min(layoutDraftIds.length, layoutMode)} camera
-                          {Math.min(layoutDraftIds.length, layoutMode) === 1 ? '' : 's'}
+                          Activate {Math.min(layoutDraftIds.length, maxScreens)} camera
+                          {Math.min(layoutDraftIds.length, maxScreens) === 1 ? '' : 's'}
                         </AdminBtn>
                       </div>
                     )}
@@ -902,7 +903,7 @@ export default function AdminLiveStreamsPage() {
                   busy={busy}
                   switchingId={switchingId}
                   isBroadcasting={isBroadcasting}
-                  layoutMode={layoutMode}
+                  layoutMode={maxScreens}
                   layoutDraftIds={layoutDraftIds}
                   onToggleInclude={toggleLayoutDraft}
                   onSwitch={isBroadcasting ? switchCamera : goLiveWithCamera}
@@ -955,7 +956,7 @@ export default function AdminLiveStreamsPage() {
                           {camera.is_primary ? 'Selected' : 'In layout'}
                         </AdminBadge>
                       )}
-                      {layoutMode > 1 && camera.is_enabled && (
+                      {maxScreens > 1 && camera.is_enabled && (
                         <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
                           <input
                             type="checkbox"

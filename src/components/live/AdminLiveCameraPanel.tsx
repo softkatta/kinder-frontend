@@ -166,7 +166,7 @@ export function AdminLiveCameraPanel({
                     disabled={busy}
                     onChange={() => onToggleInclude(camera.id)}
                   />
-                  Include in layout
+                  Include in layout (max {layoutMode})
                 </label>
               )}
 
