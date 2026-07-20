@@ -38,6 +38,8 @@ export const translations = {
     },
     footer: {
       quickLinks: 'Quick Links',
+      explore: 'Explore',
+      visit: 'Visit & Apply',
       grades: 'Grades',
       phone: 'Phone',
       address: 'Address',
@@ -684,6 +686,8 @@ export const translations = {
     },
     footer: {
       quickLinks: 'द्रुत दुवे',
+      explore: 'शोधा',
+      visit: 'भेट व अर्ज',
       grades: 'इयत्ता',
       phone: 'फोन',
       address: 'पत्ता',

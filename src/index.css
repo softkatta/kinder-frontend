@@ -3234,6 +3234,115 @@ h1, h2, h3, h4, h5, h6 {
   @apply rounded-2xl p-5 bg-white/10 border border-white/20 backdrop-blur-sm;
 }
 
+/* Public site footer */
+.site-footer-wave {
+  @apply relative -mb-px;
+  background: transparent;
+}
+.site-footer {
+  @apply relative text-white overflow-hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 0%, rgba(125, 211, 252, 0.22), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 100%, rgba(110, 231, 183, 0.18), transparent 50%),
+    linear-gradient(165deg, #0B6FA8 0%, #0369A1 48%, #0F766E 100%);
+}
+.site-footer-inner {
+  @apply mx-auto max-w-7xl px-4 pt-10 pb-8 md:pt-12 md:pb-10;
+}
+.site-footer-top {
+  @apply flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 pb-10 mb-10;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.site-footer-brand {
+  @apply max-w-xl;
+}
+.site-footer-brand-row {
+  @apply flex items-center gap-3 mb-4;
+}
+.site-footer-logo {
+  @apply h-14 w-auto max-w-[180px] object-contain rounded-xl bg-white px-2.5 py-1.5 shadow-sm;
+}
+.site-footer-logo-fallback {
+  @apply h-12 w-12 rounded-2xl flex items-center justify-center text-white shrink-0;
+  background: linear-gradient(135deg, #38BDF8, #6EE7B7);
+}
+.site-footer-school-name {
+  @apply font-display text-xl font-bold leading-tight;
+}
+.site-footer-school-tag {
+  @apply text-[0.7rem] uppercase tracking-[0.18em] text-sky-100/75 font-semibold mt-0.5;
+}
+.site-footer-mission {
+  @apply text-sm md:text-[0.95rem] text-sky-50/85 leading-relaxed;
+}
+.site-footer-cta {
+  @apply flex flex-wrap gap-3;
+}
+.site-footer-cta-btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold transition-all duration-300;
+  font-family: var(--font-display);
+}
+.site-footer-cta-btn:hover {
+  transform: translateY(-2px);
+}
+.site-footer-cta-btn--primary {
+  background: #fff;
+  color: #0369a1;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+}
+.site-footer-cta-btn--primary:hover {
+  background: #f0f9ff;
+  color: #0c4a6e;
+}
+.site-footer-cta-btn--whatsapp {
+  background: #22c55e;
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(34, 197, 94, 0.35);
+}
+.site-footer-cta-btn--whatsapp:hover {
+  background: #16a34a;
+}
+.site-footer-grid {
+  @apply grid gap-10 sm:grid-cols-2 lg:grid-cols-3 mb-10;
+}
+.site-footer-heading {
+  @apply font-display font-bold text-base mb-4 text-white;
+}
+.site-footer-links {
+  @apply grid gap-2.5 text-sm text-sky-50/85;
+}
+.site-footer-links a {
+  @apply transition-colors hover:text-amber-200;
+}
+.site-footer-contact {
+  @apply sm:col-span-2 lg:col-span-1;
+}
+.site-footer-contact-list {
+  @apply space-y-3.5 text-sm text-sky-50/90;
+}
+.site-footer-contact-list li {
+  @apply flex items-start gap-3;
+}
+.site-footer-contact-list a {
+  @apply transition-colors hover:text-amber-200 break-all;
+}
+.site-footer-contact-icon {
+  @apply h-4 w-4 mt-0.5 shrink-0 text-sky-200;
+}
+.site-footer-bottom {
+  @apply flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-8 text-sm text-sky-100/65;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+.site-footer-legal {
+  @apply flex flex-wrap items-center gap-x-5 gap-y-2;
+}
+.site-footer-legal a {
+  @apply hover:text-white transition-colors;
+}
+.site-footer-legal span {
+  @apply text-sky-100/45;
+}
+
 .kidscholl-page-hero {
   background: linear-gradient(135deg, #0284C7 0%, #38BDF8 40%, #6EE7B7 75%, #FDE68A 100%);
 }

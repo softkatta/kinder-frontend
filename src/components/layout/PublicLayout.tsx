@@ -1,15 +1,15 @@
 import { Link, Outlet } from 'react-router-dom'
-import { GraduationCap, Phone, Mail, MapPin, MessageCircle, Clock } from 'lucide-react'
+import { Phone, Mail, MapPin, Clock } from 'lucide-react'
 import { useState } from 'react'
 import { useAppSelector } from '@/store/hooks'
 import { selectIsAuthenticated, selectRoles } from '@/store/slices/authSlice'
 import { getPortalHome } from '@/utils/auth'
-import { WaveFooterTop } from '@/components/design/WaveFooter'
 import { useT } from '@/i18n/LanguageContext'
-import { getSchoolField, formatAddress, whatsAppUrl, getProfileText } from '@/config/siteContent'
+import { getSchoolField, formatAddress, getProfileText } from '@/config/siteContent'
 import { PublicMobileNav } from '@/components/layout/PublicMobileNav'
 import { KindergartenNavbar } from '@/components/layout/KindergartenNavbar'
 import { LanguageDropdown } from '@/components/layout/LanguageDropdown'
+import { PublicFooter } from '@/components/layout/PublicFooter'
 import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
 import { SchoolProfileProvider } from '@/contexts/SchoolProfileContext'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
@@ -57,15 +57,20 @@ function PublicLayoutInner() {
     { to: '/contact', label: t.nav.contact },
   ]
 
-  const footerQuick = [
+  const exploreLinks = [
     { to: '/about', label: t.nav.about },
     { to: '/programs', label: t.nav.programs },
     { to: '/curriculum', label: t.nav.curriculum },
     { to: '/staff', label: t.nav.staff },
     { to: '/activities', label: t.nav.activities },
+    { to: '/facilities', label: t.nav.facilities },
+  ]
+
+  const visitLinks = [
     { to: '/book-tour', label: t.nav.bookTour },
     { to: '/events', label: t.nav.events },
     { to: '/live', label: t.nav.watchLive },
+    { to: '/gallery', label: t.nav.gallery },
     { to: '/blog', label: t.nav.blog },
     { to: '/admission', label: t.nav.admission },
     { to: '/contact', label: t.nav.contact },
@@ -123,64 +128,28 @@ function PublicLayoutInner() {
 
       <PublicMobileNav />
 
-      <WaveFooterTop />
-      <footer className="relative text-white" style={{ background: 'linear-gradient(160deg, #0284C7 0%, #0369A1 50%, #0F766E 100%)' }}>
-        <div className="h-1 gradient-rainbow" />
-        <div className="mx-auto max-w-7xl px-4 py-16">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
-            <div className="lg:col-span-1">
-              <div className="flex items-center gap-3 mb-4">
-                {logoSrc ? (
-                  <img src={logoSrc} alt={schoolName} className="h-14 w-auto max-w-[200px] object-contain bg-white/95 rounded-xl px-2 py-1" />
-                ) : (
-                  <div className="h-12 w-12 rounded-2xl flex items-center justify-center text-white" style={{ background: brandGradient }}>
-                    <GraduationCap className="h-7 w-7" />
-                  </div>
-                )}
-                {!logoSrc && (
-                  <div>
-                    <p className="font-display text-lg font-bold">{schoolName}</p>
-                    <p className="text-xs text-white/70 uppercase tracking-widest">Kindergarten</p>
-                  </div>
-                )}
-              </div>
-              <p className="text-sm text-white/80 leading-relaxed">{mission}</p>
-            </div>
-            <div>
-              <h3 className="font-display font-bold text-lg mb-4">{t.footer.quickLinks}</h3>
-              <ul className="space-y-2 text-sm text-white/85">
-                {footerQuick.map((link) => (
-                  <li key={link.to}>
-                    <Link to={link.to} className="hover:text-sunny transition-colors">{link.label}</Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-display font-bold text-lg mb-4">{t.nav.contact}</h3>
-              <ul className="space-y-3 text-sm text-white/85">
-                <li className="flex items-start gap-2"><Phone className="h-4 w-4 mt-0.5 shrink-0" /><a href={`tel:${phone.replace(/\s/g, '')}`} className="hover:text-sunny">{phone}</a></li>
-                <li className="flex items-start gap-2"><Mail className="h-4 w-4 mt-0.5 shrink-0" /><a href={`mailto:${email}`} className="hover:text-sunny">{email}</a></li>
-                <li className="flex items-start gap-2"><MapPin className="h-4 w-4 mt-0.5 shrink-0" /><span>{address}</span></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-display font-bold text-lg mb-4">{t.footer.whatsapp}</h3>
-              <a href={whatsAppUrl(phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-3 text-sm font-bold hover:bg-white/25 transition-colors">
-                <MessageCircle className="h-5 w-5" /> {t.footer.whatsapp}
-              </a>
-            </div>
-          </div>
-          <div className="border-t border-white/20 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-white/70">
-            <p>© {new Date().getFullYear()} {schoolFullName || schoolName}. {t.footer.rights}</p>
-            <div className="flex flex-wrap items-center gap-4">
-              <Link to="/privacy" className="hover:text-white">{t.footer.privacy}</Link>
-              <Link to="/terms" className="hover:text-white">{t.footer.terms}</Link>
-              <span className="text-white/50">{erpLabel}</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter
+        schoolName={schoolName}
+        schoolFullName={schoolFullName}
+        logoSrc={logoSrc}
+        mission={mission}
+        phone={phone}
+        email={email}
+        address={address}
+        exploreLinks={exploreLinks}
+        visitLinks={visitLinks}
+        labels={{
+          explore: t.footer.explore,
+          visit: t.footer.visit,
+          contact: t.nav.contact,
+          apply: t.nav.applyNow,
+          whatsapp: t.footer.whatsapp,
+          rights: t.footer.rights,
+          privacy: t.footer.privacy,
+          terms: t.footer.terms,
+          erp: erpLabel,
+        }}
+      />
     </div>
   )
 }
