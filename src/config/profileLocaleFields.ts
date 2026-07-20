@@ -35,6 +35,17 @@ export const PROFILE_MR_TEXT_KEYS = [
   'about_journey_label',
   'about_journey_title',
   'about_timeline',
+  'about_page_label',
+  'about_page_title',
+  'about_page_subtitle',
+  'about_principal_label',
+  'about_stat_years_label',
+  'about_stat_programs_label',
+  'about_stat_programs_value',
+  'about_stat_safe_label',
+  'about_stat_safe_value',
+  'about_visit_title',
+  'about_visit_desc',
 ] as const
 
 export type ProfileMrTextKey = (typeof PROFILE_MR_TEXT_KEYS)[number]

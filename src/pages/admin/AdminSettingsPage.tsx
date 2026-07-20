@@ -10,14 +10,12 @@ import toast from 'react-hot-toast'
 import { AdminPageHero, AdminPanel, AdminBtn, AdminPageShell } from '@/components/admin/AdminUi'
 import { AdminBgCard } from '@/components/admin/AdminStats'
 import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
 import { Select } from '@/components/ui/Select'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { FormGrid } from '@/components/ui/Form'
 import { ImageUpload } from '@/components/ui/ImageUpload'
 import { ImageCropUpload } from '@/components/ui/ImageCropUpload'
-import { ProfileMrBlock, ProfileMrInput, ProfileMrTextarea } from '@/components/admin/ProfileMrFields'
-import { RichTextEditor } from '@/components/ui/RichTextEditor'
+import { BilingualInput, BilingualTextarea, BilingualRichText, AboutSection } from '@/components/admin/ProfileMrFields'
 import { adminImages } from '@/config/adminCatalog'
 import { mediaUrl } from '@/utils/mediaUrl'
 import { invalidateAllPublicSettings } from '@/hooks/useSchoolBranding'
@@ -510,17 +508,16 @@ export default function AdminSettingsPage() {
                       <h3 className="admin-settings-form-section-title">School Identity</h3>
                       <p className="admin-settings-form-section-desc">Navbar brand, footer, and public pages</p>
                       <FormGrid>
-                        <Input label="Full school name" value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} />
-                        <Input label="Short name (navbar)" value={profile.short_name || ''} onChange={(e) => setProfile((p) => ({ ...p, short_name: e.target.value }))} placeholder="e.g. Little Stars" />
-                        <ProfileMrBlock>
+                        <div className="span-2 grid gap-3 md:grid-cols-2">
+                          <Input label="Full school name (English)" value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} />
                           <Input
                             label="Full school name (मराठी)"
                             value={profile.name_mr || ''}
                             onChange={(e) => setProfile((p) => ({ ...p, name_mr: e.target.value }))}
                             placeholder="उदा. लिटल स्टार्स किंडरगार्टन"
                           />
-                          <ProfileMrInput profile={profile} setProfile={setProfile} field="short_name" label="Short name" placeholder="उदा. लिटल स्टार्स" />
-                        </ProfileMrBlock>
+                        </div>
+                        <BilingualInput profile={profile} setProfile={setProfile} field="short_name" label="Short name (navbar)" placeholder="e.g. Little Stars" />
                       </FormGrid>
                     </div>
                   </div>
@@ -532,28 +529,22 @@ export default function AdminSettingsPage() {
                         Browser tab title, Google snippet, and WhatsApp / Facebook link preview. Meta image works best at about 1200×630.
                       </p>
                       <FormGrid>
-                        <div className="span-2">
-                          <Input
-                            label="Meta title"
-                            value={profile.meta_title || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, meta_title: e.target.value }))}
-                            placeholder={profile.name || 'Little Stars Kindergarten'}
-                            hint="Leave blank to use the school name"
-                          />
-                        </div>
-                        <div className="span-2">
-                          <Textarea
-                            label="Meta description"
-                            rows={3}
-                            value={profile.meta_description || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, meta_description: e.target.value }))}
-                            placeholder="Short description for search results and social sharing (about 150–160 characters)."
-                          />
-                        </div>
-                        <ProfileMrBlock>
-                          <ProfileMrInput profile={profile} setProfile={setProfile} field="meta_title" label="Meta title" />
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="meta_description" label="Meta description" rows={3} />
-                        </ProfileMrBlock>
+                        <BilingualInput
+                          profile={profile}
+                          setProfile={setProfile}
+                          field="meta_title"
+                          label="Meta title"
+                          placeholder={profile.name || 'Little Stars Kindergarten'}
+                          hint="Leave blank to use the school name"
+                        />
+                        <BilingualTextarea
+                          profile={profile}
+                          setProfile={setProfile}
+                          field="meta_description"
+                          label="Meta description"
+                          rows={3}
+                          placeholder="Short description for search results and social sharing."
+                        />
                         <div className="span-2">
                           <ImageUpload
                             label="Meta / social preview image"
@@ -578,16 +569,9 @@ export default function AdminSettingsPage() {
                     <FormGrid>
                       <Input label="Phone" value={profile.phone || ''} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} placeholder="+91 98765 43210" />
                       <Input label="Email" type="email" value={profile.email || ''} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} />
-                      <Input label="Area / street address" value={profile.address || ''} onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))} placeholder="e.g. talni" />
-                      <Input label="City" value={profile.city || ''} onChange={(e) => setProfile((p) => ({ ...p, city: e.target.value }))} placeholder="e.g. Pune" />
-                      <div className="span-2">
-                        <Input label="Operating hours" value={profile.hours || ''} onChange={(e) => setProfile((p) => ({ ...p, hours: e.target.value }))} placeholder="Mon – Sat: 8:00 AM – 4:00 PM" />
-                      </div>
-                      <ProfileMrBlock>
-                        <ProfileMrInput profile={profile} setProfile={setProfile} field="address" label="Address" placeholder="उदा. तालनी" />
-                        <ProfileMrInput profile={profile} setProfile={setProfile} field="city" label="City" placeholder="उदा. हडगाव" />
-                        <ProfileMrInput profile={profile} setProfile={setProfile} field="hours" label="Operating hours" placeholder="सोम – शनि: सकाळी ८ – संध्या ४" />
-                      </ProfileMrBlock>
+                      <BilingualInput profile={profile} setProfile={setProfile} field="address" label="Area / street address" placeholder="e.g. talni" />
+                      <BilingualInput profile={profile} setProfile={setProfile} field="city" label="City" placeholder="e.g. Pune" />
+                      <BilingualInput profile={profile} setProfile={setProfile} field="hours" label="Operating hours" placeholder="Mon – Sat: 8:00 AM – 4:00 PM" />
                     </FormGrid>
                   </div>
 
@@ -636,87 +620,22 @@ export default function AdminSettingsPage() {
                         Learning items: <code className="text-xs bg-slate-100 px-1 rounded">key|title|description</code>.
                       </p>
                       <FormGrid>
-                        <Input label="About — label" value={profile.home_about_label || ''} onChange={(e) => setProfile((p) => ({ ...p, home_about_label: e.target.value }))} />
-                        <Input label="About — title" value={profile.home_about_title || ''} onChange={(e) => setProfile((p) => ({ ...p, home_about_title: e.target.value }))} />
-                        <div className="span-2">
-                          <Textarea
-                            label="About — paragraphs"
-                            hint="One paragraph per line"
-                            rows={4}
-                            value={profile.home_about_paragraphs || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, home_about_paragraphs: e.target.value }))}
-                          />
-                        </div>
-                        <Input label="Why — label" value={profile.home_why_label || ''} onChange={(e) => setProfile((p) => ({ ...p, home_why_label: e.target.value }))} />
-                        <Input label="Why — title" value={profile.home_why_title || ''} onChange={(e) => setProfile((p) => ({ ...p, home_why_title: e.target.value }))} />
-                        <Input label="Why — panel title" value={profile.home_why_panel_title || ''} onChange={(e) => setProfile((p) => ({ ...p, home_why_panel_title: e.target.value }))} />
-                        <Input label="Why — panel description" value={profile.home_why_panel_desc || ''} onChange={(e) => setProfile((p) => ({ ...p, home_why_panel_desc: e.target.value }))} />
-                        <div className="span-2">
-                          <Textarea
-                            label="Why choose us items"
-                            hint="One per line: Title|Description"
-                            rows={5}
-                            value={profile.home_why_choose || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, home_why_choose: e.target.value }))}
-                          />
-                        </div>
-                        <Input label="Learning — label" value={profile.home_learning_label || ''} onChange={(e) => setProfile((p) => ({ ...p, home_learning_label: e.target.value }))} />
-                        <Input label="Learning — title accent" value={profile.home_learning_title_accent || ''} onChange={(e) => setProfile((p) => ({ ...p, home_learning_title_accent: e.target.value }))} />
-                        <Input label="Learning — title rest" value={profile.home_learning_title_rest || ''} onChange={(e) => setProfile((p) => ({ ...p, home_learning_title_rest: e.target.value }))} />
-                        <div className="span-2">
-                          <Textarea
-                            label="Learning — paragraphs"
-                            rows={3}
-                            value={profile.home_learning_paragraphs || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, home_learning_paragraphs: e.target.value }))}
-                          />
-                        </div>
-                        <div className="span-2">
-                          <Textarea
-                            label="Learning — activity items"
-                            hint="One per line: key|title|description (e.g. art|Art|Colours and crafts)"
-                            rows={5}
-                            value={profile.home_learning_items || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, home_learning_items: e.target.value }))}
-                          />
-                        </div>
-                        <div className="span-2">
-                          <Textarea
-                            label="Enroll steps"
-                            hint="One per line: Step title|Description"
-                            rows={4}
-                            value={profile.home_enroll_steps || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, home_enroll_steps: e.target.value }))}
-                          />
-                        </div>
-                        <Input label="CTA — title" value={profile.home_cta_title || ''} onChange={(e) => setProfile((p) => ({ ...p, home_cta_title: e.target.value }))} />
-                        <Input label="CTA — subtitle" value={profile.home_cta_subtitle || ''} onChange={(e) => setProfile((p) => ({ ...p, home_cta_subtitle: e.target.value }))} />
-                        <ProfileMrBlock>
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_about_label" label="About — label" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_about_title" label="About — title" />
-                          </div>
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="home_about_paragraphs" label="About — paragraphs" rows={4} hint="एक परिच्छेद प्रति ओळ" />
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_why_label" label="Why — label" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_why_title" label="Why — title" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_why_panel_title" label="Why — panel title" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_why_panel_desc" label="Why — panel description" />
-                          </div>
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="home_why_choose" label="Why choose us items" rows={5} hint="प्रति ओळ: शीर्षक|वर्णन" />
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_learning_label" label="Learning — label" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_learning_title_accent" label="Learning — title accent" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_learning_title_rest" label="Learning — title rest" />
-                          </div>
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="home_learning_paragraphs" label="Learning — paragraphs" rows={3} />
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="home_learning_items" label="Learning — activity items" rows={5} hint="प्रति ओळ: key|शीर्षक|वर्णन" />
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="home_enroll_steps" label="Enroll steps" rows={4} hint="प्रति ओळ: पायरी|वर्णन" />
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_cta_title" label="CTA — title" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="home_cta_subtitle" label="CTA — subtitle" />
-                          </div>
-                        </ProfileMrBlock>
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_about_label" label="About — label" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_about_title" label="About — title" />
+                        <BilingualTextarea profile={profile} setProfile={setProfile} field="home_about_paragraphs" label="About — paragraphs" rows={4} hint="One paragraph per line" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_why_label" label="Why — label" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_why_title" label="Why — title" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_why_panel_title" label="Why — panel title" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_why_panel_desc" label="Why — panel description" />
+                        <BilingualTextarea profile={profile} setProfile={setProfile} field="home_why_choose" label="Why choose us items" rows={5} hint="One per line: Title|Description" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_learning_label" label="Learning — label" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_learning_title_accent" label="Learning — title accent" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_learning_title_rest" label="Learning — title rest" />
+                        <BilingualTextarea profile={profile} setProfile={setProfile} field="home_learning_paragraphs" label="Learning — paragraphs" rows={3} />
+                        <BilingualTextarea profile={profile} setProfile={setProfile} field="home_learning_items" label="Learning — activity items" rows={5} hint="One per line: key|title|description" />
+                        <BilingualTextarea profile={profile} setProfile={setProfile} field="home_enroll_steps" label="Enroll steps" rows={4} hint="One per line: Step title|Description" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_cta_title" label="CTA — title" />
+                        <BilingualInput profile={profile} setProfile={setProfile} field="home_cta_subtitle" label="CTA — subtitle" />
                       </FormGrid>
                   </div>
                   <SettingsImageFields tabId="homepage" profile={profile} setProfile={setProfile} title="Homepage section photos" desc="About Us and Why Choose Us blocks on the homepage" />
@@ -725,89 +644,82 @@ export default function AdminSettingsPage() {
 
               {tab === 'about' && (
                 <div className="admin-settings-form-card">
-                  <div className="admin-settings-form-section">
-                    <h3 className="admin-settings-form-section-title">About page</h3>
-                      <p className="admin-settings-form-section-desc">
-                        Principal message, values &amp; timeline shown on <code className="text-xs bg-slate-100 px-1 rounded">/about</code>.
-                        Values: <code className="text-xs bg-slate-100 px-1 rounded">title|description</code> per line.
-                        Timeline: <code className="text-xs bg-slate-100 px-1 rounded">year|title|description</code> per line.
-                      </p>
-                      <FormGrid>
-                        <Input label="Established year" value={profile.established_year || ''} onChange={(e) => setProfile((p) => ({ ...p, established_year: e.target.value }))} placeholder="2015" />
-                        <Input label="Principal name" value={profile.principal_name || ''} onChange={(e) => setProfile((p) => ({ ...p, principal_name: e.target.value }))} />
-                        <div className="span-2">
-                          <RichTextEditor
-                            label="Principal message"
-                            value={profile.principal_message || ''}
-                            onChange={(principal_message) => setProfile((p) => ({ ...p, principal_message }))}
-                            hint="Use the toolbar for bold, lists, and paragraphs"
-                            minHeight={180}
-                          />
-                        </div>
-                        <div className="span-2">
-                          <ImageCropUpload
-                            label="Principal photo"
-                            hint="Square crop — shown with principal message on /about"
-                            cropTitle="Crop principal photo"
-                            aspect={1}
-                            outputWidth={600}
-                            outputHeight={600}
-                            previewMode="square"
-                            value={profile.principal_image || ''}
-                            onChange={(principal_image) => setProfile((p) => ({ ...p, principal_image }))}
-                          />
-                        </div>
-                        <Input label="Values — label" value={profile.about_values_label || ''} onChange={(e) => setProfile((p) => ({ ...p, about_values_label: e.target.value }))} />
-                        <Input label="Values — title" value={profile.about_values_title || ''} onChange={(e) => setProfile((p) => ({ ...p, about_values_title: e.target.value }))} />
-                        <div className="span-2">
-                          <Textarea
-                            label="Values items"
-                            hint="One per line: Title|Description"
-                            rows={5}
-                            value={profile.about_values || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, about_values: e.target.value }))}
-                          />
-                        </div>
-                        <Input label="Journey — label" value={profile.about_journey_label || ''} onChange={(e) => setProfile((p) => ({ ...p, about_journey_label: e.target.value }))} />
-                        <Input label="Journey — title" value={profile.about_journey_title || ''} onChange={(e) => setProfile((p) => ({ ...p, about_journey_title: e.target.value }))} />
-                        <div className="span-2">
-                          <Textarea
-                            label="Timeline"
-                            hint="One per line: Year|Title|Description"
-                            rows={5}
-                            value={profile.about_timeline || ''}
-                            onChange={(e) => setProfile((p) => ({ ...p, about_timeline: e.target.value }))}
-                          />
-                        </div>
-                        <div className="span-2">
-                          <Textarea label="Vision" rows={2} value={profile.vision || ''} onChange={(e) => setProfile((p) => ({ ...p, vision: e.target.value }))} />
-                        </div>
-                        <div className="span-2">
-                          <Textarea label="Mission" rows={2} value={profile.mission || ''} onChange={(e) => setProfile((p) => ({ ...p, mission: e.target.value }))} />
-                        </div>
-                        <ProfileMrBlock>
-                          <ProfileMrInput profile={profile} setProfile={setProfile} field="principal_name" label="Principal name" />
-                          <RichTextEditor
-                            label="Principal message (मराठी)"
-                            value={profile.principal_message_mr || ''}
-                            onChange={(principal_message_mr) => setProfile((p) => ({ ...p, principal_message_mr }))}
-                            minHeight={160}
-                          />
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="about_values_label" label="Values — label" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="about_values_title" label="Values — title" />
-                          </div>
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="about_values" label="Values items" rows={5} hint="प्रति ओळ: शीर्षक|वर्णन" />
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="about_journey_label" label="Journey — label" />
-                            <ProfileMrInput profile={profile} setProfile={setProfile} field="about_journey_title" label="Journey — title" />
-                          </div>
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="about_timeline" label="Timeline" rows={5} hint="प्रति ओळ: वर्ष|शीर्षक|वर्णन" />
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="vision" label="Vision" rows={2} />
-                          <ProfileMrTextarea profile={profile} setProfile={setProfile} field="mission" label="Mission" rows={2} />
-                        </ProfileMrBlock>
-                      </FormGrid>
-                  </div>
+                  <AboutSection
+                    title="Hero banner"
+                    desc="Top of /about — English and Marathi side by side"
+                  >
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_page_label" label="Hero label" placeholder="About Us" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_page_title" label="Hero title" />
+                    <BilingualTextarea profile={profile} setProfile={setProfile} field="about_page_subtitle" label="Hero subtitle" rows={2} />
+                  </AboutSection>
+
+                  <AboutSection
+                    title="Our story"
+                    desc="Story block on /about (also used as homepage About section)"
+                  >
+                    <BilingualInput profile={profile} setProfile={setProfile} field="home_about_label" label="Story label" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="home_about_title" label="Story title" />
+                    <BilingualTextarea profile={profile} setProfile={setProfile} field="home_about_paragraphs" label="Story paragraphs" rows={4} hint="One paragraph per line" />
+                    <div className="sm:col-span-2">
+                      <Input label="Established year" value={profile.established_year || ''} onChange={(e) => setProfile((p) => ({ ...p, established_year: e.target.value }))} placeholder="2015" />
+                    </div>
+                  </AboutSection>
+
+                  <AboutSection title="Vision & mission">
+                    <BilingualTextarea profile={profile} setProfile={setProfile} field="vision" label="Vision" rows={3} />
+                    <BilingualTextarea profile={profile} setProfile={setProfile} field="mission" label="Mission" rows={3} />
+                  </AboutSection>
+
+                  <AboutSection
+                    title="Values"
+                    desc="One value per line: Title|Description"
+                  >
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_values_label" label="Values label" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_values_title" label="Values title" />
+                    <BilingualTextarea profile={profile} setProfile={setProfile} field="about_values" label="Values items" rows={5} hint="Title|Description per line" />
+                  </AboutSection>
+
+                  <AboutSection title="Principal message">
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_principal_label" label="Section badge" placeholder="Principal's Message" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="principal_name" label="Principal name" />
+                    <BilingualRichText profile={profile} setProfile={setProfile} field="principal_message" label="Message" minHeight={180} hint="Bold, lists, paragraphs" />
+                    <div className="sm:col-span-2">
+                      <ImageCropUpload
+                        label="Principal photo"
+                        hint="Shown large on the right of the message"
+                        cropTitle="Crop principal photo"
+                        aspect={1}
+                        outputWidth={600}
+                        outputHeight={600}
+                        previewMode="square"
+                        value={profile.principal_image || ''}
+                        onChange={(principal_image) => setProfile((p) => ({ ...p, principal_image }))}
+                      />
+                    </div>
+                  </AboutSection>
+
+                  <AboutSection
+                    title="Journey / timeline"
+                    desc="One milestone per line: Year|Title|Description"
+                  >
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_journey_label" label="Journey label" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_journey_title" label="Journey title" />
+                    <BilingualTextarea profile={profile} setProfile={setProfile} field="about_timeline" label="Timeline" rows={5} hint="Year|Title|Description per line" />
+                  </AboutSection>
+
+                  <AboutSection title="Stats row">
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_stat_years_label" label="Years label" placeholder="Years of service" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_stat_programs_label" label="Programs label" placeholder="Programs" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_stat_programs_value" label="Programs value" placeholder="Nursery · LKG · UKG" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_stat_safe_label" label="Safe campus label" placeholder="Safe campus" />
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_stat_safe_value" label="Safe campus value" placeholder="100%" />
+                  </AboutSection>
+
+                  <AboutSection title="Visit CTA band">
+                    <BilingualInput profile={profile} setProfile={setProfile} field="about_visit_title" label="CTA title" />
+                    <BilingualTextarea profile={profile} setProfile={setProfile} field="about_visit_desc" label="CTA description" rows={2} />
+                  </AboutSection>
+
                   <SettingsImageFields tabId="about" profile={profile} setProfile={setProfile} title="About page photos" desc="Hero banner and story collage on /about" />
                 </div>
               )}

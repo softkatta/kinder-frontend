@@ -42,6 +42,13 @@ export default function AboutPage() {
   const accentImage = profile.about_page_image_accent || ''
   const p = t.pages.about
 
+  const heroLabel = profile.about_page_label || p.label
+  const heroTitle = (profile.about_page_title || p.title).replace(/Little Stars|लिटल स्टार्स/g, schoolShort)
+  const heroSubtitle = profile.about_page_subtitle || p.subtitle
+  const principalLabel = profile.about_principal_label || p.principalMsg
+  const vision = getProfileText(profile, 'vision', locale)
+  const mission = getProfileText(profile, 'mission', locale)
+
   const cmsValues = parsePipePairs(profile.about_values).map((row, i) => ({
     icon: valueIcons[i] || Heart,
     title: row.title,
@@ -57,14 +64,32 @@ export default function AboutPage() {
 
   const principalMessage = getProfileText(profile, 'principal_message', locale)
 
+  const stats = [
+    {
+      icon: Award,
+      value: `${yearsExp}+`,
+      label: profile.about_stat_years_label || p.yearsService,
+    },
+    {
+      icon: Heart,
+      value: profile.about_stat_programs_value || t.grades,
+      label: profile.about_stat_programs_label || p.programsStat,
+    },
+    {
+      icon: Shield,
+      value: profile.about_stat_safe_value || '100%',
+      label: profile.about_stat_safe_label || p.safeCampus,
+    },
+  ]
+
   return (
     <div>
       <PublicPageHero
         imageKey="page_about_image"
-        label={p.label}
-        title={p.title.replace(/Little Stars|लिटल स्टार्स/g, schoolShort)}
-        subtitle={p.subtitle}
-        breadcrumbs={[{ label: p.label }]}
+        label={heroLabel}
+        title={heroTitle}
+        subtitle={heroSubtitle}
+        breadcrumbs={[{ label: heroLabel }]}
       />
 
       <section className="section bg-white relative overflow-hidden">
@@ -72,7 +97,11 @@ export default function AboutPage() {
         <div className="mx-auto max-w-7xl px-4 relative z-10">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <FadeIn>
-              <KidschollSection align="left" label={profile.home_about_label || p.storyTitle} title={profile.home_about_title || p.storySubtitle} />
+              <KidschollSection
+                align="left"
+                label={profile.home_about_label || p.storyTitle}
+                title={profile.home_about_title || p.storySubtitle}
+              />
               {aboutParagraphs.length > 0 ? (
                 aboutParagraphs.map((para) => (
                   <p key={para.slice(0, 32)} className="text-slate-600 leading-relaxed mb-4">{para}</p>
@@ -97,8 +126,34 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {cmsValues.length > 0 && (
+      {(vision || mission) && (
         <section className="section bg-[#FFF8F0] relative overflow-hidden">
+          <SectionDecorations variant="why" />
+          <div className="mx-auto max-w-6xl px-4 relative z-10">
+            <div className="grid md:grid-cols-2 gap-6">
+              {vision ? (
+                <FadeIn>
+                  <div className="kidscholl-form-card !mb-0 h-full">
+                    <h3 className="font-display text-xl font-bold text-ink mb-3">{p.vision}</h3>
+                    <p className="text-slate-600 leading-relaxed">{vision}</p>
+                  </div>
+                </FadeIn>
+              ) : null}
+              {mission ? (
+                <FadeIn delay={0.06}>
+                  <div className="kidscholl-form-card !mb-0 h-full">
+                    <h3 className="font-display text-xl font-bold text-ink mb-3">{p.mission}</h3>
+                    <p className="text-slate-600 leading-relaxed">{mission}</p>
+                  </div>
+                </FadeIn>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {cmsValues.length > 0 && (
+        <section className="section bg-white relative overflow-hidden">
           <SectionDecorations variant="programs" />
           <div className="mx-auto max-w-7xl px-4 relative z-10">
             <KidschollSection label={profile.about_values_label || p.valuesLabel} title={profile.about_values_title || p.valuesTitle} />
@@ -120,13 +175,13 @@ export default function AboutPage() {
       )}
 
       {principalMessage && (
-        <section className="section bg-white relative overflow-hidden">
+        <section className="section bg-[#FFF8F0] relative overflow-hidden">
           <SectionDecorations variant="teachers" />
           <div className="mx-auto max-w-6xl px-4 relative z-10">
             <FadeIn>
               <div className="about-principal-card kidscholl-form-card !mb-0">
                 <div className="about-principal-body">
-                  <div className="about-principal-badge">{p.principalMsg}</div>
+                  <div className="about-principal-badge">{principalLabel}</div>
                   {looksLikeHtml(principalMessage) ? (
                     <div
                       className="about-principal-quote about-principal-quote--html"
@@ -145,7 +200,7 @@ export default function AboutPage() {
                   {principalImage ? (
                     <ShapedImage
                       src={principalImage}
-                      alt={principalName || p.principalMsg}
+                      alt={principalName || principalLabel}
                       shape="arch"
                       border="white"
                       className="about-principal-photo"
@@ -164,7 +219,7 @@ export default function AboutPage() {
       )}
 
       {timeline.length > 0 && (
-        <section className="section bg-[#FFF8F0] relative overflow-hidden">
+        <section className="section bg-white relative overflow-hidden">
           <SectionDecorations variant="events" />
           <div className="mx-auto max-w-4xl px-4 relative z-10">
             <KidschollSection label={profile.about_journey_label || p.journeyLabel} title={profile.about_journey_title || p.journeyTitle} />
@@ -172,7 +227,7 @@ export default function AboutPage() {
               {timeline.map((item, i) => (
                 <FadeIn key={`${item.year}-${item.title}`} delay={i * 0.08}>
                   <li className="ml-8">
-                    <span className="absolute -left-[11px] flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 ring-4 ring-[#FFF8F0]" />
+                    <span className="absolute -left-[11px] flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 ring-4 ring-white" />
                     <span className="text-sm font-bold text-orange-500">{item.year}</span>
                     <h3 className="font-display font-bold text-ink mt-1">{item.title}</h3>
                     <p className="text-sm text-slate-500 mt-1">{item.desc}</p>
@@ -184,15 +239,11 @@ export default function AboutPage() {
         </section>
       )}
 
-      <section className="section bg-white relative overflow-hidden">
+      <section className="section bg-[#FFF8F0] relative overflow-hidden">
         <SectionDecorations variant="programs" />
         <div className="mx-auto max-w-7xl px-4 relative z-10">
           <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: Award, value: `${yearsExp}+`, label: p.yearsService },
-              { icon: Heart, value: t.grades, label: p.programsStat },
-              { icon: Shield, value: '100%', label: p.safeCampus },
-            ].map(({ icon: Icon, value, label }, i) => (
+            {stats.map(({ icon: Icon, value, label }, i) => (
               <FadeIn key={label} delay={i * 0.08}>
                 <div className="kidscholl-stat-card">
                   <div className="kidscholl-stat-icon"><Icon className="h-5 w-5" /></div>
@@ -205,14 +256,16 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="section bg-[#FFF8F0] pb-20 relative overflow-hidden">
+      <section className="section bg-white pb-20 relative overflow-hidden">
         <SectionDecorations variant="cta" />
         <div className="mx-auto max-w-7xl px-4 relative z-10">
           <div className="kidscholl-cta-band rounded-[2rem] p-10 md:p-14 text-center md:text-left">
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
-                <h3 className="font-display text-2xl font-bold text-white mb-3">{p.visitUs}</h3>
-                <p className="text-white/80">{p.visitDesc}</p>
+                <h3 className="font-display text-2xl font-bold text-white mb-3">
+                  {profile.about_visit_title || p.visitUs}
+                </h3>
+                <p className="text-white/80">{profile.about_visit_desc || p.visitDesc}</p>
               </div>
               <div className="flex flex-wrap gap-3 md:justify-end">
                 <Link to="/book-tour" className="home-cta-btn home-cta-btn--primary !text-violet-700 hover:!text-violet-900">

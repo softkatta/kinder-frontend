@@ -150,6 +150,17 @@ export type SettingsProfile = {
   about_journey_label?: string | null
   about_journey_title?: string | null
   about_timeline?: string | null
+  about_page_label?: string | null
+  about_page_title?: string | null
+  about_page_subtitle?: string | null
+  about_principal_label?: string | null
+  about_stat_years_label?: string | null
+  about_stat_programs_label?: string | null
+  about_stat_programs_value?: string | null
+  about_stat_safe_label?: string | null
+  about_stat_safe_value?: string | null
+  about_visit_title?: string | null
+  about_visit_desc?: string | null
 } & Partial<Record<ProfileImageKey, string | null>>
   & Partial<Record<`${string}_mr`, string | null>>
 
