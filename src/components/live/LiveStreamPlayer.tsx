@@ -347,47 +347,47 @@ export function LiveStreamPlayer({
       data-orientation={orientation}
       onDoubleClick={toggleFullscreen}
     >
-      <div className="live-player-stage">
-        {status === 'live' && (
-          <span className="live-player-live-badge">
-            <Radio className="h-3 w-3" /> LIVE
-          </span>
-        )}
-        {isPaused && (
-          <span className="live-player-live-badge live-player-live-badge--paused">Paused</span>
-        )}
+      {status === 'live' && (
+        <span className="live-player-live-badge">
+          <Radio className="h-3 w-3" /> LIVE
+        </span>
+      )}
+      {isPaused && (
+        <span className="live-player-live-badge live-player-live-badge--paused">Paused</span>
+      )}
 
-        {!isPaused && (
-          <div className="live-player-toolbar">
-            {rotateEnabled && (
-              <button
-                type="button"
-                className="live-player-fs-btn live-player-rotate-btn"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setOrientation((o) => (o === 'landscape' ? 'portrait' : 'landscape'))
-                }}
-                aria-label={isPortrait ? 'Switch to landscape' : 'Switch to portrait'}
-              >
-                <RotateCw className="h-4 w-4" />
-                <span className="live-player-fs-label">{isPortrait ? 'Landscape' : 'Portrait'}</span>
-              </button>
-            )}
+      {!isPaused && (
+        <div className="live-player-toolbar">
+          {rotateEnabled && (
             <button
               type="button"
-              className="live-player-fs-btn"
+              className="live-player-fs-btn live-player-rotate-btn"
               onClick={(e) => {
                 e.stopPropagation()
-                toggleFullscreen()
+                setOrientation((o) => (o === 'landscape' ? 'portrait' : 'landscape'))
               }}
-              aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+              aria-label={isPortrait ? 'Switch to landscape' : 'Switch to portrait'}
             >
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-              <span className="live-player-fs-label">{isFullscreen ? 'Exit' : 'Full screen'}</span>
+              <RotateCw className="h-4 w-4" />
+              <span className="live-player-fs-label">{isPortrait ? 'Landscape' : 'Portrait'}</span>
             </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            className="live-player-fs-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleFullscreen()
+            }}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            <span className="live-player-fs-label">{isFullscreen ? 'Exit' : 'Full screen'}</span>
+          </button>
+        </div>
+      )}
 
+      <div className="live-player-stage">
         {isGrid ? (
           <div className={`live-player-grid live-player-grid--${gridMode}`}>
             {panes.map((pane, index) => (
@@ -436,22 +436,22 @@ export function LiveStreamPlayer({
             )
           })
         )}
-
-        {isPaused && (
-          <div className="live-player-pause-overlay" aria-live="polite">
-            <span className="live-player-badge live-player-badge--paused">Paused</span>
-            {title && <p className="font-display font-bold text-white text-lg mt-3">{title}</p>}
-            <p className="text-white/85 text-sm mt-1">The broadcast is paused. Please wait…</p>
-          </div>
-        )}
-
-        {!isPaused && !isGrid && (displayName || displayLocation) && (
-          <div className="live-player-caption live-player-caption--fade">
-            {displayName && <span className="font-semibold">{displayName}</span>}
-            {displayLocation && <span className="text-slate-400"> · {displayLocation}</span>}
-          </div>
-        )}
       </div>
+
+      {isPaused && (
+        <div className="live-player-pause-overlay" aria-live="polite">
+          <span className="live-player-badge live-player-badge--paused">Paused</span>
+          {title && <p className="font-display font-bold text-white text-lg mt-3">{title}</p>}
+          <p className="text-white/85 text-sm mt-1">The broadcast is paused. Please wait…</p>
+        </div>
+      )}
+
+      {!isPaused && !isGrid && (displayName || displayLocation) && (
+        <div className="live-player-caption live-player-caption--fade">
+          {displayName && <span className="font-semibold">{displayName}</span>}
+          {displayLocation && <span className="text-slate-400"> · {displayLocation}</span>}
+        </div>
+      )}
     </div>
   )
 }

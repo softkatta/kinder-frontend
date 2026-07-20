@@ -4054,17 +4054,30 @@ h1, h2, h3, h4, h5, h6 {
 }
 .live-player-stage {
   @apply absolute inset-0;
+  transform-origin: center center;
+  transition: transform 0.35s ease;
 }
 .live-player--landscape {
   aspect-ratio: 16 / 9;
   max-width: 100%;
 }
 .live-player--portrait {
+  container-type: size;
   aspect-ratio: 9 / 16;
   width: 100%;
   max-width: min(100%, 420px);
   margin-inline: auto;
+  overflow: hidden;
   transition: aspect-ratio 0.25s ease, max-width 0.25s ease;
+}
+/* Rotate feed 90° so landscape video fills the upright (portrait) frame */
+.live-player--portrait .live-player-stage {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 100cqh;
+  height: 100cqw;
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 .live-player-grid {
   @apply absolute inset-0 grid gap-0.5 bg-black;
@@ -4082,20 +4095,6 @@ h1, h2, h3, h4, h5, h6 {
   grid-row: 1 / -1;
 }
 .live-player-grid--4 {
-  grid-template: 1fr 1fr / 1fr 1fr;
-}
-/* Portrait: stack feeds so they fill the upright frame */
-.live-player--portrait .live-player-grid--2 {
-  grid-template: 1fr 1fr / 1fr;
-}
-.live-player--portrait .live-player-grid--3 {
-  grid-template: 1.35fr 1fr / 1fr 1fr;
-}
-.live-player--portrait .live-player-grid--3 .live-player-pane:first-child {
-  grid-row: auto;
-  grid-column: 1 / -1;
-}
-.live-player--portrait .live-player-grid--4 {
   grid-template: 1fr 1fr / 1fr 1fr;
 }
 .live-player-pane {
