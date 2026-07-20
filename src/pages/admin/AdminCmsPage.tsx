@@ -91,9 +91,14 @@ export default function AdminCmsPage() {
 
   useEffect(() => { load() }, [load])
 
+  const nextSortOrder = () => {
+    if (items.length === 0) return 1
+    return Math.max(...items.map((i) => Number(i.sort_order) || 0)) + 1
+  }
+
   const openCreate = () => {
     setEditing(null)
-    setForm({ ...emptyForm, type })
+    setForm({ ...emptyForm, type, sort_order: nextSortOrder() })
     setFormMeta(metaToForm(type, {}))
     setModalOpen(true)
   }
@@ -246,6 +251,7 @@ export default function AdminCmsPage() {
             <p className="text-slate-400 text-sm py-12 text-center">Loading...</p>
           ) : (
             <AdminDataTable<CmsItem>
+              key={type}
               data={items}
               rowKey={(row) => row.id}
               onRefresh={load}
@@ -257,8 +263,21 @@ export default function AdminCmsPage() {
               selection={selection}
               onBulkDelete={bulkDelete}
               bulkDeleting={bulkDeleting}
+              initialSort={{ key: 'sort_order', dir: 'asc' }}
+              getSortValue={(row, key) => {
+                if (key === 'sort_order') return Number(row.sort_order) || 0
+                if (key === 'title') return row.title
+                if (key === 'slug') return row.slug ?? ''
+                return ''
+              }}
               columns={[
-                { key: 'id', header: '#', className: 'font-mono text-xs text-slate-400 w-12', cell: (r) => r.id },
+                {
+                  key: 'sort_order',
+                  header: 'Order',
+                  sortable: true,
+                  className: 'font-mono text-xs text-slate-600 w-16',
+                  cell: (r) => r.sort_order,
+                },
                 { key: 'title', header: 'Title', sortable: true, cell: (r) => <span className="font-semibold text-ink">{r.title}</span> },
                 { key: 'slug', header: 'Slug', sortable: true, className: 'font-mono text-xs text-slate-500', cell: (r) => r.slug ?? '—' },
                 { key: 'status', header: 'Status', cell: (r) => <AdminBadge tone={r.status === 'published' ? 'success' : 'warning'}>{r.status}</AdminBadge> },
@@ -297,16 +316,47 @@ export default function AdminCmsPage() {
         }
       >
         <FormStack>
-          <Input label={formLabels.title} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input label={`${formLabels.title} (English)`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            <Input
+              label={`${formLabels.title} (मराठी)`}
+              value={String(formMeta.title_mr ?? '')}
+              onChange={(e) => setFormMeta({ ...formMeta, title_mr: e.target.value })}
+            />
+          </div>
           <Input label={formLabels.slug} value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} className="font-mono text-sm" />
           {form.type !== 'banner' && form.type !== 'notice' && (
-            <Textarea label={formLabels.summary} rows={3} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
-          )}
-          {form.type !== 'banner' && form.type !== 'notice' && (
-            <Textarea label={formLabels.body} rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+            <>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Textarea label={`${formLabels.summary} (English)`} rows={3} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
+                <Textarea
+                  label={`${formLabels.summary} (मराठी)`}
+                  rows={3}
+                  value={String(formMeta.summary_mr ?? '')}
+                  onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Textarea label={`${formLabels.body} (English)`} rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+                <Textarea
+                  label={`${formLabels.body} (मराठी)`}
+                  rows={4}
+                  value={String(formMeta.body_mr ?? '')}
+                  onChange={(e) => setFormMeta({ ...formMeta, body_mr: e.target.value })}
+                />
+              </div>
+            </>
           )}
           {form.type === 'banner' && (
-            <Textarea label={formLabels.summary} rows={2} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
+            <div className="grid gap-3 md:grid-cols-2">
+              <Textarea label={`${formLabels.summary} (English)`} rows={2} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
+              <Textarea
+                label={`${formLabels.summary} (मराठी)`}
+                rows={2}
+                value={String(formMeta.summary_mr ?? '')}
+                onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })}
+              />
+            </div>
           )}
           {form.type !== 'notice' && (
             <ImageUpload
@@ -320,27 +370,18 @@ export default function AdminCmsPage() {
             meta={formMeta}
             onChange={(key, value) => setFormMeta({ ...formMeta, [key]: value })}
           />
-          <div className="rounded-xl border border-orange-100 bg-orange-50/40 p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-orange-700 mb-3">Marathi (manual override)</p>
-              <FormStack>
-                <Input label="Title (Marathi)" value={String(formMeta.title_mr ?? '')} onChange={(e) => setFormMeta({ ...formMeta, title_mr: e.target.value })} />
-                {form.type === 'banner' && (
-                  <Textarea label="Summary / subline (Marathi)" rows={2} value={String(formMeta.summary_mr ?? '')} onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })} />
-                )}
-                {form.type !== 'banner' && form.type !== 'notice' && (
-                  <>
-                    <Textarea label="Summary (Marathi)" rows={2} value={String(formMeta.summary_mr ?? '')} onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })} />
-                    <Textarea label="Body (Marathi)" rows={3} value={String(formMeta.body_mr ?? '')} onChange={(e) => setFormMeta({ ...formMeta, body_mr: e.target.value })} />
-                  </>
-                )}
-              </FormStack>
-            </div>
           <FormGrid cols={2}>
             <Select label="Status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
               <option value="published">Published</option>
               <option value="draft">Draft</option>
             </Select>
-            <Input label="Sort Order" type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} />
+            <Input
+              label="Sort Order"
+              type="number"
+              value={form.sort_order}
+              onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
+              hint={form.type === 'banner' ? 'Homepage carousel sequence: 1, 2, 3…' : 'Lower numbers appear first'}
+            />
           </FormGrid>
         </FormStack>
       </AdminModal>

@@ -11,15 +11,18 @@ interface CmsMetaFieldsProps {
   onChange: (key: string, value: string | boolean) => void
 }
 
-function FieldInput({ field, value, onChange }: {
+function FieldInput({ field, value, onChange, labelSuffix }: {
   field: CmsFieldDef
   value: string | boolean
   onChange: (v: string | boolean) => void
+  labelSuffix?: string
 }) {
+  const label = labelSuffix ? `${field.label} (${labelSuffix})` : field.label
+
   if (field.type === 'checkbox') {
     return (
       <Checkbox
-        label={field.label}
+        label={label}
         checked={value === true || value === 'true'}
         onChange={(e) => onChange(e.target.checked)}
       />
@@ -29,7 +32,7 @@ function FieldInput({ field, value, onChange }: {
   if (field.type === 'select') {
     return (
       <Select
-        label={field.label}
+        label={label}
         value={String(value ?? '')}
         onChange={(e) => onChange(e.target.value)}
         hint={field.hint}
@@ -45,7 +48,7 @@ function FieldInput({ field, value, onChange }: {
   if (field.type === 'textarea') {
     return (
       <Textarea
-        label={field.label}
+        label={label}
         placeholder={field.placeholder}
         rows={4}
         value={String(value ?? '')}
@@ -57,7 +60,7 @@ function FieldInput({ field, value, onChange }: {
 
   return (
     <Input
-      label={field.label}
+      label={label}
       type={field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text'}
       placeholder={field.placeholder}
       value={String(value ?? '')}
@@ -77,22 +80,35 @@ export function CmsMetaFields({ type, meta, onChange }: CmsMetaFieldsProps) {
         Extra fields (shown on public website)
       </p>
       <FormStack>
-        {fields.map((field) => (
-          <div key={field.key} className="space-y-3">
+        {fields.map((field) => {
+          if (field.type === 'text' || field.type === 'textarea') {
+            return (
+              <div key={field.key} className="grid gap-3 md:grid-cols-2">
+                <FieldInput
+                  field={field}
+                  labelSuffix="English"
+                  value={meta[field.key] ?? ''}
+                  onChange={(v) => onChange(field.key, v)}
+                />
+                <FieldInput
+                  field={field}
+                  labelSuffix="मराठी"
+                  value={meta[`${field.key}_mr`] ?? ''}
+                  onChange={(v) => onChange(`${field.key}_mr`, v)}
+                />
+              </div>
+            )
+          }
+
+          return (
             <FieldInput
+              key={field.key}
               field={field}
               value={meta[field.key] ?? ''}
               onChange={(v) => onChange(field.key, v)}
             />
-            {(field.type === 'text' || field.type === 'textarea') && (
-              <FieldInput
-                field={{ ...field, key: `${field.key}_mr`, label: `${field.label} (Marathi)` }}
-                value={meta[`${field.key}_mr`] ?? ''}
-                onChange={(v) => onChange(`${field.key}_mr`, v)}
-              />
-            )}
-          </div>
-        ))}
+          )
+        })}
       </FormStack>
     </div>
   )
