@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { installApi, licenseApi, type CompanyApiPayload } from '@/api/installApi'
 import { clearLicenseGateLock } from '@/api/licenseRedirectGate'
+import { clearDatabaseUnavailableStreak } from '@/api/client'
 import { publicApi } from '@/api/services'
 import { markInstallVerified, resetInstallVerificationCache } from '@/components/install/InstallGate'
 
@@ -48,7 +49,7 @@ const COPY: Record<string, { title: string; body: string }> = {
   },
   'database-unavailable': {
     title: 'Database Unavailable',
-    body: 'Kindergarten is already installed, but the database connection failed (wrong DB password/user in .env). Fix your host MySQL credentials. Do not run the install wizard again.',
+    body: 'Kindergarten is installed, but MySQL did not respond (common on shared hosting for a moment). Wait a few seconds and retry. If it keeps failing, check DB_* credentials in .env — do not run the install wizard again.',
   },
 }
 
@@ -153,6 +154,23 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
             return
           } catch {
             /* still blocked */
+          }
+        }
+
+        if (code === 'database-unavailable') {
+          if (!s?.database_unavailable && s?.installed) {
+            try {
+              await publicApi.schoolProfile()
+              if (cancelled) return
+              clearLicenseGateLock()
+              resetInstallVerificationCache()
+              markInstallVerified()
+              clearDatabaseUnavailableStreak()
+              window.location.replace('/')
+              return
+            } catch {
+              /* still flaky — stay and let user retry */
+            }
           }
         }
 
@@ -390,7 +408,19 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
 
         {done && <p className="mt-6 text-sm text-emerald-700">License restored. Redirecting...</p>}
 
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          {code === 'database-unavailable' && (
+            <button
+              type="button"
+              onClick={() => {
+                clearDatabaseUnavailableStreak()
+                window.location.reload()
+              }}
+              className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white"
+            >
+              Retry connection
+            </button>
+          )}
           <Link to="/login" className="rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-700">
             Back to login
           </Link>

@@ -93,17 +93,45 @@ const IMMEDIATE_REMOTE_LICENSE_CODES = new Set([
   'REVOKED_LICENSE',
 ])
 
+const DB_UNAVAILABLE_STREAK_KEY = 'sk_db_unavailable_streak'
+const DB_UNAVAILABLE_REDIRECT_AFTER = 3
+
+function noteDatabaseUnavailableStreak(): number {
+  try {
+    const next = Number(sessionStorage.getItem(DB_UNAVAILABLE_STREAK_KEY) || '0') + 1
+    sessionStorage.setItem(DB_UNAVAILABLE_STREAK_KEY, String(next))
+    return next
+  } catch {
+    return DB_UNAVAILABLE_REDIRECT_AFTER
+  }
+}
+
+export function clearDatabaseUnavailableStreak(): void {
+  try {
+    sessionStorage.removeItem(DB_UNAVAILABLE_STREAK_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    clearDatabaseUnavailableStreak()
+    return response
+  },
   (error: AxiosError<{ message?: string; error_code?: string }>) => {
     const status = error.response?.status
     const errorCode = error.response?.data?.error_code
     const path = window.location.pathname
 
     if (status === 503 && errorCode === 'DATABASE_UNAVAILABLE') {
-      const dest = `${import.meta.env.BASE_URL}license/database-unavailable`.replace(/\/{2,}/g, '/')
-      if (!path.includes('/license/database-unavailable')) {
-        window.location.replace(dest)
+      const streak = noteDatabaseUnavailableStreak()
+      // Shared hosting MySQL often flakes once — only hard-redirect after repeated failures.
+      if (streak >= DB_UNAVAILABLE_REDIRECT_AFTER) {
+        const dest = `${import.meta.env.BASE_URL}license/database-unavailable`.replace(/\/{2,}/g, '/')
+        if (!path.includes('/license/database-unavailable')) {
+          window.location.replace(dest)
+        }
       }
     }
 

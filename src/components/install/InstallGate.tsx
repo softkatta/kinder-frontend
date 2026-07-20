@@ -56,6 +56,10 @@ type GateResult =
   | { kind: 'license'; path: string }
   | { kind: 'database' }
 
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
 async function resolveGate(): Promise<GateResult> {
   if (isLicenseGateLocked()) {
     try {
@@ -81,62 +85,76 @@ async function resolveGate(): Promise<GateResult> {
     return { kind: 'ok' }
   }
 
-  try {
-    const status = await installApi.status()
-    if (status.database_unavailable || status.last_error_code === 'DATABASE_UNAVAILABLE') {
-      return { kind: 'database' }
-    }
+  let last: GateResult = { kind: 'database' }
 
-    if (status.installed && status.last_error_code) {
-      if (status.company_api_configured === false) {
-        return { kind: 'license', path: '/license/company-api-unavailable' }
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const status = await installApi.status()
+      if (status.database_unavailable || status.last_error_code === 'DATABASE_UNAVAILABLE') {
+        last = { kind: 'database' }
+        if (attempt < 2) {
+          await sleep(250 * (attempt + 1))
+          continue
+        }
+        return last
       }
-      try {
-        await licenseApi.verify(true)
-        clearLicenseGateLock()
+
+      if (status.installed && status.last_error_code) {
+        if (status.company_api_configured === false) {
+          return { kind: 'license', path: '/license/company-api-unavailable' }
+        }
+        try {
+          await licenseApi.verify(true)
+          clearLicenseGateLock()
+          setInstallVerified(true)
+          return { kind: 'ok' }
+        } catch {
+          return { kind: 'license', path: licenseRestorePath(status.last_error_code) }
+        }
+      }
+
+      if (
+        status.installed &&
+        status.has_license &&
+        status.company_api_configured !== false &&
+        !status.needs_reactivation &&
+        !status.last_error_code
+      ) {
         setInstallVerified(true)
         return { kind: 'ok' }
-      } catch {
-        return { kind: 'license', path: licenseRestorePath(status.last_error_code) }
       }
-    }
 
-    if (
-      status.installed &&
-      status.has_license &&
-      status.company_api_configured !== false &&
-      !status.needs_reactivation &&
-      !status.last_error_code
-    ) {
-      setInstallVerified(true)
-      return { kind: 'ok' }
-    }
-
-    if (status.installed) {
-      if (status.company_api_configured === false) {
-        return { kind: 'license', path: '/license/company-api-unavailable' }
+      if (status.installed) {
+        if (status.company_api_configured === false) {
+          return { kind: 'license', path: '/license/company-api-unavailable' }
+        }
+        try {
+          await licenseApi.verify(true)
+          setInstallVerified(true)
+          return { kind: 'ok' }
+        } catch {
+          const path = licenseRestorePath(status.last_error_code)
+          lockLicenseGate(path)
+          return { kind: 'license', path }
+        }
       }
-      try {
-        await licenseApi.verify(true)
-        setInstallVerified(true)
-        return { kind: 'ok' }
-      } catch {
-        const path = licenseRestorePath(status.last_error_code)
-        lockLicenseGate(path)
-        return { kind: 'license', path }
-      }
-    }
-    return { kind: 'install' }
-  } catch (err) {
-    const code = (err as { error_code?: string })?.error_code
-    if (code === 'DATABASE_UNAVAILABLE') {
-      return { kind: 'database' }
-    }
-    if (code === 'NOT_INSTALLED') {
       return { kind: 'install' }
+    } catch (err) {
+      const code = (err as { error_code?: string })?.error_code
+      if (code === 'NOT_INSTALLED') {
+        return { kind: 'install' }
+      }
+      // Network / transient DB — retry before treating as hard database outage
+      last = { kind: 'database' }
+      if (attempt < 2) {
+        await sleep(250 * (attempt + 1))
+        continue
+      }
+      return last
     }
-    return { kind: 'database' }
   }
+
+  return last
 }
 
 export function InstallGate({ children }: { children: ReactNode }) {
