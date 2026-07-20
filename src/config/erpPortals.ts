@@ -118,6 +118,7 @@ export const teacherPortalConfig: ErpPortalConfig = {
     { to: '/teacher/homework', label: 'Homework', icon: BookOpen },
     { to: '/teacher/students', label: 'My Class', icon: Users },
     { to: '/teacher/notices', label: 'Notices', icon: Bell },
+    { to: '/teacher/live', label: 'Join Live', icon: Radio },
   ],
   pageMeta: {
     '/teacher': { title: 'Dashboard', desc: 'Your classroom at a glance' },
@@ -125,6 +126,8 @@ export const teacherPortalConfig: ErpPortalConfig = {
     '/teacher/homework': { title: 'Homework', desc: 'Assign and track homework submissions' },
     '/teacher/students': { title: 'My Class', desc: 'Students in your class section' },
     '/teacher/notices': { title: 'Notices', desc: 'School and class announcements' },
+    '/teacher/live': { title: 'Join Live', desc: 'Connect your mobile camera for a live school event' },
+    '/teacher/live/setup-guide': { title: 'Live Stream Setup Guide', desc: 'Equipment, streaming methods, and ERP configuration' },
     '/teacher/notifications': { title: 'Notifications', desc: 'Alerts and updates for your account' },
   },
 }

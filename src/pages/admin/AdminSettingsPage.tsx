@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { LucideIcon } from 'lucide-react'
 import {
   Building2, Bell, CreditCard, Globe, Save, ExternalLink, ChevronRight, Send, RotateCcw, Radio,
-  Home, BookOpen, Images, Phone, Mail, MessageCircle,
+  Home, BookOpen, Images, Phone, Mail, MessageCircle, Video,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { AdminPageHero, AdminPanel, AdminBtn, AdminPageShell } from '@/components/admin/AdminUi'
@@ -33,7 +33,7 @@ import { ensureEcho, resetEchoConfig } from '@/realtime/echo'
 
 type TabId =
   | 'branding' | 'homepage' | 'about' | 'contact' | WebsitePageTabId | 'website'
-  | 'email' | 'whatsapp' | 'broadcast' | 'notifications' | 'payments'
+  | 'email' | 'whatsapp' | 'broadcast' | 'livekit' | 'notifications' | 'payments'
 
 interface SettingsTab {
   id: TabId
@@ -72,6 +72,7 @@ const tabGroups: TabGroup[] = [
       { id: 'email', label: 'Email (SMTP)', icon: Mail, desc: 'Outgoing mail server' },
       { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, desc: 'Twilio or Meta API' },
       { id: 'broadcast', label: 'Broadcast', icon: Radio, desc: 'Realtime / Reverb' },
+      { id: 'livekit', label: 'LiveKit', icon: Video, desc: 'Built-in camera streaming' },
       { id: 'notifications', label: 'Notifications', icon: Bell, desc: 'Event alerts' },
     ],
   },
@@ -92,7 +93,7 @@ const PROFILE_TABS: TabId[] = [
   'contact',
   ...WEBSITE_PAGE_TABS.map((p) => p.id),
 ]
-const INTEGRATION_TABS: TabId[] = ['email', 'whatsapp', 'broadcast']
+const INTEGRATION_TABS: TabId[] = ['email', 'whatsapp', 'broadcast', 'livekit']
 
 const defaultNotifications: SettingsNotification[] = [
   { key: 'new_admission', event: 'New admission applications', channel: 'Email + Push', enabled: true, desc: 'When a parent submits admission form', channels: { email: true, whatsapp: false, push: true } },
@@ -163,6 +164,11 @@ const emptyIntegrations: SettingsIntegrations = {
     port: 8080,
     scheme: 'http',
   },
+  livekit: {
+    enabled: false,
+    url: 'ws://localhost:7880',
+    api_key: 'devkey',
+  },
 }
 
 function mergeIntegrations(raw?: Partial<SettingsIntegrations> | null): SettingsIntegrations {
@@ -170,6 +176,7 @@ function mergeIntegrations(raw?: Partial<SettingsIntegrations> | null): Settings
     email: { ...emptyIntegrations.email, ...raw?.email },
     whatsapp: { ...emptyIntegrations.whatsapp, ...raw?.whatsapp },
     broadcast: { ...emptyIntegrations.broadcast, ...raw?.broadcast },
+    livekit: { ...emptyIntegrations.livekit, ...raw?.livekit },
   }
 }
 
@@ -313,6 +320,10 @@ export default function AdminSettingsPage() {
                   ...integrations.broadcast,
                   secret: integrations.broadcast.secret || undefined,
                 },
+                livekit: {
+                  ...integrations.livekit,
+                  api_secret: integrations.livekit.api_secret || undefined,
+                },
               },
             }
           : tab === 'notifications'
@@ -348,6 +359,7 @@ export default function AdminSettingsPage() {
         email: { ...mergedIntegrations.email, password: '' },
         whatsapp: { ...mergedIntegrations.whatsapp, auth_token: '', access_token: '' },
         broadcast: { ...mergedIntegrations.broadcast, secret: '' },
+        livekit: { ...mergedIntegrations.livekit, api_secret: '' },
       })
       setNotifications(data.notifications?.length ? data.notifications : defaultNotifications)
       setPayments({ ...emptyPayments, ...data.payments, razorpay_webhook_secret: '' })
@@ -363,7 +375,7 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const testIntegration = async (type: 'email' | 'whatsapp' | 'broadcast') => {
+  const testIntegration = async (type: 'email' | 'whatsapp' | 'broadcast' | 'livekit') => {
     setTesting(type)
     try {
       if (type === 'broadcast') {
@@ -839,6 +851,66 @@ export default function AdminSettingsPage() {
                           <Input label="Cluster" value={integrations.broadcast?.cluster || ''} onChange={(e) => setIntegrations((i) => ({ ...i, broadcast: { ...i.broadcast, cluster: e.target.value } }))} placeholder="ap2" />
                         )}
                       </FormGrid>
+                    </div>
+                  </AdminPanel>
+              )}
+
+              {tab === 'livekit' && (
+                  <AdminPanel
+                    id="integration-livekit"
+                    title="LiveKit (Built-in Camera)"
+                    subtitle="WebRTC for browser webcam / teacher Join Live — video does not pass through Laravel"
+                    action={
+                      <AdminBtn variant="secondary" onClick={() => void testIntegration('livekit')} disabled={testing === 'livekit'}>
+                        <Send className="h-4 w-4" /> {testing === 'livekit' ? 'Checking...' : 'Test Connection'}
+                      </AdminBtn>
+                    }
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 rounded-xl border border-sky-100 bg-sky-50/60 px-4 py-3">
+                        <Video className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
+                        <p className="text-sm text-slate-600">
+                          Enable LiveKit for Built-In Camera streaming on Live Streams. Local: from{' '}
+                          <code className="bg-white px-1 rounded text-xs">backend/</code> run{' '}
+                          <code className="bg-white px-1 rounded text-xs">powershell -File scripts/start-livekit.ps1</code>
+                          {' '}or Docker Compose. Production URL is usually{' '}
+                          <code className="bg-white px-1 rounded text-xs">wss://livekit.yourdomain.com</code>.
+                        </p>
+                      </div>
+                      <Checkbox
+                        label="Enable LiveKit streaming"
+                        checked={!!integrations.livekit?.enabled}
+                        onChange={(e) => setIntegrations((i) => ({ ...i, livekit: { ...i.livekit, enabled: e.target.checked } }))}
+                      />
+                      <FormGrid>
+                        <div className="sm:col-span-2">
+                          <Input
+                            label="LiveKit URL"
+                            value={integrations.livekit?.url || ''}
+                            onChange={(e) => setIntegrations((i) => ({ ...i, livekit: { ...i.livekit, url: e.target.value } }))}
+                            placeholder="ws://localhost:7880"
+                            className="font-mono text-sm"
+                            hint="Use ws:// for local, wss:// for production"
+                          />
+                        </div>
+                        <Input
+                          label="API Key"
+                          value={integrations.livekit?.api_key || ''}
+                          onChange={(e) => setIntegrations((i) => ({ ...i, livekit: { ...i.livekit, api_key: e.target.value } }))}
+                          className="font-mono text-sm"
+                          placeholder="devkey"
+                        />
+                        <Input
+                          label="API Secret"
+                          type="password"
+                          placeholder={integrations.livekit?.api_secret_set ? '•••••••• (saved)' : 'API secret'}
+                          value={integrations.livekit?.api_secret || ''}
+                          onChange={(e) => setIntegrations((i) => ({ ...i, livekit: { ...i.livekit, api_secret: e.target.value } }))}
+                        />
+                      </FormGrid>
+                      <p className="text-xs text-slate-500">
+                        After saving, open <Link className="text-sky-700 underline" to="/admin/live-streams">Live Streams</Link> and add a Built-In Camera, or ask teachers to use Join Live.
+                      </p>
                     </div>
                   </AdminPanel>
               )}

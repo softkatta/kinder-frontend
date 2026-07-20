@@ -39,6 +39,7 @@ export const publicApi = {
   liveActive: () => api.get('/public/live/active'),
   liveUpcoming: () => api.get('/public/live/upcoming'),
   liveWatch: (id: number) => api.get(`/public/live/${id}/watch`),
+  liveWebrtcToken: (id: number) => api.post(`/public/live/${id}/webrtc-token`, { role: 'viewer' }),
   verifyCertificate: (certNumber: string) => api.get(`/public/certificates/verify/${encodeURIComponent(certNumber)}`),
 }
 
@@ -214,10 +215,19 @@ export interface SettingsIntegrationsBroadcast {
   scheme?: string | null
 }
 
+export interface SettingsIntegrationsLivekit {
+  enabled?: boolean
+  url?: string | null
+  api_key?: string | null
+  api_secret?: string
+  api_secret_set?: boolean
+}
+
 export interface SettingsIntegrations {
   email: SettingsIntegrationsEmail
   whatsapp: SettingsIntegrationsWhatsapp
   broadcast: SettingsIntegrationsBroadcast
+  livekit: SettingsIntegrationsLivekit
 }
 
 export interface SettingsPayments {
@@ -262,7 +272,7 @@ export const settingsApi = {
     payments: SettingsPayments
     integrations: SettingsIntegrations
   }>>(SETTINGS_PATH, encodeSettingsBody(data)),
-  testIntegration: (data: { type: 'email' | 'whatsapp' | 'broadcast'; to?: string }) =>
+  testIntegration: (data: { type: 'email' | 'whatsapp' | 'broadcast' | 'livekit'; to?: string }) =>
     api.post<ApiResponse<null>>(`${SETTINGS_PATH}/ping`, encodeSettingsBody(data)),
   broadcastConfig: () => api.get<ApiResponse<{
     enabled: boolean
@@ -492,6 +502,22 @@ export const liveStreamApi = {
   viewerActive: () => api.get('/live-streams/active/viewer'),
   viewerUpcoming: () => api.get('/live-streams/upcoming/viewer'),
   watch: (id: number, config?: { signal?: AbortSignal }) => api.get(`/live-streams/${id}/watch`, config),
+  livekitConfig: () => api.get('/live-streams/livekit/config'),
+  webrtcToken: (id: number, data?: { role?: 'publisher' | 'viewer'; camera_id?: number }) =>
+    api.post(`/live-streams/${id}/webrtc-token`, data ?? {}),
+  publisherEvents: () => api.get('/teacher/live-events'),
+  joinCamera: (id: number, data?: { name?: string; location?: string; device_name?: string }) =>
+    api.post(`/live-streams/${id}/join-camera`, data ?? {}),
+  updateCameraSession: (
+    streamId: number,
+    cameraId: number,
+    data: {
+      connection_status?: string
+      device_name?: string
+      battery_level?: number | null
+      signal_strength?: number | null
+    },
+  ) => api.patch(`/live-streams/${streamId}/cameras/${cameraId}/session`, data),
   disconnectCamera: (streamId: number, cameraId: number) =>
     api.post(`/live-streams/${streamId}/cameras/${cameraId}/disconnect`),
   muteCamera: (streamId: number, cameraId: number, muted: boolean) =>

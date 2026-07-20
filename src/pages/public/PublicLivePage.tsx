@@ -69,6 +69,7 @@ export default function PublicLivePage() {
                   cameraLocation={watch.active_camera?.location ?? undefined}
                   status={active.status}
                   muted={active.audio_enabled === false}
+                  webrtcAuth="public"
                 />
               </div>
               <div className="live-viewer-meta">

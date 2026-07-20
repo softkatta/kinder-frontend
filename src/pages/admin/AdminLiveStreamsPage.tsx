@@ -13,6 +13,7 @@ import { Select } from '@/components/ui/Select'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { FormStack } from '@/components/ui/Form'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
+import { BuiltinCameraStudio } from '@/components/live/BuiltinCameraStudio'
 import { AdminLiveCameraPanel } from '@/components/live/AdminLiveCameraPanel'
 import { Textarea } from '@/components/ui/Textarea'
 import { ImageUpload } from '@/components/ui/ImageUpload'
@@ -487,10 +488,17 @@ export default function AdminLiveStreamsPage() {
   }
 
   const saveCamera = async () => {
-    if (!selected || !cameraForm.name || !cameraForm.stream_url) {
+    if (!selected || !cameraForm.name) {
+      return toast.error('Camera name is required')
+    }
+    const isBuiltin = cameraForm.stream_type === 'builtin_camera'
+    if (!isBuiltin && !cameraForm.stream_url) {
       return toast.error('Camera name and URL required')
     }
-    const payload = { ...cameraForm }
+    const payload = {
+      ...cameraForm,
+      stream_url: isBuiltin ? 'builtin://camera' : cameraForm.stream_url,
+    }
     if (cameraModal?.mode === 'edit' && cameraModal.camera) {
       await runWithPatch(
         () => liveStreamApi.updateCamera(selected.id, cameraModal.camera!.id, payload) as Promise<{ data: { data: LiveStreamStaff } }>,
@@ -521,6 +529,12 @@ export default function AdminLiveStreamsPage() {
 
   const preview = async (camera: LiveStreamCameraStaff) => {
     if (!selected) return
+    if (camera.stream_type === 'builtin_camera') {
+      if (!isBroadcasting) {
+        toast('Start the live event, then use the built-in camera studio to broadcast.', { icon: '📹' })
+        return
+      }
+    }
     try {
       const res = await liveStreamApi.previewCamera(selected.id, camera.id)
       setPreviewPlayback(res.data.data.preview as LivePlayback)
@@ -747,7 +761,8 @@ export default function AdminLiveStreamsPage() {
 
                 {!canStartLive && !isBroadcasting && (
                   <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
-                    No cameras on this event yet. Add a YouTube, HLS, Vimeo, or other stream URL below.
+                    No cameras on this event yet. A teacher can connect from <strong>Join Live</strong> on their phone,
+                    or you can add an external camera below.
                   </p>
                 )}
 
@@ -813,7 +828,7 @@ export default function AdminLiveStreamsPage() {
                       <Video className={`h-5 w-5 shrink-0 ${camera.is_active ? 'text-emerald-600' : 'text-slate-400'}`} />
                       <div className="flex-1 min-w-[180px]">
                         <p className="font-semibold text-ink text-sm">{camera.name}</p>
-                        <p className="text-xs text-slate-500">{camera.location || '—'} · {camera.stream_type.toUpperCase()}</p>
+                        <p className="text-xs text-slate-500">{camera.location || '—'} · {camera.stream_type === 'builtin_camera' ? 'BUILT-IN' : camera.stream_type.toUpperCase()}</p>
                       </div>
                       {!camera.is_enabled && <AdminBadge tone="neutral">Disabled</AdminBadge>}
                       {camera.is_active && isBroadcasting && <AdminBadge tone="success">On Air</AdminBadge>}
@@ -877,10 +892,22 @@ export default function AdminLiveStreamsPage() {
                           <Trash2 className="h-3.5 w-3.5" />
                         </AdminBtn>
                       </div>
+                      {camera.stream_type === 'builtin_camera' && !camera.publisher_user_id && (
+                        <div className="w-full basis-full">
+                          <BuiltinCameraStudio
+                          streamId={selected.id}
+                          cameraId={camera.id}
+                          cameraName={camera.name}
+                          isActive={camera.is_active}
+                          isBroadcasting={isBroadcasting}
+                          streamPaused={selected.status === 'paused'}
+                        />
+                        </div>
+                      )}
                     </div>
                   ))}
                   {selected.cameras.length === 0 && (
-                    <p className="text-sm text-slate-500 p-6 text-center">Add cameras with YouTube, HLS, Vimeo, Facebook, RTMP, or embed stream URLs.</p>
+                    <p className="text-sm text-slate-500 p-6 text-center">Add cameras — use Built-In Camera for browser webcam/mobile, or paste stream URLs.</p>
                   )}
                 </div>
               </AdminPanel>
@@ -912,8 +939,16 @@ export default function AdminLiveStreamsPage() {
           <Select
             label="Stream Type"
             value={cameraForm.stream_type}
-            onChange={(e) => setCameraForm({ ...cameraForm, stream_type: e.target.value })}
+            onChange={(e) => {
+              const stream_type = e.target.value
+              setCameraForm({
+                ...cameraForm,
+                stream_type,
+                stream_url: stream_type === 'builtin_camera' ? 'builtin://camera' : cameraForm.stream_url,
+              })
+            }}
           >
+            <option value="builtin_camera">Built-In Camera (Browser)</option>
             <option value="hls">HLS (.m3u8)</option>
             <option value="youtube">YouTube Live</option>
             <option value="vimeo">Vimeo</option>
@@ -921,7 +956,13 @@ export default function AdminLiveStreamsPage() {
             <option value="rtmp">RTMP</option>
             <option value="embed">Other URL</option>
           </Select>
-          <Input label="Stream URL" requiredMark value={cameraForm.stream_url} onChange={(e) => setCameraForm({ ...cameraForm, stream_url: e.target.value })} placeholder="https://..." />
+          {cameraForm.stream_type !== 'builtin_camera' ? (
+            <Input label="Stream URL" requiredMark value={cameraForm.stream_url} onChange={(e) => setCameraForm({ ...cameraForm, stream_url: e.target.value })} placeholder="https://..." />
+          ) : (
+            <p className="text-xs text-slate-500 rounded-xl border border-violet-100 bg-violet-50/50 px-3 py-2">
+              No URL needed. After going live, use the camera studio on each device to broadcast from mobile camera, laptop webcam, or USB camera.
+            </p>
+          )}
           <Checkbox label="Enabled" checked={cameraForm.is_enabled} onChange={(e) => setCameraForm({ ...cameraForm, is_enabled: e.target.checked })} />
           <p className="text-xs text-slate-500">External stream URLs are only visible to staff. Parents receive a secure playback feed.</p>
         </FormStack>

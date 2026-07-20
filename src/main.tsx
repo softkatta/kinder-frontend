@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import '@/realtime/livekitLogging'
 import App from './App.tsx'
 
 if (localStorage.getItem('dark_mode') === 'true') {
