@@ -7,25 +7,42 @@ import {
   shouldSuppressLicenseRedirect,
 } from '@/api/licenseRedirectGate'
 
-const PRODUCTION_API_BASE = 'https://kinder-api.softkatta.in/api/v1'
+const API_HOST = 'kinder-api.softkatta.in'
 const SPA_HOSTS = new Set(['kinder.softkatta.in', 'www.kinder.softkatta.in'])
 
-/** SPA on kinder.softkatta.in → API on kinder-api.softkatta.in (separate Hostinger vhost). */
+/**
+ * On the SPA host, always use same-origin /api/v1 (api-proxy.php → kinder-api).
+ * Browser must NOT call kinder-api cross-origin — Hostinger often strips CORS on 403/WAF.
+ * Real API still runs on kinder-api.softkatta.in (via proxy).
+ */
 function resolveApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase()
     if (SPA_HOSTS.has(host)) {
-      return PRODUCTION_API_BASE
+      return `${window.location.origin}/api/v1`
     }
   }
   const fromEnv = (import.meta.env.VITE_API_BASE_URL || '').trim()
-  if (fromEnv.startsWith('http')) {
-    return fromEnv.replace(/\/$/, '')
+  if (fromEnv.includes(API_HOST) || fromEnv === '' || fromEnv === '/api/v1') {
+    if (typeof window !== 'undefined' && SPA_HOSTS.has(window.location.hostname.toLowerCase())) {
+      return `${window.location.origin}/api/v1`
+    }
+    return fromEnv.includes(API_HOST) ? fromEnv.replace(/\/$/, '') : (fromEnv || '/api/v1')
   }
-  if (fromEnv) {
-    return fromEnv
+  return fromEnv
+}
+
+function forceSameOriginOnSpa(config: InternalAxiosRequestConfig): void {
+  if (typeof window === 'undefined') return
+  const host = window.location.hostname.toLowerCase()
+  if (!SPA_HOSTS.has(host)) return
+
+  config.baseURL = `${window.location.origin}/api/v1`
+
+  const raw = config.url || ''
+  if (raw.includes(API_HOST)) {
+    config.url = raw.replace(/^https?:\/\/kinder-api\.softkatta\.in\/api\/v1/i, '')
   }
-  return PRODUCTION_API_BASE
 }
 
 const api = axios.create({
@@ -38,12 +55,7 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  if (typeof window !== 'undefined') {
-    const host = window.location.hostname.toLowerCase()
-    if (SPA_HOSTS.has(host)) {
-      config.baseURL = PRODUCTION_API_BASE
-    }
-  }
+  forceSameOriginOnSpa(config)
 
   const token = localStorage.getItem('auth_token')
   if (token) {
@@ -159,13 +171,13 @@ export function apiErrorMessage(err: unknown, fallback = 'Request failed'): stri
     const plain = data.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     if (plain) {
       if (status === 403 || /forbidden/i.test(plain)) {
-        return 'Save blocked (403). Check super_admin role, SoftKatta license, or Hostinger ModSecurity on kinder-api.softkatta.in.'
+        return 'Save blocked (403). Check role / SoftKatta license, or disable ModSecurity on Hostinger.'
       }
       return plain.slice(0, 160)
     }
   }
   if (contentType.includes('text/html') && (status === 403 || status === 406)) {
-    return 'Save blocked by host firewall (ModSecurity). Disable ModSecurity for kinder-api.softkatta.in in Hostinger, then retry.'
+    return 'Save blocked by host firewall (ModSecurity). Disable ModSecurity for kinder domains, then retry.'
   }
   if (typeof ax.message === 'string' && ax.message.trim()) return ax.message
   return fallback
