@@ -449,33 +449,33 @@ export function LiveStreamPlayer({
         </div>
       )}
 
-      <div className="live-player-stage">
-        <div className={`live-player-grid live-player-grid--${gridMode}`}>
-          {panes.map((pane) => {
-            const paneMuted = muted || Boolean(pane.playback.audio_muted)
-            return (
-              <div key={pane.id} className="live-player-pane">
-                <FeedEmbed
-                  layer={pane}
-                  muted={paneMuted}
-                  paused={isPaused}
-                  webrtcAuth={webrtcAuth}
-                  lockPlayback={playbackLocked}
-                />
-                {(pane.cameraName || pane.cameraLocation) && (
-                  <div className="live-player-pane-caption">
-                    {pane.cameraName && <span className="font-semibold">{pane.cameraName}</span>}
-                    {pane.cameraLocation && <span> · {pane.cameraLocation}</span>}
-                    {paneMuted && <span className="opacity-80"> · muted</span>}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+      {/* YouTube Live ignores pauseVideo — unmount embeds so viewers cannot see/hear content while paused. */}
+      {!isPaused ? (
+        <div className="live-player-stage">
+          <div className={`live-player-grid live-player-grid--${gridMode}`}>
+            {panes.map((pane) => {
+              const paneMuted = muted || Boolean(pane.playback.audio_muted)
+              return (
+                <div key={pane.id} className="live-player-pane">
+                  <FeedEmbed
+                    layer={pane}
+                    muted={paneMuted}
+                    webrtcAuth={webrtcAuth}
+                    lockPlayback={playbackLocked}
+                  />
+                  {(pane.cameraName || pane.cameraLocation) && (
+                    <div className="live-player-pane-caption">
+                      {pane.cameraName && <span className="font-semibold">{pane.cameraName}</span>}
+                      {pane.cameraLocation && <span> · {pane.cameraLocation}</span>}
+                      {paneMuted && <span className="opacity-80"> · muted</span>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
-      </div>
-
-      {isPaused && (
+      ) : (
         <div className="live-player-pause-overlay" aria-live="polite">
           <span className="live-player-badge live-player-badge--paused">Paused</span>
           {title && <p className="font-display font-bold text-white text-lg mt-3">{title}</p>}

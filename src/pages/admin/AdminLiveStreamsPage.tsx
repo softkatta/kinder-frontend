@@ -877,6 +877,7 @@ export default function AdminLiveStreamsPage() {
                     <p className="text-xs font-bold uppercase text-slate-400 mb-2">Preview</p>
                     <LiveStreamPlayer
                       playback={previewPlayback}
+                      status={selected.status}
                       className="max-w-2xl"
                       muted={!selected.audio_enabled}
                     />
