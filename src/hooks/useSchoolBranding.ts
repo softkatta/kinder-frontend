@@ -16,6 +16,67 @@ function normalizeProfile(raw: Record<string, unknown> | null | undefined): Scho
   return logo ? { ...profile, logo_image: logo, image: logo } : profile
 }
 
+function absoluteUrl(path?: string | null): string {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  return `${origin}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+function upsertMeta(attr: 'name' | 'property', key: string, content: string) {
+  if (!content) return
+  const selector = `meta[${attr}="${key}"]`
+  let el = document.head.querySelector<HTMLMetaElement>(selector)
+  if (!el) {
+    el = document.createElement('meta')
+    el.setAttribute(attr, key)
+    document.head.appendChild(el)
+  }
+  el.setAttribute('content', content)
+}
+
+function applyDocumentMeta(profile: SchoolProfile | null, fallbackName: string) {
+  const title =
+    (profile?.meta_title || '').trim()
+    || (profile?.school_name || '').trim()
+    || (profile?.title || '').trim()
+    || fallbackName
+    || 'Little Stars Kindergarten'
+
+  const description =
+    (profile?.meta_description || '').trim()
+    || (profile?.summary || '').trim()
+    || (profile?.mission || '').trim()
+    || 'Nurturing young minds with joy and care.'
+
+  const imagePath =
+    profile?.meta_image
+    || profile?.cover_image
+    || profile?.logo_image
+    || profile?.image
+    || ''
+  const imageUrl = absoluteUrl(mediaUrl(imagePath) || undefined)
+  const pageUrl = typeof window !== 'undefined' ? window.location.href : ''
+
+  document.title = title
+
+  upsertMeta('name', 'description', description)
+  upsertMeta('name', 'twitter:card', imageUrl ? 'summary_large_image' : 'summary')
+  upsertMeta('name', 'twitter:title', title)
+  upsertMeta('name', 'twitter:description', description)
+  if (imageUrl) upsertMeta('name', 'twitter:image', imageUrl)
+
+  upsertMeta('property', 'og:type', 'website')
+  upsertMeta('property', 'og:site_name', title)
+  upsertMeta('property', 'og:title', title)
+  upsertMeta('property', 'og:description', description)
+  if (pageUrl) upsertMeta('property', 'og:url', pageUrl)
+  if (imageUrl) {
+    upsertMeta('property', 'og:image', imageUrl)
+    upsertMeta('property', 'og:image:alt', title)
+  }
+}
+
 export function useSchoolBranding() {
   const { locale } = useT()
 
@@ -46,6 +107,21 @@ export function useSchoolBranding() {
     link.href = href
     link.type = href.endsWith('.svg') ? 'image/svg+xml' : 'image/png'
   }, [profile?.favicon_image])
+
+  useEffect(() => {
+    applyDocumentMeta(profile, schoolFullName || schoolName)
+  }, [
+    profile,
+    schoolFullName,
+    schoolName,
+    profile?.meta_title,
+    profile?.meta_description,
+    profile?.meta_image,
+    profile?.cover_image,
+    profile?.logo_image,
+    profile?.summary,
+    profile?.mission,
+  ])
 
   return {
     profile,

@@ -12,6 +12,7 @@ import { SectionDecorations } from '@/components/design/SectionDecorations'
 import { getSchoolName, getYearsSince, getProfileText } from '@/config/siteContent'
 import { parsePipePairs, parseTextLines, parseTimelineItems } from '@/utils/homeProfile'
 import { mediaUrl } from '@/utils/mediaUrl'
+import { ShapedImage } from '@/components/design/ShapedImage'
 
 const valueIcons: LucideIcon[] = [Heart, Shield, Sparkles, Users]
 const valueColors = [
@@ -33,6 +34,7 @@ export default function AboutPage() {
 
   const yearsExp = getYearsSince(profile)
   const principalName = profile.principal_name || ''
+  const principalImage = mediaUrl(profile.principal_image)
   const schoolShort = getSchoolName(profile, false, locale)
   const aboutParagraphs = parseTextLines(profile.home_about_paragraphs)
   const coverImage = profile.about_page_image || profile.cover_image || profile.logo_image
@@ -120,15 +122,35 @@ export default function AboutPage() {
         <section className="section bg-white relative overflow-hidden">
           <SectionDecorations variant="teachers" />
           <div className="mx-auto max-w-4xl px-4 relative z-10">
-            <div className="kidscholl-form-card relative text-center md:text-left md:pl-24">
-              <div className="absolute -top-3 left-8 px-4 py-1 rounded-full bg-violet-600 text-white text-xs font-bold">{p.principalMsg}</div>
-              <p className="text-slate-600 leading-relaxed text-lg mt-4 italic">
-                &ldquo;{principalMessage}&rdquo;
-              </p>
-              {principalName && (
-                <p className="mt-6 font-display font-bold text-ink">— {principalName}</p>
-              )}
-            </div>
+            <FadeIn>
+              <div className="about-principal-card kidscholl-form-card !mb-0">
+                <div className="about-principal-photo-wrap">
+                  {principalImage ? (
+                    <ShapedImage
+                      src={principalImage}
+                      alt={principalName || p.principalMsg}
+                      shape="circle"
+                      border="white"
+                      className="about-principal-photo"
+                      fallback={<span className="text-4xl">👩‍🏫</span>}
+                    />
+                  ) : (
+                    <div className="about-principal-photo about-principal-photo--fallback" aria-hidden>
+                      <Award className="h-10 w-10 text-violet-500" />
+                    </div>
+                  )}
+                </div>
+                <div className="about-principal-body">
+                  <div className="about-principal-badge">{p.principalMsg}</div>
+                  <p className="about-principal-quote">
+                    &ldquo;{principalMessage}&rdquo;
+                  </p>
+                  {principalName ? (
+                    <p className="about-principal-name">— {principalName}</p>
+                  ) : null}
+                </div>
+              </div>
+            </FadeIn>
           </div>
         </section>
       )}

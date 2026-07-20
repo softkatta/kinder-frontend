@@ -58,7 +58,7 @@ const tabGroups: TabGroup[] = [
   {
     label: 'School website',
     tabs: [
-      { id: 'branding', label: 'Branding', icon: Building2, desc: 'Name, logo, favicon & cover' },
+      { id: 'branding', label: 'Branding', icon: Building2, desc: 'Name, logo, favicon, cover & SEO meta' },
       { id: 'homepage', label: 'Homepage', icon: Home, desc: 'Sections, CTA & photos' },
       { id: 'about', label: 'About', icon: BookOpen, desc: 'Text, values & photos' },
       { id: 'contact', label: 'Contact', icon: Phone, desc: 'Top bar, page & hero photo' },
@@ -118,6 +118,9 @@ const emptyProfile: SettingsProfile = {
   map_embed_url: '',
   latitude: '',
   longitude: '',
+  meta_title: '',
+  meta_description: '',
+  meta_image: '',
   logo_image: adminImages.nursery,
   cover_image: adminImages.campus,
 }
@@ -510,6 +513,45 @@ export default function AdminSettingsPage() {
                       </FormGrid>
                     </div>
                   </div>
+
+                  <div className="admin-settings-form-card">
+                    <div className="admin-settings-form-section">
+                      <h3 className="admin-settings-form-section-title">SEO / Meta details</h3>
+                      <p className="admin-settings-form-section-desc">
+                        Browser tab title, Google snippet, and WhatsApp / Facebook link preview. Meta image works best at about 1200×630.
+                      </p>
+                      <FormGrid>
+                        <div className="span-2">
+                          <Input
+                            label="Meta title"
+                            value={profile.meta_title || ''}
+                            onChange={(e) => setProfile((p) => ({ ...p, meta_title: e.target.value }))}
+                            placeholder={profile.name || 'Little Stars Kindergarten'}
+                            hint="Leave blank to use the school name"
+                          />
+                        </div>
+                        <div className="span-2">
+                          <Textarea
+                            label="Meta description"
+                            rows={3}
+                            value={profile.meta_description || ''}
+                            onChange={(e) => setProfile((p) => ({ ...p, meta_description: e.target.value }))}
+                            placeholder="Short description for search results and social sharing (about 150–160 characters)."
+                          />
+                        </div>
+                        <div className="span-2">
+                          <ImageUpload
+                            label="Meta / social preview image"
+                            value={profile.meta_image || ''}
+                            onChange={(meta_image) => setProfile((p) => ({ ...p, meta_image }))}
+                          />
+                          <p className="mt-1.5 text-xs text-slate-400">
+                            If empty, cover photo is used for link previews.
+                          </p>
+                        </div>
+                      </FormGrid>
+                    </div>
+                  </div>
                 </>
               )}
 
@@ -653,6 +695,19 @@ export default function AdminSettingsPage() {
                             rows={3}
                             value={profile.principal_message || ''}
                             onChange={(e) => setProfile((p) => ({ ...p, principal_message: e.target.value }))}
+                          />
+                        </div>
+                        <div className="span-2">
+                          <ImageCropUpload
+                            label="Principal photo"
+                            hint="Square crop — shown with principal message on /about"
+                            cropTitle="Crop principal photo"
+                            aspect={1}
+                            outputWidth={600}
+                            outputHeight={600}
+                            previewMode="square"
+                            value={profile.principal_image || ''}
+                            onChange={(principal_image) => setProfile((p) => ({ ...p, principal_image }))}
                           />
                         </div>
                         <Input label="Values — label" value={profile.about_values_label || ''} onChange={(e) => setProfile((p) => ({ ...p, about_values_label: e.target.value }))} />

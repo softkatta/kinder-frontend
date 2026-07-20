@@ -115,6 +115,9 @@ export type SettingsProfile = {
   map_embed_url?: string | null
   latitude?: string | null
   longitude?: string | null
+  meta_title?: string | null
+  meta_description?: string | null
+  meta_image?: string | null
   logo_image?: string | null
   favicon_image?: string | null
   cover_image?: string | null
@@ -137,6 +140,7 @@ export type SettingsProfile = {
   established_year?: string | null
   principal_name?: string | null
   principal_message?: string | null
+  principal_image?: string | null
   vision?: string | null
   mission?: string | null
   about_values_label?: string | null
