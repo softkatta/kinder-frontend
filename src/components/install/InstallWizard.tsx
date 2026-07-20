@@ -96,6 +96,7 @@ export function InstallWizard() {
     installApi
       .status()
       .then((s) => {
+        if (!s) return;
         setStatus(s);
         if (s.installed && s.has_license && !s.needs_reactivation) {
           markInstallVerified();
@@ -118,8 +119,8 @@ export function InstallWizard() {
           navigate(map[s.last_error_code ?? ''] ?? '/license/invalid-install-token', { replace: true });
           return;
         }
-        const api = s.company_api;
-        if (s.database) {
+        const api = s?.company_api;
+        if (s?.database) {
           setDb((prev) => ({
             host: s.database?.host || prev.host,
             port: s.database?.port || prev.port,

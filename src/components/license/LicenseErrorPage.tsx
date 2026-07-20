@@ -128,11 +128,11 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
         if (cancelled) return
         setSoftkatta((prev) => ({
           ...prev,
-          company_api_url: s.company_api?.company_api_url || prev.company_api_url,
-          public_api_key: (s.company_api?.public_api_key || '').trim(),
-          product_slug: s.company_api?.product_slug || s.product_slug || prev.product_slug,
-          product_version: s.company_api?.product_version || s.product_version || prev.product_version,
-          app_url: s.company_api?.app_url || prev.app_url,
+          company_api_url: s?.company_api?.company_api_url || prev.company_api_url,
+          public_api_key: (s?.company_api?.public_api_key || '').trim(),
+          product_slug: s?.company_api?.product_slug || s?.product_slug || prev.product_slug,
+          product_version: s?.company_api?.product_version || s?.product_version || prev.product_version,
+          app_url: s?.company_api?.app_url || prev.app_url,
         }))
 
         const shouldLiveRecover =
@@ -157,11 +157,11 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
         }
 
         if (
-          s.installed &&
-          s.has_license &&
-          s.company_api_configured !== false &&
-          !s.needs_reactivation &&
-          !s.last_error_code
+          s?.installed &&
+          s?.has_license &&
+          s?.company_api_configured !== false &&
+          !s?.needs_reactivation &&
+          !s?.last_error_code
         ) {
           try {
             await publicApi.schoolProfile()

@@ -78,6 +78,9 @@ function unwrapError(e: unknown): ApiError {
 async function getData<T>(url: string): Promise<T> {
   try {
     const res = await api.get<ApiResponse<T>>(url)
+    if (typeof res.data !== 'object' || res.data === null || !('data' in res.data)) {
+      throw new ApiError(`Malformed API response from ${url}`)
+    }
     return res.data.data
   } catch (e) {
     throw unwrapError(e)
@@ -87,6 +90,9 @@ async function getData<T>(url: string): Promise<T> {
 async function postData<T>(url: string, body?: unknown): Promise<T> {
   try {
     const res = await api.post<ApiResponse<T>>(url, body)
+    if (typeof res.data !== 'object' || res.data === null || !('data' in res.data)) {
+      throw new ApiError(`Malformed API response from ${url}`)
+    }
     return res.data.data
   } catch (e) {
     throw unwrapError(e)
