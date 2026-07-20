@@ -33,6 +33,7 @@ export interface LiveStreamCameraStaff {
   display_order: number
   is_enabled: boolean
   is_active: boolean
+  is_primary?: boolean
   publisher_user_id?: number | null
   publisher_name?: string | null
   publisher_role?: string | null
@@ -105,6 +106,8 @@ export interface LiveStreamStaff {
   display_status: LiveDisplayStatus
   status_label: string
   active_camera_id?: number | null
+  layout_mode?: number
+  active_camera_ids?: number[]
   started_at?: string | null
   paused_at?: string | null
   stopped_at?: string | null
@@ -112,6 +115,12 @@ export interface LiveStreamStaff {
   countdown_seconds?: number | null
   cameras: LiveStreamCameraStaff[]
   active_camera?: LiveStreamCameraStaff | null
+  active_cameras?: {
+    id: number
+    name: string
+    location?: string | null
+    stream_type: StreamType
+  }[]
 }
 
 export interface LiveStreamViewer {
@@ -132,12 +141,20 @@ export interface LiveStreamViewer {
   viewer_count?: number
   audio_enabled?: boolean
   visibility?: LiveVisibility
+  layout_mode?: number
+  active_camera_ids?: number[]
   active_camera?: {
     id: number
     name: string
     location?: string | null
     stream_type: StreamType
   } | null
+  active_cameras?: {
+    id: number
+    name: string
+    location?: string | null
+    stream_type: StreamType
+  }[]
 }
 
 export interface LivePlayback {
@@ -146,12 +163,15 @@ export interface LivePlayback {
   src?: string
   stream_id?: number
   camera_id?: number
+  camera_name?: string
+  camera_location?: string | null
   room_name?: string
   participant_identity?: string
 }
 
 export interface LiveStreamWatch extends LiveStreamViewer {
   playback?: LivePlayback
+  playbacks?: LivePlayback[]
 }
 
 export interface LiveStreamRealtimePayload {

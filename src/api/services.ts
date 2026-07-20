@@ -493,6 +493,10 @@ export const liveStreamApi = {
   removeCamera: (streamId: number, cameraId: number) => api.delete(`/live-streams/${streamId}/cameras/${cameraId}`),
   reorderCameras: (id: number, cameraIds: number[]) => api.patch(`/live-streams/${id}/cameras/reorder`, { camera_ids: cameraIds }),
   setActiveCamera: (id: number, cameraId: number) => api.patch(`/live-streams/${id}/active-camera`, { camera_id: cameraId }),
+  setActiveCameras: (id: number, cameraIds: number[]) =>
+    api.patch(`/live-streams/${id}/active-cameras`, { camera_ids: cameraIds }),
+  setLayout: (id: number, layoutMode: number) =>
+    api.patch(`/live-streams/${id}/layout`, { layout_mode: layoutMode }),
   previewCamera: (streamId: number, cameraId: number) => api.get(`/live-streams/${streamId}/cameras/${cameraId}/preview`),
   start: (id: number) => api.post(`/live-streams/${id}/start`),
   pause: (id: number) => api.post(`/live-streams/${id}/pause`),

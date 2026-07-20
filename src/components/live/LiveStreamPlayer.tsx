@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Maximize2, Minimize2, Radio } from 'lucide-react'
+import { Maximize2, Minimize2, Radio, RotateCw } from 'lucide-react'
 import { LiveKitViewer, type WebrtcAuthMode } from '@/components/live/LiveKitViewer'
 import type { LivePlayback } from '@/types/liveStream'
 
+type Rotation = 0 | 90 | 180 | 270
+
 interface LiveStreamPlayerProps {
   playback?: LivePlayback | null
+  playbacks?: LivePlayback[] | null
+  layoutMode?: number
   cameraId?: number | null
   title?: string
   cameraName?: string
@@ -17,6 +21,8 @@ interface LiveStreamPlayerProps {
   muted?: boolean
   /** WebRTC token endpoint for built-in camera feeds */
   webrtcAuth?: WebrtcAuthMode
+  /** Show viewer rotate control (public/parent). Default true when immersive. */
+  showRotate?: boolean
 }
 
 interface FeedLayer {
@@ -27,10 +33,11 @@ interface FeedLayer {
 }
 
 function layerId(cameraId: number | null | undefined, playback: LivePlayback): string {
+  const cam = playback.camera_id ?? cameraId ?? 0
   if (playback.mode === 'builtin_camera') {
-    return `${cameraId ?? 0}-builtin-${playback.participant_identity ?? playback.camera_id ?? 'stream'}`
+    return `${cam}-builtin-${playback.participant_identity ?? playback.camera_id ?? 'stream'}`
   }
-  return `${cameraId ?? 0}-${playback.mode}-${playback.video_id ?? playback.src ?? 'stream'}`
+  return `${cam}-${playback.mode}-${playback.video_id ?? playback.src ?? 'stream'}`
 }
 
 function readyDelay(mode: LivePlayback['mode']): number {
@@ -52,6 +59,27 @@ function youtubeEmbedSrc(videoId: string, muted: boolean): string {
   return `https://www.youtube.com/embed/${videoId}?${params.toString()}`
 }
 
+function resolvePanes(
+  playback: LivePlayback | null | undefined,
+  playbacks: LivePlayback[] | null | undefined,
+  layoutMode: number | undefined,
+  cameraId: number | null | undefined,
+  cameraName?: string,
+  cameraLocation?: string,
+): FeedLayer[] {
+  const list = (playbacks && playbacks.length > 0)
+    ? playbacks
+    : (playback ? [playback] : [])
+
+  const cap = Math.max(1, Math.min(4, layoutMode ?? list.length ?? 1))
+  return list.slice(0, cap).map((pb, index) => ({
+    id: layerId(pb.camera_id ?? cameraId, pb),
+    playback: pb,
+    cameraName: pb.camera_name ?? (index === 0 ? cameraName : undefined),
+    cameraLocation: pb.camera_location ?? (index === 0 ? cameraLocation : undefined) ?? undefined,
+  }))
+}
+
 function FeedEmbed({
   layer,
   onReady,
@@ -59,7 +87,7 @@ function FeedEmbed({
   webrtcAuth,
 }: {
   layer: FeedLayer
-  onReady: () => void
+  onReady?: () => void
   muted: boolean
   webrtcAuth: WebrtcAuthMode
 }) {
@@ -68,7 +96,7 @@ function FeedEmbed({
   const timerRef = useRef<number | null>(null)
 
   const markReady = useCallback(() => {
-    if (readyRef.current) return
+    if (!onReady || readyRef.current) return
     if (timerRef.current) window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => {
       if (readyRef.current) return
@@ -159,8 +187,14 @@ function FeedEmbed({
   )
 }
 
+function nextRotation(current: Rotation): Rotation {
+  return ((current + 90) % 360) as Rotation
+}
+
 export function LiveStreamPlayer({
   playback,
+  playbacks,
+  layoutMode,
   cameraId,
   title,
   cameraName,
@@ -170,6 +204,7 @@ export function LiveStreamPlayer({
   immersive = false,
   muted = false,
   webrtcAuth = 'authenticated',
+  showRotate,
 }: LiveStreamPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [layers, setLayers] = useState<FeedLayer[]>([])
@@ -178,8 +213,16 @@ export function LiveStreamPlayer({
   const [outgoingId, setOutgoingId] = useState<string | null>(null)
   const [fadeActive, setFadeActive] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [rotation, setRotation] = useState<Rotation>(0)
   const visibleIdRef = useRef<string | null>(null)
   const pendingIdRef = useRef<string | null>(null)
+
+  const panes = resolvePanes(playback, playbacks, layoutMode, cameraId, cameraName, cameraLocation)
+  const isGrid = panes.length > 1
+  const gridMode = Math.min(4, Math.max(panes.length, layoutMode ?? panes.length)) as 1 | 2 | 3 | 4
+  const rotateEnabled = showRotate ?? immersive
+  const primaryPane = panes[0]
+  const primaryKey = primaryPane?.id ?? null
 
   useEffect(() => {
     const onChange = () => {
@@ -201,17 +244,23 @@ export function LiveStreamPlayer({
     pendingIdRef.current = pendingId
   }, [pendingId])
 
+  // Single-feed crossfade stack
   useEffect(() => {
-    if (!playback) return
+    if (isGrid) {
+      setLayers([])
+      setVisibleId(null)
+      setPendingId(null)
+      setOutgoingId(null)
+      setFadeActive(false)
+      return
+    }
 
-    const id = layerId(cameraId, playback)
-    if (id === visibleIdRef.current || id === pendingIdRef.current) return
+    if (!primaryPane || !primaryKey) return
+    if (primaryKey === visibleIdRef.current || primaryKey === pendingIdRef.current) return
 
-    const next: FeedLayer = { id, playback, cameraName, cameraLocation }
-
-    setLayers((prev) => (prev.some((l) => l.id === id) ? prev : [...prev, next]))
-    setPendingId(id)
-  }, [playback, cameraId, cameraName, cameraLocation])
+    setLayers((prev) => (prev.some((l) => l.id === primaryKey) ? prev : [...prev, primaryPane]))
+    setPendingId(primaryKey)
+  }, [isGrid, primaryKey, primaryPane])
 
   const handleReady = useCallback((id: string) => {
     if (id !== pendingIdRef.current && id !== visibleIdRef.current) return
@@ -268,10 +317,14 @@ export function LiveStreamPlayer({
     }
   }, [])
 
-  const displayName = cameraName || layers.find((l) => l.id === visibleId)?.cameraName
-  const displayLocation = cameraLocation || layers.find((l) => l.id === visibleId)?.cameraLocation
+  const displayName = isGrid
+    ? undefined
+    : (cameraName || layers.find((l) => l.id === visibleId)?.cameraName)
+  const displayLocation = isGrid
+    ? undefined
+    : (cameraLocation || layers.find((l) => l.id === visibleId)?.cameraLocation)
 
-  if (!playback && layers.length === 0) {
+  if (panes.length === 0 && layers.length === 0) {
     return (
       <div className={`live-player live-player--empty ${className}`}>
         <p className="text-sm text-slate-500">Waiting for live feed…</p>
@@ -280,78 +333,131 @@ export function LiveStreamPlayer({
   }
 
   const isPaused = status === 'paused'
+  const sideways = rotation === 90 || rotation === 270
 
   return (
     <div
       ref={containerRef}
-      className={`live-player live-player--with-badge live-player-stack ${immersive ? 'live-player--immersive' : ''} ${isPaused ? 'is-paused' : ''} ${fadeActive ? 'is-fading' : ''} ${className}`}
+      className={[
+        'live-player live-player--with-badge',
+        isGrid ? 'live-player--grid-shell' : 'live-player-stack',
+        immersive ? 'live-player--immersive' : '',
+        isPaused ? 'is-paused' : '',
+        fadeActive ? 'is-fading' : '',
+        sideways ? 'live-player--sideways' : '',
+        className,
+      ].filter(Boolean).join(' ')}
+      data-rotation={rotation}
       onDoubleClick={toggleFullscreen}
     >
-      {status === 'live' && (
-        <span className="live-player-live-badge">
-          <Radio className="h-3 w-3" /> LIVE
-        </span>
-      )}
-      {isPaused && (
-        <span className="live-player-live-badge live-player-live-badge--paused">Paused</span>
-      )}
-      {!isPaused && (
-        <button
-          type="button"
-          className="live-player-fs-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            toggleFullscreen()
-          }}
-          aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-        >
-          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-          <span className="live-player-fs-label">{isFullscreen ? 'Exit' : 'Full screen'}</span>
-        </button>
-      )}
+      <div
+        className={`live-player-rotate-inner live-player-rotate-inner--${rotation}`}
+        data-rot={rotation}
+      >
+        {status === 'live' && (
+          <span className="live-player-live-badge">
+            <Radio className="h-3 w-3" /> LIVE
+          </span>
+        )}
+        {isPaused && (
+          <span className="live-player-live-badge live-player-live-badge--paused">Paused</span>
+        )}
 
-      {layers.map((layer) => {
-        const isVisible = layer.id === visibleId
-        const isPending = layer.id === pendingId
-        const isOutgoing = layer.id === outgoingId
-        const isFirst = !visibleId && layers.length === 1
-
-        let roleClass = 'live-player-layer--hidden'
-        if (isFirst || (isVisible && !isOutgoing)) {
-          roleClass = fadeActive && isVisible && outgoingId ? 'live-player-layer--fade-in' : 'live-player-layer--show'
-        } else if (isOutgoing) {
-          roleClass = fadeActive ? 'live-player-layer--fade-out' : 'live-player-layer--show'
-        } else if (isPending) {
-          roleClass = 'live-player-layer--preload'
-        }
-
-        return (
-          <div key={layer.id} className={`live-player-layer ${roleClass}`}>
-            <FeedEmbed
-              key={`${layer.id}-${muted ? 'muted' : 'unmuted'}`}
-              layer={layer}
-              muted={muted}
-              webrtcAuth={webrtcAuth}
-              onReady={() => handleReady(layer.id)}
-            />
+        {!isPaused && (
+          <div className="live-player-toolbar">
+            {rotateEnabled && (
+              <button
+                type="button"
+                className="live-player-fs-btn live-player-rotate-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setRotation((r) => nextRotation(r))
+                }}
+                aria-label="Rotate player"
+              >
+                <RotateCw className="h-4 w-4" />
+                <span className="live-player-fs-label">Rotate</span>
+              </button>
+            )}
+            <button
+              type="button"
+              className="live-player-fs-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleFullscreen()
+              }}
+              aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              <span className="live-player-fs-label">{isFullscreen ? 'Exit' : 'Full screen'}</span>
+            </button>
           </div>
-        )
-      })}
+        )}
 
-      {isPaused && (
-        <div className="live-player-pause-overlay" aria-live="polite">
-          <span className="live-player-badge live-player-badge--paused">Paused</span>
-          {title && <p className="font-display font-bold text-white text-lg mt-3">{title}</p>}
-          <p className="text-white/85 text-sm mt-1">The broadcast is paused. Please wait…</p>
-        </div>
-      )}
+        {isGrid ? (
+          <div className={`live-player-grid live-player-grid--${gridMode}`}>
+            {panes.map((pane, index) => (
+              <div key={pane.id} className="live-player-pane">
+                <FeedEmbed
+                  key={`${pane.id}-${muted ? 'muted' : 'unmuted'}-${index}`}
+                  layer={pane}
+                  muted={muted || index > 0}
+                  webrtcAuth={webrtcAuth}
+                />
+                {(pane.cameraName || pane.cameraLocation) && (
+                  <div className="live-player-pane-caption">
+                    {pane.cameraName && <span className="font-semibold">{pane.cameraName}</span>}
+                    {pane.cameraLocation && <span> · {pane.cameraLocation}</span>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          layers.map((layer) => {
+            const isVisible = layer.id === visibleId
+            const isPending = layer.id === pendingId
+            const isOutgoing = layer.id === outgoingId
+            const isFirst = !visibleId && layers.length === 1
 
-      {!isPaused && (displayName || displayLocation) && (
-        <div className="live-player-caption live-player-caption--fade">
-          {displayName && <span className="font-semibold">{displayName}</span>}
-          {displayLocation && <span className="text-slate-400"> · {displayLocation}</span>}
-        </div>
-      )}
+            let roleClass = 'live-player-layer--hidden'
+            if (isFirst || (isVisible && !isOutgoing)) {
+              roleClass = fadeActive && isVisible && outgoingId ? 'live-player-layer--fade-in' : 'live-player-layer--show'
+            } else if (isOutgoing) {
+              roleClass = fadeActive ? 'live-player-layer--fade-out' : 'live-player-layer--show'
+            } else if (isPending) {
+              roleClass = 'live-player-layer--preload'
+            }
+
+            return (
+              <div key={layer.id} className={`live-player-layer ${roleClass}`}>
+                <FeedEmbed
+                  key={`${layer.id}-${muted ? 'muted' : 'unmuted'}`}
+                  layer={layer}
+                  muted={muted}
+                  webrtcAuth={webrtcAuth}
+                  onReady={() => handleReady(layer.id)}
+                />
+              </div>
+            )
+          })
+        )}
+
+        {isPaused && (
+          <div className="live-player-pause-overlay" aria-live="polite">
+            <span className="live-player-badge live-player-badge--paused">Paused</span>
+            {title && <p className="font-display font-bold text-white text-lg mt-3">{title}</p>}
+            <p className="text-white/85 text-sm mt-1">The broadcast is paused. Please wait…</p>
+          </div>
+        )}
+
+        {!isPaused && !isGrid && (displayName || displayLocation) && (
+          <div className="live-player-caption live-player-caption--fade">
+            {displayName && <span className="font-semibold">{displayName}</span>}
+            {displayLocation && <span className="text-slate-400"> · {displayLocation}</span>}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

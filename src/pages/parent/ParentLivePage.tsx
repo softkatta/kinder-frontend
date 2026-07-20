@@ -15,7 +15,7 @@ export default function ParentLivePage() {
   const isScheduled = Boolean(
     active?.is_scheduled || active?.status === 'scheduled' || active?.display_status === 'scheduled',
   )
-  const canPlay = active?.is_watchable && watch?.playback
+  const canPlay = Boolean(active?.is_watchable && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)))
   const showWaiting = Boolean(active && !canPlay && active.status !== 'stopped')
 
   return (
@@ -89,10 +89,12 @@ export default function ParentLivePage() {
             <LiveStreamPlayer
               immersive
               cameraId={cameraId}
-              playback={watch.playback}
+              playback={watch?.playback}
+              playbacks={watch?.playbacks}
+              layoutMode={watch?.layout_mode ?? active.layout_mode}
               title={active.title}
-              cameraName={watch.active_camera?.name}
-              cameraLocation={watch.active_camera?.location ?? undefined}
+              cameraName={watch?.active_camera?.name}
+              cameraLocation={watch?.active_camera?.location ?? undefined}
               status={active.status}
               muted={active.audio_enabled === false}
             />
@@ -103,12 +105,19 @@ export default function ParentLivePage() {
             </div>
           ) : null}
 
-          {watch?.active_camera && canPlay && (
+          {canPlay && (watch?.active_cameras?.length ?? 0) > 1 ? (
+            <p className="text-center text-sm text-slate-500">
+              Now showing:{' '}
+              <span className="font-semibold text-ink">
+                {watch!.active_cameras!.map((c) => c.name).join(' · ')}
+              </span>
+            </p>
+          ) : watch?.active_camera && canPlay ? (
             <p className="text-center text-sm text-slate-500">
               Now showing: <span className="font-semibold text-ink">{watch.active_camera.name}</span>
               {watch.active_camera.location ? ` · ${watch.active_camera.location}` : ''}
             </p>
-          )}
+          ) : null}
         </div>
       )}
     </div>

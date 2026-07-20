@@ -62,16 +62,18 @@ export default function PublicLivePage() {
                 <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">{t.pages.live.waitingDesc}</p>
               </div>
             </div>
-          ) : active?.is_watchable && watch?.playback ? (
+          ) : active?.is_watchable && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)) ? (
             <>
               <div className="live-viewer-screen">
                 <LiveStreamPlayer
                   immersive
                   cameraId={cameraId}
-                  playback={watch.playback}
+                  playback={watch?.playback}
+                  playbacks={watch?.playbacks}
+                  layoutMode={watch?.layout_mode ?? active.layout_mode}
                   title={active.title}
-                  cameraName={watch.active_camera?.name}
-                  cameraLocation={watch.active_camera?.location ?? undefined}
+                  cameraName={watch?.active_camera?.name}
+                  cameraLocation={watch?.active_camera?.location ?? undefined}
                   status={active.status}
                   muted={active.audio_enabled === false}
                   webrtcAuth="public"
@@ -79,12 +81,17 @@ export default function PublicLivePage() {
               </div>
               <div className="live-viewer-meta">
                 <h2 className="font-display text-xl font-bold text-ink text-center">{active.title}</h2>
-                {watch.active_camera && (
+                {(watch?.active_cameras?.length ?? 0) > 1 ? (
+                  <p className="text-center text-sm text-slate-600 mt-2">
+                    {t.pages.live.nowShowing}:{' '}
+                    <strong>{watch!.active_cameras!.map((c) => c.name).join(' · ')}</strong>
+                  </p>
+                ) : watch?.active_camera ? (
                   <p className="text-center text-sm text-slate-600 mt-2">
                     {t.pages.live.nowShowing}: <strong>{watch.active_camera.name}</strong>
                     {watch.active_camera.location ? ` · ${watch.active_camera.location}` : ''}
                   </p>
-                )}
+                ) : null}
               </div>
             </>
           ) : null}

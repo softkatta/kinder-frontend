@@ -99,12 +99,15 @@ export default function AdminLiveStreamsPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState(emptyEditForm)
   const [selectedStreamIds, setSelectedStreamIds] = useState<number[]>([])
+  const [layoutDraftIds, setLayoutDraftIds] = useState<number[]>([])
 
   const selected = streams.find((s) => s.id === selectedId) ?? null
   const linkedStreams = streams.filter((s) => s.cms_item_id)
   const onAirStream = streams.find((s) => ['live', 'paused'].includes(s.status)) ?? null
   const isBroadcasting = selected ? ['live', 'paused'].includes(selected.status) : false
   const enabledCameraCount = selected?.cameras.filter((c) => c.is_enabled).length ?? 0
+  const layoutMode = Math.max(1, Math.min(4, selected?.layout_mode ?? 1))
+  const maxScreens = Math.max(1, Math.min(4, enabledCameraCount || 1))
   const canStartLive = enabledCameraCount > 0
   const trackedStreamId = linkedStreams.some((s) => s.id === selectedId) ? selectedId : null
   const selectedIdRef = useRef<number | null>(null)
@@ -113,6 +116,17 @@ export default function AdminLiveStreamsPage() {
   useEffect(() => {
     selectedIdRef.current = selectedId
   }, [selectedId])
+
+  useEffect(() => {
+    if (!selected) {
+      setLayoutDraftIds([])
+      return
+    }
+    const ids = selected.active_camera_ids?.length
+      ? selected.active_camera_ids
+      : (selected.active_camera_id ? [selected.active_camera_id] : [])
+    setLayoutDraftIds(ids)
+  }, [selected?.id, selected?.active_camera_id, selected?.active_camera_ids?.join(',')])
 
   useEffect(() => {
     if (!selectedId) return
@@ -209,14 +223,29 @@ export default function AdminLiveStreamsPage() {
   }
 
   const switchCamera = async (camera: LiveStreamCameraStaff) => {
-    if (!selected || camera.is_active || !camera.is_enabled || switchingId) return
+    if (!selected || camera.is_primary || !camera.is_enabled || switchingId) return
 
     setSwitchingId(camera.id)
     setStreams((prev) => prev.map((s) => {
       if (s.id !== selected.id) return s
-      const cameras = s.cameras.map((c) => ({ ...c, is_active: c.id === camera.id }))
+      const layout = Math.max(1, Math.min(4, s.layout_mode ?? 1))
+      let ids = [...(s.active_camera_ids ?? (s.active_camera_id ? [s.active_camera_id] : []))]
+      ids = ids.filter((id) => id !== camera.id)
+      ids.unshift(camera.id)
+      ids = ids.slice(0, layout)
+      const cameras = s.cameras.map((c) => ({
+        ...c,
+        is_active: ids.includes(c.id),
+        is_primary: c.id === camera.id,
+      }))
       const active = cameras.find((c) => c.id === camera.id) ?? null
-      return { ...s, active_camera_id: camera.id, cameras, active_camera: active }
+      return {
+        ...s,
+        active_camera_id: camera.id,
+        active_camera_ids: ids,
+        cameras,
+        active_camera: active,
+      }
     }))
 
     try {
@@ -231,6 +260,42 @@ export default function AdminLiveStreamsPage() {
     }
   }
 
+  const setLayoutMode = async (mode: number) => {
+    if (!selected || busy) return
+    const next = Math.max(1, Math.min(maxScreens, mode))
+    if (next === layoutMode) return
+    await runWithPatch(
+      () => liveStreamApi.setLayout(selected.id, next) as Promise<{ data: { data: LiveStreamStaff } }>,
+      `Screens: ${next}`,
+    )
+  }
+
+  const toggleLayoutDraft = (cameraId: number) => {
+    setLayoutDraftIds((prev) => {
+      if (prev.includes(cameraId)) {
+        if (prev.length <= 1) return prev
+        return prev.filter((id) => id !== cameraId)
+      }
+      if (prev.length >= layoutMode) {
+        return [...prev.slice(1), cameraId].slice(0, layoutMode)
+      }
+      return [...prev, cameraId]
+    })
+  }
+
+  const applyLayoutCameras = async () => {
+    if (!selected || busy) return
+    const ids = layoutDraftIds.slice(0, layoutMode)
+    if (ids.length === 0) {
+      toast.error('Select at least one camera')
+      return
+    }
+    await runWithPatch(
+      () => liveStreamApi.setActiveCameras(selected.id, ids) as Promise<{ data: { data: LiveStreamStaff } }>,
+      ids.length > 1 ? `Activated ${ids.length} cameras` : 'Camera activated',
+    )
+  }
+
   const goLiveWithCamera = async (camera: LiveStreamCameraStaff) => {
     if (!selected || !camera.is_enabled || switchingId) return
     if (camera.is_mobile_publisher && !['ready', 'connected', 'live'].includes(camera.connection_status ?? '')) {
@@ -239,7 +304,7 @@ export default function AdminLiveStreamsPage() {
     }
     setSwitchingId(camera.id)
     try {
-      if (!camera.is_active) {
+      if (!camera.is_primary) {
         const res = await liveStreamApi.setActiveCamera(selected.id, camera.id)
         patchStream(res.data.data as LiveStreamStaff)
       }
@@ -247,7 +312,7 @@ export default function AdminLiveStreamsPage() {
         const startRes = await liveStreamApi.start(selected.id)
         patchStream(startRes.data.data as LiveStreamStaff)
         toast.success('Live started with selected camera')
-      } else if (!camera.is_active) {
+      } else if (!camera.is_primary) {
         toast.success('Camera switched — parents update automatically')
       }
     } catch (err: unknown) {
@@ -754,10 +819,59 @@ export default function AdminLiveStreamsPage() {
                   )}
                   {selected.active_camera && (
                     <span className="text-sm text-slate-600">
-                      Active: <strong>{selected.active_camera.name}</strong>
+                      Primary: <strong>{selected.active_camera.name}</strong>
+                      {(selected.active_cameras?.length ?? 0) > 1 && (
+                        <> · Grid: <strong>{selected.active_cameras!.length}</strong> cams</>
+                      )}
                     </span>
                   )}
                 </div>
+
+                {enabledCameraCount > 0 && (
+                  <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Screens</p>
+                        <p className="text-sm text-slate-600 mt-0.5">
+                          How many camera panes parents see (max {maxScreens})
+                        </p>
+                      </div>
+                      <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+                        {[1, 2, 3, 4].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            disabled={busy || n > maxScreens}
+                            onClick={() => setLayoutMode(n)}
+                            className={`min-w-[2.25rem] rounded-md px-3 py-1.5 text-sm font-semibold transition disabled:opacity-30 ${
+                              layoutMode === n
+                                ? 'bg-violet-600 text-white shadow-sm'
+                                : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {layoutMode > 1 && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-3">
+                        <p className="text-xs text-slate-500 mr-auto">
+                          Select up to {layoutMode} cameras, then activate for the live grid.
+                        </p>
+                        <AdminBtn
+                          variant="primary"
+                          className="!px-3 !py-1.5 text-xs"
+                          disabled={busy || layoutDraftIds.length === 0}
+                          onClick={applyLayoutCameras}
+                        >
+                          Activate {Math.min(layoutDraftIds.length, layoutMode)} camera
+                          {Math.min(layoutDraftIds.length, layoutMode) === 1 ? '' : 's'}
+                        </AdminBtn>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {!canStartLive && !isBroadcasting && (
                   <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
@@ -788,6 +902,9 @@ export default function AdminLiveStreamsPage() {
                   busy={busy}
                   switchingId={switchingId}
                   isBroadcasting={isBroadcasting}
+                  layoutMode={layoutMode}
+                  layoutDraftIds={layoutDraftIds}
+                  onToggleInclude={toggleLayoutDraft}
                   onSwitch={isBroadcasting ? switchCamera : goLiveWithCamera}
                   onPreview={preview}
                   onDisconnect={disconnectMobileCamera}
@@ -831,25 +948,42 @@ export default function AdminLiveStreamsPage() {
                         <p className="text-xs text-slate-500">{camera.location || '—'} · {camera.stream_type === 'builtin_camera' ? 'BUILT-IN' : camera.stream_type.toUpperCase()}</p>
                       </div>
                       {!camera.is_enabled && <AdminBadge tone="neutral">Disabled</AdminBadge>}
-                      {camera.is_active && isBroadcasting && <AdminBadge tone="success">On Air</AdminBadge>}
-                      {camera.is_active && !isBroadcasting && <AdminBadge tone="neutral">Selected</AdminBadge>}
+                      {camera.is_primary && isBroadcasting && <AdminBadge tone="success">Primary</AdminBadge>}
+                      {camera.is_active && !camera.is_primary && isBroadcasting && <AdminBadge tone="warning">In Grid</AdminBadge>}
+                      {camera.is_active && !isBroadcasting && (
+                        <AdminBadge tone={camera.is_primary ? 'neutral' : 'warning'}>
+                          {camera.is_primary ? 'Selected' : 'In layout'}
+                        </AdminBadge>
+                      )}
+                      {layoutMode > 1 && camera.is_enabled && (
+                        <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                            checked={layoutDraftIds.includes(camera.id)}
+                            disabled={busy}
+                            onChange={() => toggleLayoutDraft(camera.id)}
+                          />
+                          Include
+                        </label>
+                      )}
                       <div className="flex flex-wrap gap-1.5 ml-auto">
                         <AdminBtn
-                          variant={camera.is_active ? 'primary' : 'secondary'}
+                          variant={camera.is_primary ? 'primary' : 'secondary'}
                           className="!px-2.5 !py-1.5 text-xs"
-                          disabled={!camera.is_enabled || camera.is_active || switchingId === camera.id}
+                          disabled={!camera.is_enabled || camera.is_primary || switchingId === camera.id}
                           onClick={() => switchCamera(camera)}
                         >
                           {switchingId === camera.id
                             ? '…'
-                            : camera.is_active
-                              ? (isBroadcasting ? 'Active' : 'Selected')
-                              : (isBroadcasting ? 'Switch' : 'Select')}
+                            : camera.is_primary
+                              ? (isBroadcasting ? 'Primary' : 'Selected')
+                              : (isBroadcasting ? 'Make primary' : 'Select')}
                         </AdminBtn>
                         <AdminBtn variant="secondary" className="!px-2 !py-1.5" onClick={() => preview(camera)}>
                           <Eye className="h-3.5 w-3.5" />
                         </AdminBtn>
-                        {camera.is_active && (
+                        {camera.is_primary && (
                           <AdminBtn
                             variant={selected.audio_enabled ? 'primary' : 'secondary'}
                             className="!px-2 !py-1.5"
@@ -898,7 +1032,7 @@ export default function AdminLiveStreamsPage() {
                           streamId={selected.id}
                           cameraId={camera.id}
                           cameraName={camera.name}
-                          isActive={camera.is_active}
+                          isActive={Boolean(camera.is_primary || camera.is_active)}
                           isBroadcasting={isBroadcasting}
                           streamPaused={selected.status === 'paused'}
                         />

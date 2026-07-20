@@ -4043,11 +4043,80 @@ h1, h2, h3, h4, h5, h6 {
 .live-player-unmute-hint {
   @apply absolute bottom-14 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/75 px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg backdrop-blur-sm hover:bg-black/90 transition;
 }
+.live-player-toolbar {
+  @apply absolute top-3 right-3 z-10 flex items-center gap-1.5;
+}
 .live-player-fs-btn {
-  @apply absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-lg bg-black/50 px-2.5 py-2 text-white hover:bg-black/70 transition;
+  @apply inline-flex items-center gap-1.5 rounded-lg bg-black/50 px-2.5 py-2 text-white hover:bg-black/70 transition;
 }
 .live-player-fs-label {
   @apply text-[11px] font-semibold hidden sm:inline;
+}
+.live-player-rotate-inner {
+  @apply absolute inset-0;
+  transform-origin: center center;
+  transition: transform 0.35s ease;
+}
+.live-player-rotate-inner--90 {
+  transform: rotate(90deg);
+}
+.live-player-rotate-inner--180 {
+  transform: rotate(180deg);
+}
+.live-player-rotate-inner--270 {
+  transform: rotate(270deg);
+}
+.live-player--sideways {
+  aspect-ratio: 9 / 16;
+  max-width: min(100%, 420px);
+  margin-inline: auto;
+}
+.live-player--sideways .live-player-rotate-inner--90,
+.live-player--sideways .live-player-rotate-inner--270 {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 177.78%;
+  height: 56.25%;
+  margin: 0;
+}
+.live-player--sideways .live-player-rotate-inner--90 {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.live-player--sideways .live-player-rotate-inner--270 {
+  transform: translate(-50%, -50%) rotate(270deg);
+}
+.live-player-grid {
+  @apply absolute inset-0 grid gap-0.5 bg-black;
+}
+.live-player-grid--1 {
+  grid-template: 1fr / 1fr;
+}
+.live-player-grid--2 {
+  grid-template: 1fr / 1fr 1fr;
+}
+.live-player-grid--3 {
+  grid-template: 1fr 1fr / 1.4fr 1fr;
+}
+.live-player-grid--3 .live-player-pane:first-child {
+  grid-row: 1 / -1;
+}
+.live-player-grid--4 {
+  grid-template: 1fr 1fr / 1fr 1fr;
+}
+.live-player-pane {
+  @apply relative min-h-0 min-w-0 overflow-hidden bg-slate-950;
+}
+.live-player-pane .live-player-iframe,
+.live-player-pane .live-player-video {
+  @apply absolute inset-0 h-full w-full border-0;
+  object-fit: cover;
+}
+.live-player-pane-caption {
+  @apply absolute bottom-0 left-0 right-0 z-[2] bg-gradient-to-t from-black/75 to-transparent px-2 py-1.5 text-[10px] sm:text-xs text-white truncate;
+}
+.live-player--grid-shell .live-player-live-badge {
+  @apply z-20;
 }
 .live-viewer-section {
   background: #fff8f0;
@@ -4084,6 +4153,10 @@ h1, h2, h3, h4, h5, h6 {
 .live-viewer-screen .live-upcoming-banner-wrap {
   aspect-ratio: 16 / 9;
   margin-inline: auto;
+}
+.live-viewer-screen .live-player.live-player--sideways {
+  aspect-ratio: 9 / 16;
+  max-width: min(100%, 420px);
 }
 .live-player--immersive {
   width: 100%;

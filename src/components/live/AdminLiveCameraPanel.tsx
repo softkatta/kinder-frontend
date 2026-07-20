@@ -11,6 +11,9 @@ interface AdminLiveCameraPanelProps {
   busy: boolean
   switchingId: number | null
   isBroadcasting: boolean
+  layoutMode?: number
+  layoutDraftIds?: number[]
+  onToggleInclude?: (cameraId: number) => void
   onSwitch: (camera: LiveStreamCameraStaff) => void
   onPreview: (camera: LiveStreamCameraStaff) => void
   onDisconnect: (camera: LiveStreamCameraStaff) => void
@@ -39,6 +42,9 @@ export function AdminLiveCameraPanel({
   busy,
   switchingId,
   isBroadcasting,
+  layoutMode = 1,
+  layoutDraftIds = [],
+  onToggleInclude,
   onSwitch,
   onPreview,
   onDisconnect,
@@ -61,7 +67,9 @@ export function AdminLiveCameraPanel({
   return (
     <div className="grid gap-4 p-4 sm:grid-cols-2 xl:grid-cols-3">
       {mobileCameras.map((camera) => {
-        const isLive = camera.is_active && isBroadcasting
+        const isPrimary = Boolean(camera.is_primary)
+        const inGrid = Boolean(camera.is_active)
+        const isLive = inGrid && isBroadcasting
         const showPreview = previewId === camera.id && camera.stream_type === 'builtin_camera'
 
         const isMobile = Boolean(camera.is_mobile_publisher || camera.publisher_user_id)
@@ -89,9 +97,14 @@ export function AdminLiveCameraPanel({
                   <p className="text-xs">Tap Preview to watch feed</p>
                 </div>
               )}
-              {isLive && (
+              {isLive && isPrimary && (
                 <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">
-                  <Radio className="h-3 w-3" /> Live
+                  <Radio className="h-3 w-3" /> Primary
+                </span>
+              )}
+              {isLive && !isPrimary && (
+                <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-amber-600 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide">
+                  In Grid
                 </span>
               )}
             </div>
@@ -144,6 +157,19 @@ export function AdminLiveCameraPanel({
                 </span>
               </div>
 
+              {layoutMode > 1 && camera.is_enabled && onToggleInclude && (
+                <label className="inline-flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                    checked={layoutDraftIds.includes(camera.id)}
+                    disabled={busy}
+                    onChange={() => onToggleInclude(camera.id)}
+                  />
+                  Include in layout
+                </label>
+              )}
+
               <div className="flex flex-wrap gap-1.5 pt-1">
                 <AdminBtn
                   variant="secondary"
@@ -156,9 +182,9 @@ export function AdminLiveCameraPanel({
                   <Eye className="h-3.5 w-3.5" /> Preview
                 </AdminBtn>
                 <AdminBtn
-                  variant={camera.is_active ? 'primary' : 'secondary'}
+                  variant={isPrimary ? 'primary' : 'secondary'}
                   className="!px-2 !py-1.5 text-xs"
-                  disabled={!canSelectLive || camera.is_active || switchingId === camera.id || busy}
+                  disabled={!canSelectLive || isPrimary || switchingId === camera.id || busy}
                   title={!mobileReady ? 'Camera is still connecting — wait for Ready status' : undefined}
                   onClick={() => onSwitch(camera)}
                 >
@@ -167,7 +193,7 @@ export function AdminLiveCameraPanel({
                   ) : (
                     <>
                       <Radio className="h-3.5 w-3.5" />
-                      {camera.is_active ? 'Active' : isBroadcasting ? 'Switch Live' : 'Go Live'}
+                      {isPrimary ? 'Primary' : isBroadcasting ? 'Make primary' : 'Go Live'}
                     </>
                   )}
                 </AdminBtn>
