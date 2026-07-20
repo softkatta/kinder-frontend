@@ -343,7 +343,7 @@ export default function AdminLiveStreamsPage() {
     }
   }
 
-  const muteMobileCamera = async (camera: LiveStreamCameraStaff, muted: boolean) => {
+  const muteCameraAudio = async (camera: LiveStreamCameraStaff, muted: boolean) => {
     if (!selected || busy) return
     setBusy(true)
     try {
@@ -607,15 +607,6 @@ export default function AdminLiveStreamsPage() {
     } catch {
       toast.error('Preview failed')
     }
-  }
-
-  const toggleAudio = async () => {
-    if (!selected) return
-    const next = !selected.audio_enabled
-    await runWithPatch(
-      () => liveStreamApi.update(selected.id, { audio_enabled: next }) as Promise<{ data: { data: LiveStreamStaff } }>,
-      next ? 'आवाज चालू केला' : 'आवाज बंद केला',
-    )
   }
 
   const statusTone = (status: string) => {
@@ -909,7 +900,7 @@ export default function AdminLiveStreamsPage() {
                   onSwitch={isBroadcasting ? switchCamera : goLiveWithCamera}
                   onPreview={preview}
                   onDisconnect={disconnectMobileCamera}
-                  onMute={muteMobileCamera}
+                  onMute={muteCameraAudio}
                 />
               </AdminPanel>
 
@@ -984,21 +975,19 @@ export default function AdminLiveStreamsPage() {
                         <AdminBtn variant="secondary" className="!px-2 !py-1.5" onClick={() => preview(camera)}>
                           <Eye className="h-3.5 w-3.5" />
                         </AdminBtn>
-                        {camera.is_primary && (
-                          <AdminBtn
-                            variant={selected.audio_enabled ? 'primary' : 'secondary'}
-                            className="!px-2 !py-1.5"
-                            disabled={busy}
-                            title={selected.audio_enabled ? 'आवाज बंद करा' : 'आवाज चालू करा'}
-                            onClick={toggleAudio}
-                          >
-                            {selected.audio_enabled ? (
-                              <Volume2 className="h-3.5 w-3.5" />
-                            ) : (
-                              <VolumeX className="h-3.5 w-3.5" />
-                            )}
-                          </AdminBtn>
-                        )}
+                        <AdminBtn
+                          variant={camera.audio_muted ? 'secondary' : 'primary'}
+                          className="!px-2 !py-1.5"
+                          disabled={busy || !camera.is_enabled}
+                          title={camera.audio_muted ? 'या कॅमेऱ्याचा आवाज चालू करा' : 'या कॅमेऱ्याचा आवाज बंद करा'}
+                          onClick={() => muteCameraAudio(camera, !camera.audio_muted)}
+                        >
+                          {camera.audio_muted ? (
+                            <VolumeX className="h-3.5 w-3.5" />
+                          ) : (
+                            <Volume2 className="h-3.5 w-3.5" />
+                          )}
+                        </AdminBtn>
                         <AdminBtn
                           variant="secondary"
                           className="!px-2 !py-1.5"

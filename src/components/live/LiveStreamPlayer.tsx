@@ -390,22 +390,26 @@ export function LiveStreamPlayer({
       <div className="live-player-stage">
         {isGrid ? (
           <div className={`live-player-grid live-player-grid--${gridMode}`}>
-            {panes.map((pane, index) => (
+            {panes.map((pane) => {
+              const paneMuted = muted || Boolean(pane.playback.audio_muted)
+              return (
               <div key={pane.id} className="live-player-pane">
                 <FeedEmbed
-                  key={`${pane.id}-${muted ? 'muted' : 'unmuted'}-${index}`}
+                  key={`${pane.id}-${paneMuted ? 'muted' : 'unmuted'}`}
                   layer={pane}
-                  muted={muted || index > 0}
+                  muted={paneMuted}
                   webrtcAuth={webrtcAuth}
                 />
                 {(pane.cameraName || pane.cameraLocation) && (
                   <div className="live-player-pane-caption">
                     {pane.cameraName && <span className="font-semibold">{pane.cameraName}</span>}
                     {pane.cameraLocation && <span> · {pane.cameraLocation}</span>}
+                    {paneMuted && <span className="opacity-80"> · muted</span>}
                   </div>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           layers.map((layer) => {
@@ -426,9 +430,9 @@ export function LiveStreamPlayer({
             return (
               <div key={layer.id} className={`live-player-layer ${roleClass}`}>
                 <FeedEmbed
-                  key={`${layer.id}-${muted ? 'muted' : 'unmuted'}`}
+                  key={`${layer.id}-${(muted || Boolean(layer.playback.audio_muted)) ? 'muted' : 'unmuted'}`}
                   layer={layer}
-                  muted={muted}
+                  muted={muted || Boolean(layer.playback.audio_muted)}
                   webrtcAuth={webrtcAuth}
                   onReady={() => handleReady(layer.id)}
                 />

@@ -120,6 +120,7 @@ export interface LiveStreamStaff {
     name: string
     location?: string | null
     stream_type: StreamType
+    audio_muted?: boolean
   }[]
 }
 
@@ -154,6 +155,7 @@ export interface LiveStreamViewer {
     name: string
     location?: string | null
     stream_type: StreamType
+    audio_muted?: boolean
   }[]
 }
 
@@ -165,6 +167,7 @@ export interface LivePlayback {
   camera_id?: number
   camera_name?: string
   camera_location?: string | null
+  audio_muted?: boolean
   room_name?: string
   participant_identity?: string
 }
