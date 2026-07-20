@@ -185,8 +185,10 @@ export default function AboutPage() {
                 <p className="text-white/80">{p.visitDesc}</p>
               </div>
               <div className="flex flex-wrap gap-3 md:justify-end">
-                <Link to="/book-tour" className="btn-kidscholl !bg-white !text-violet-700">{t.common.bookVisit}</Link>
-                <Link to="/admission" className="btn-kidscholl-outline !border-white !text-white hover:!bg-white/10">
+                <Link to="/book-tour" className="home-cta-btn home-cta-btn--primary !text-violet-700 hover:!text-violet-900">
+                  {t.common.bookVisit}
+                </Link>
+                <Link to="/admission" className="home-cta-btn home-cta-btn--secondary">
                   {t.nav.applyNow} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>

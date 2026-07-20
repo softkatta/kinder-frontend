@@ -377,10 +377,10 @@ export default function HomePage() {
         <div className="home-cta">
           <KidschollSection light label={h.ctaLabel} title={home.ctaTitle} subtitle={home.ctaSubtitle} className="!mb-8" />
           <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/admission" className="btn-kidscholl !bg-white !text-sky-700 !shadow-none hover:!bg-sky-50">
+            <Link to="/admission" className="home-cta-btn home-cta-btn--primary">
               {t.nav.applyNow} <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link to="/contact" className="btn-kidscholl-outline !border-white !text-white hover:!bg-white/10">
+            <Link to="/contact" className="home-cta-btn home-cta-btn--secondary">
               <MapPin className="h-4 w-4" /> {t.common.bookVisit}
             </Link>
           </div>

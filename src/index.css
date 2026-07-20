@@ -3108,6 +3108,31 @@ h1, h2, h3, h4, h5, h6 {
   background: linear-gradient(135deg, #0EA5E9 0%, #10B981 50%, #F59E0B 100%);
   box-shadow: 0 24px 64px -16px rgba(14, 165, 233, 0.45);
 }
+.home-cta-btn {
+  @apply inline-flex items-center justify-center gap-2 font-bold transition-all duration-300 px-7 py-3.5 text-sm rounded-full;
+  font-family: var(--font-display);
+}
+.home-cta-btn:hover {
+  transform: translateY(-2px);
+}
+.home-cta-btn--primary {
+  background: #fff;
+  color: #0369a1;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+.home-cta-btn--primary:hover {
+  background: #f0f9ff;
+  color: #0c4a6e;
+}
+.home-cta-btn--secondary {
+  background: transparent;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.95);
+}
+.home-cta-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+}
 
 .kidscholl-hero {
   background: linear-gradient(160deg, #FFFBF5 0%, #F0F9FF 35%, #D1FAE5 70%, #FEF9C3 100%);
