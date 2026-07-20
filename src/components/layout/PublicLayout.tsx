@@ -11,6 +11,7 @@ import { KindergartenNavbar } from '@/components/layout/KindergartenNavbar'
 import { LanguageDropdown } from '@/components/layout/LanguageDropdown'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
+import { PublicLiveKeepAliveProvider } from '@/components/live/LivePlayerKeepAlive'
 import { SchoolProfileProvider } from '@/contexts/SchoolProfileContext'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { mediaUrl } from '@/utils/mediaUrl'
@@ -168,5 +169,9 @@ function PublicLayoutInner() {
 }
 
 export default function PublicLayout() {
-  return <PublicLayoutInner />
+  return (
+    <PublicLiveKeepAliveProvider>
+      <PublicLayoutInner />
+    </PublicLiveKeepAliveProvider>
+  )
 }

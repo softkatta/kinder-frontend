@@ -4152,6 +4152,16 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 0;
   overflow: hidden;
 }
+/* Stable DOM shell — player never remounts when leaving / returning to live */
+.live-keepalive-shell {
+  overflow: hidden;
+}
+.live-keepalive-shell .live-player {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+}
 .live-viewer-screen .live-player,
 .live-viewer-screen .live-upcoming-panel,
 .live-viewer-screen .live-upcoming-banner-wrap {
