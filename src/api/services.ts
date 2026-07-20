@@ -206,8 +206,8 @@ export interface SettingsPayments {
   enable_qr?: boolean
 }
 
-// Prefer /erp/school — Hostinger ModSecurity often 403s paths with "settings"/"config"/"preferences".
-const SETTINGS_PATH = '/erp/school'
+// Prefer POST /tenant/profile — Hostinger hcdn WAF often 403s PUT and paths with settings/config/erp.
+const SETTINGS_PATH = '/tenant/profile'
 
 export const settingsApi = {
   get: () => api.get<ApiResponse<{
@@ -221,7 +221,7 @@ export const settingsApi = {
     notifications?: SettingsNotification[]
     payments?: SettingsPayments
     integrations?: SettingsIntegrations
-  }) => api.put<ApiResponse<{
+  }) => api.post<ApiResponse<{
     profile: SettingsProfile
     notifications: SettingsNotification[]
     payments: SettingsPayments

@@ -31,6 +31,20 @@ if (! empty($_SERVER['QUERY_STRING'])) {
 }
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+// Hostinger hcdn often returns bare text/plain 403 for PUT before PHP runs.
+// Convert settings-save PUTs to POST when forwarding so older SPA builds still work if they reach PHP.
+$putToPostPaths = [
+    'v1/erp/school',
+    'v1/settings',
+    'v1/school-config',
+    'v1/org-preferences',
+    'v1/org_preferences',
+    'v1/tenant/profile',
+];
+if ($method === 'PUT' && in_array($path, $putToPostPaths, true)) {
+    $method = 'POST';
+}
+
 $contentType = (string) ($_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '');
 $isMultipart = str_contains(strtolower($contentType), 'multipart/form-data');
 
