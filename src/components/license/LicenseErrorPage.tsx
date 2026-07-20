@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { installApi, licenseApi, type CompanyApiPayload } from '@/api/installApi'
 import { clearLicenseGateLock } from '@/api/licenseRedirectGate'
 import { clearDatabaseUnavailableStreak } from '@/api/client'
 import { publicApi } from '@/api/services'
-import { markInstallVerified, resetInstallVerificationCache } from '@/components/install/InstallGate'
+import { markInstallVerified } from '@/components/install/InstallGate'
 
 const COPY: Record<string, { title: string; body: string }> = {
   invalid: {
@@ -85,7 +85,6 @@ async function tryRecoverFromDatabaseOutage(): Promise<boolean> {
           // Status recovered; profile may still be warming — continue home.
         }
         clearLicenseGateLock()
-        resetInstallVerificationCache()
         markInstallVerified()
         clearDatabaseUnavailableStreak()
         return true
@@ -133,11 +132,11 @@ function activationErrorMessage(errCode: string | undefined, msg: string): strin
 
 async function finishRestoreSuccess(): Promise<void> {
   await publicApi.schoolProfile()
-  resetInstallVerificationCache()
   markInstallVerified()
 }
 
 export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
+  const navigate = useNavigate()
   const content = COPY[code] ?? COPY.invalid
   const [licenseKey, setLicenseKey] = useState('')
   const [busy, setBusy] = useState(false)
@@ -160,6 +159,13 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
   const [dbRetryLabel, setDbRetryLabel] = useState('Retry connection')
   const [dbRetryHint, setDbRetryHint] = useState<string | null>(null)
 
+  const goHomeSoft = () => {
+    markInstallVerified()
+    clearLicenseGateLock()
+    clearDatabaseUnavailableStreak()
+    navigate('/', { replace: true })
+  }
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -170,7 +176,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
           const ok = await tryRecoverFromDatabaseOutage()
           if (cancelled) return
           if (ok) {
-            window.location.replace('/')
+            goHomeSoft()
             return
           }
           setDbRetrying(false)
@@ -200,10 +206,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
             await licenseApi.verify(true)
             await publicApi.schoolProfile()
             if (cancelled) return
-            clearLicenseGateLock()
-            resetInstallVerificationCache()
-            markInstallVerified()
-            window.location.replace('/')
+            goHomeSoft()
             return
           } catch {
             /* still blocked */
@@ -220,10 +223,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
           try {
             await publicApi.schoolProfile()
             if (cancelled) return
-            clearLicenseGateLock()
-            resetInstallVerificationCache()
-            markInstallVerified()
-            window.location.replace('/')
+            goHomeSoft()
             return
           } catch {
             /* SoftKatta status OK but public API still blocked — stay on restore */
@@ -241,6 +241,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
 
   async function onRetryDatabase() {
@@ -260,11 +261,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
           } catch {
             /* ignore warm-up flake */
           }
-          clearLicenseGateLock()
-          resetInstallVerificationCache()
-          markInstallVerified()
-          clearDatabaseUnavailableStreak()
-          window.location.replace('/')
+          goHomeSoft()
           return
         }
       } catch {
@@ -288,7 +285,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
       await finishRestoreSuccess()
       setDone(true)
       window.setTimeout(() => {
-        window.location.href = '/'
+        navigate('/', { replace: true })
       }, 800)
     } catch (err) {
       const ax = err as {
@@ -349,7 +346,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
       await finishRestoreSuccess()
       setDone(true)
       window.setTimeout(() => {
-        window.location.href = '/'
+        navigate('/', { replace: true })
       }, 800)
     } catch (err) {
       const ax = err as {

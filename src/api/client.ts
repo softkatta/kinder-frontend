@@ -4,6 +4,7 @@ import { logout } from '@/store/slices/authSlice'
 import {
   clearLicenseRedirectSuppress,
   lockLicenseGate,
+  setInstallVerified,
   shouldSuppressLicenseRedirect,
 } from '@/api/licenseRedirectGate'
 
@@ -131,6 +132,7 @@ api.interceptors.response.use(
       if (streak >= DB_UNAVAILABLE_REDIRECT_AFTER) {
         const dest = `${import.meta.env.BASE_URL}license/database-unavailable`.replace(/\/{2,}/g, '/')
         if (!path.includes('/license/database-unavailable')) {
+          setInstallVerified(null)
           window.location.replace(dest)
         }
       }

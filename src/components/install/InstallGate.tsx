@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { installApi, licenseApi } from '@/api/installApi'
 import {
@@ -9,6 +9,7 @@ import {
   lockedLicensePath,
   setInstallVerified,
   suppressLicenseRedirect,
+  touchInstallVerified,
 } from '@/api/licenseRedirectGate'
 import {
   isWrongProductionApiBuild,
@@ -16,6 +17,7 @@ import {
 } from '@/components/install/WrongProductionApiBuild'
 
 const EXEMPT_PREFIXES = ['/install', '/license/']
+const GATE_ATTEMPTS = 12
 
 export function resetInstallVerificationCache(): void {
   setInstallVerified(null)
@@ -87,13 +89,13 @@ async function resolveGate(): Promise<GateResult> {
 
   let last: GateResult = { kind: 'database' }
 
-  for (let attempt = 0; attempt < 6; attempt += 1) {
+  for (let attempt = 0; attempt < GATE_ATTEMPTS; attempt += 1) {
     try {
       const status = await installApi.status()
       if (status.database_unavailable || status.last_error_code === 'DATABASE_UNAVAILABLE') {
         last = { kind: 'database' }
-        if (attempt < 5) {
-          await sleep(300 + attempt * 200)
+        if (attempt < GATE_ATTEMPTS - 1) {
+          await sleep(500 + attempt * 350)
           continue
         }
         return last
@@ -144,10 +146,9 @@ async function resolveGate(): Promise<GateResult> {
       if (code === 'NOT_INSTALLED') {
         return { kind: 'install' }
       }
-      // Network / transient DB — retry before treating as hard database outage
       last = { kind: 'database' }
-      if (attempt < 5) {
-        await sleep(300 + attempt * 200)
+      if (attempt < GATE_ATTEMPTS - 1) {
+        await sleep(500 + attempt * 350)
         continue
       }
       return last
@@ -162,10 +163,12 @@ export function InstallGate({ children }: { children: ReactNode }) {
   const navigate = useNavigate()
   const exempt = isExemptPath(location.pathname)
   const wrongApiBuild = isWrongProductionApiBuild()
+  const bootChecked = useRef(false)
 
   const [ready, setReady] = useState(() => exempt || getInstallVerified() === true)
   const [blockingMessage, setBlockingMessage] = useState('Checking installation…')
 
+  // Boot / hard-refresh only — do NOT re-gate on every SPA route change (that remounts live players).
   useEffect(() => {
     if (exempt || wrongApiBuild) {
       setReady(true)
@@ -174,13 +177,39 @@ export function InstallGate({ children }: { children: ReactNode }) {
 
     if (getInstallVerified() === true && !isLicenseGateLocked()) {
       setReady(true)
+      // Soft re-check in background; never block UI or remount the tree.
+      if (!bootChecked.current) {
+        bootChecked.current = true
+        void resolveGate().then((result) => {
+          if (result.kind === 'ok') {
+            touchInstallVerified()
+            return
+          }
+          if (result.kind === 'license') {
+            lockLicenseGate(result.path)
+            navigate(result.path, { replace: true })
+            return
+          }
+          if (result.kind === 'database') {
+            // Recent soft-OK exists — ignore a single flake; only hard-fail if cache already cleared.
+            if (getInstallVerified() !== true) {
+              navigate('/license/database-unavailable', { replace: true })
+            }
+            return
+          }
+          if (result.kind === 'install') {
+            setInstallVerified(null)
+            navigate('/install', { replace: true })
+          }
+        })
+      }
       return
     }
 
     let cancelled = false
-
+    bootChecked.current = true
     setReady(false)
-    setBlockingMessage('Checking installation…')
+    setBlockingMessage('Connecting to school database…')
 
     resolveGate().then((result) => {
       if (cancelled) return
@@ -206,16 +235,20 @@ export function InstallGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [exempt, wrongApiBuild, location.pathname, navigate])
+    // Intentionally omit location.pathname — route changes must not remount the app shell.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exempt, wrongApiBuild, navigate])
 
   useEffect(() => {
     if (exempt || wrongApiBuild || !ready) {
       return
     }
     const timer = window.setInterval(() => {
-      licenseApi.verify(true).catch(() => {
-        /* axios interceptor redirects on SoftKatta Suspend / Disable */
-      })
+      licenseApi.verify(true)
+        .then(() => touchInstallVerified())
+        .catch(() => {
+          /* axios interceptor redirects on SoftKatta Suspend / Disable */
+        })
     }, 12000)
     return () => window.clearInterval(timer)
   }, [exempt, wrongApiBuild, ready])
@@ -232,7 +265,7 @@ export function InstallGate({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-2 bg-stone-50 px-6 text-center text-sm text-stone-500">
         <p>{blockingMessage}</p>
-        <p className="text-xs text-stone-400">Kindergarten is locked until SoftKatta installation and license are valid.</p>
+        <p className="text-xs text-stone-400">Shared hosting MySQL can wake slowly — waiting before showing an error.</p>
       </div>
     )
   }

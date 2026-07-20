@@ -2,6 +2,9 @@ const LOCK_KEY = 'sk_license_gate_lock'
 const LOCK_PATH_KEY = 'sk_license_gate_path'
 const LOCK_AT_KEY = 'sk_license_gate_locked_at'
 const SUPPRESS_UNTIL_KEY = 'sk_license_suppress_until'
+/** Survives hard refresh so Hostinger MySQL cold-start does not flash Database Unavailable every reload. */
+const INSTALL_OK_UNTIL_KEY = 'sk_install_ok_until'
+const INSTALL_OK_TTL_MS = 10 * 60 * 1000
 
 /** In-memory + session suppress so Restore → reload does not bounce to Invalid. */
 let suppressLicenseRedirectUntil = 0
@@ -9,12 +12,59 @@ let suppressLicenseRedirectUntil = 0
 /** InstallGate OK cache — must live here so axios 403 can clear it without importing React. */
 let installVerified: boolean | null = null
 
+function readInstallOkUntil(): number {
+  try {
+    return Number(sessionStorage.getItem(INSTALL_OK_UNTIL_KEY) || '0')
+  } catch {
+    return 0
+  }
+}
+
+function writeInstallOkUntil(until: number): void {
+  try {
+    if (until > Date.now()) {
+      sessionStorage.setItem(INSTALL_OK_UNTIL_KEY, String(until))
+    } else {
+      sessionStorage.removeItem(INSTALL_OK_UNTIL_KEY)
+    }
+  } catch {
+    /* private mode */
+  }
+}
+
 export function getInstallVerified(): boolean | null {
+  if (installVerified === true) {
+    return true
+  }
+  if (installVerified === false) {
+    return false
+  }
+  const until = readInstallOkUntil()
+  if (until > Date.now()) {
+    installVerified = true
+    return true
+  }
+  if (until > 0) {
+    writeInstallOkUntil(0)
+  }
   return installVerified
 }
 
 export function setInstallVerified(value: boolean | null): void {
   installVerified = value
+  if (value === true) {
+    writeInstallOkUntil(Date.now() + INSTALL_OK_TTL_MS)
+  } else {
+    writeInstallOkUntil(0)
+  }
+}
+
+/** Extend the soft-OK window without forcing a re-gate (call after healthy API traffic). */
+export function touchInstallVerified(): void {
+  if (getInstallVerified() === true) {
+    writeInstallOkUntil(Date.now() + INSTALL_OK_TTL_MS)
+    installVerified = true
+  }
 }
 
 export function suppressLicenseRedirect(ms = 60000): void {
@@ -69,6 +119,7 @@ export function lockLicenseGate(path: string): void {
     /* private mode */
   }
   installVerified = null
+  writeInstallOkUntil(0)
 }
 
 export function clearLicenseGateLock(): void {

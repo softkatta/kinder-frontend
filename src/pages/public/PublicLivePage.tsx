@@ -33,7 +33,6 @@ export default function PublicLivePage() {
       />
 
       <section className="live-viewer-section overflow-x-hidden">
-        <FadeIn>
           {isLive && (
             <div className="flex justify-center mb-3 px-4">
               <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-bold text-rose-600">
@@ -60,15 +59,18 @@ export default function PublicLivePage() {
           )}
 
           {!active && upcoming.length === 0 ? (
-            <div className="live-viewer-layout">
-              <div className="live-viewer-empty rounded-3xl border border-slate-100 bg-white p-12 text-center shadow-sm">
-                <Radio className="h-12 w-12 text-violet-400 mx-auto mb-4 animate-pulse" />
-                <p className="font-display font-bold text-xl text-ink">{t.pages.live.waitingTitle}</p>
-                <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">{t.pages.live.waitingDesc}</p>
+            <FadeIn>
+              <div className="live-viewer-layout">
+                <div className="live-viewer-empty rounded-3xl border border-slate-100 bg-white p-12 text-center shadow-sm">
+                  <Radio className="h-12 w-12 text-violet-400 mx-auto mb-4 animate-pulse" />
+                  <p className="font-display font-bold text-xl text-ink">{t.pages.live.waitingTitle}</p>
+                  <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">{t.pages.live.waitingDesc}</p>
+                </div>
               </div>
-            </div>
+            </FadeIn>
           ) : canPlay && active ? (
             <>
+              {/* Player stays outside FadeIn so keep-alive never remounts embeds */}
               <div className="live-viewer-screen">
                 <LiveStreamPlayer
                   immersive
@@ -101,7 +103,6 @@ export default function PublicLivePage() {
               </div>
             </>
           ) : null}
-        </FadeIn>
       </section>
 
       {(upcoming.length > 1 || active) && (
