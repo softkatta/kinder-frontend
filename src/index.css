@@ -2929,12 +2929,12 @@ h1, h2, h3, h4, h5, h6 {
 .home-testimonial-carousel {
   @apply relative z-10 w-full flex flex-col flex-1 min-h-0;
 }
-.home-testimonial-slide-row {
-  @apply flex items-center gap-2 md:gap-3 w-full flex-1 min-h-0;
-}
 .home-testimonial-single {
-  @apply flex-1 min-w-0 flex justify-center;
-  min-height: 11rem;
+  @apply flex-1 min-w-0 flex justify-center items-center;
+  min-height: 10rem;
+}
+.home-testimonial-controls {
+  @apply flex items-center justify-center gap-4 md:gap-5 mt-4 md:mt-5 shrink-0;
 }
 .home-testimonial-card {
   @apply relative flex flex-col;
@@ -2978,7 +2978,7 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 .home-testimonial-dots {
-  @apply mt-4 md:mt-5 shrink-0;
+  @apply shrink-0;
 }
 .home-testimonial-dot--active {
   background: #F97316;

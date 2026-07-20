@@ -58,8 +58,12 @@ export function TestimonialCarousel({ items, variant = 'default' }: TestimonialC
   if (variant === 'home') {
     return (
       <div className="home-testimonial-carousel">
-        <div className="home-testimonial-slide-row">
-          {items.length > 1 && (
+        <div className="home-testimonial-single" key={item.id ?? index}>
+          <HomeTestimonialCard item={item} />
+        </div>
+
+        {items.length > 1 && (
+          <div className="home-testimonial-controls">
             <button
               type="button"
               onClick={prev}
@@ -68,13 +72,19 @@ export function TestimonialCarousel({ items, variant = 'default' }: TestimonialC
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-          )}
 
-          <div className="home-testimonial-single" key={item.id ?? index}>
-            <HomeTestimonialCard item={item} />
-          </div>
+            <div className="flex justify-center gap-2 home-testimonial-dots">
+              {items.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setIndex(i)}
+                  className={`h-2 rounded-full transition-all ${i === index ? 'w-6 home-testimonial-dot--active' : 'w-2 bg-slate-300/80'}`}
+                  aria-label={`Go to testimonial ${i + 1}`}
+                />
+              ))}
+            </div>
 
-          {items.length > 1 && (
             <button
               type="button"
               onClick={next}
@@ -83,20 +93,6 @@ export function TestimonialCarousel({ items, variant = 'default' }: TestimonialC
             >
               <ChevronRight className="h-5 w-5" />
             </button>
-          )}
-        </div>
-
-        {items.length > 1 && (
-          <div className="flex justify-center gap-2 home-testimonial-dots">
-            {items.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setIndex(i)}
-                className={`h-2 rounded-full transition-all ${i === index ? 'w-6 home-testimonial-dot--active' : 'w-2 bg-slate-300/80'}`}
-                aria-label={`Go to testimonial ${i + 1}`}
-              />
-            ))}
           </div>
         )}
       </div>
