@@ -3303,7 +3303,7 @@ h1, h2, h3, h4, h5, h6 {
   background: #16a34a;
 }
 .site-footer-grid {
-  @apply grid gap-10 sm:grid-cols-2 lg:grid-cols-3 mb-10;
+  @apply grid gap-10 sm:grid-cols-2 lg:grid-cols-4 mb-10;
 }
 .site-footer-heading {
   @apply font-display font-bold text-base mb-4 text-white;
@@ -3315,7 +3315,7 @@ h1, h2, h3, h4, h5, h6 {
   @apply transition-colors hover:text-amber-200;
 }
 .site-footer-contact {
-  @apply sm:col-span-2 lg:col-span-1;
+  @apply sm:col-span-1;
 }
 .site-footer-contact-list {
   @apply space-y-3.5 text-sm text-sky-50/90;
@@ -3329,6 +3329,38 @@ h1, h2, h3, h4, h5, h6 {
 .site-footer-contact-icon {
   @apply h-4 w-4 mt-0.5 shrink-0 text-sky-200;
 }
+.site-footer-socials {
+  @apply mt-5;
+}
+.site-footer-socials .social-links-label {
+  @apply text-[0.7rem] font-bold uppercase tracking-wide text-sky-200/80 mb-2.5;
+}
+.site-footer-social-btn {
+  @apply inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white border border-white/15 transition-all hover:bg-amber-300 hover:text-sky-900 hover:border-amber-300;
+}
+.site-footer-map {
+  @apply sm:col-span-2 lg:col-span-1;
+}
+.site-footer-map .contact-map--compact .contact-map-frame {
+  @apply rounded-2xl border-2 border-white/80 shadow-lg;
+  aspect-ratio: 4 / 3;
+  min-height: 160px;
+}
+.site-footer-map .contact-map--compact .contact-map-bar {
+  @apply -mt-5 mx-2 px-3 py-2.5 rounded-xl;
+}
+.site-footer-map .contact-map--compact .contact-map-pin {
+  @apply h-8 w-8 rounded-lg;
+}
+.site-footer-map .contact-map--compact .contact-map-address {
+  @apply text-xs;
+}
+.site-footer-map .contact-map--compact .contact-map-open {
+  @apply text-[0.65rem] px-2.5 py-1.5;
+}
+.site-footer-map .contact-map--compact .contact-map-open span {
+  @apply hidden sm:inline;
+}
 .site-footer-bottom {
   @apply flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-8 text-sm text-sky-100/65;
   border-top: 1px solid rgba(255, 255, 255, 0.14);
@@ -3341,6 +3373,78 @@ h1, h2, h3, h4, h5, h6 {
 }
 .site-footer-legal span {
   @apply text-sky-100/45;
+}
+
+/* Curriculum cards with images */
+.curriculum-card {
+  @apply grid gap-6 md:gap-10 items-center;
+}
+@media (min-width: 768px) {
+  .curriculum-card {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  }
+  .curriculum-card--reverse .curriculum-card-media {
+    order: 2;
+  }
+  .curriculum-card--reverse .curriculum-card-body {
+    order: 1;
+  }
+}
+.curriculum-card-media {
+  @apply relative;
+}
+.curriculum-card-photo {
+  @apply w-full max-w-md mx-auto md:max-w-none aspect-[4/3] object-cover;
+}
+.curriculum-card-body {
+  @apply mb-0;
+}
+
+/* Contact map */
+.contact-map {
+  @apply relative;
+}
+.contact-map-frame {
+  @apply relative overflow-hidden rounded-[1.75rem] border-4 border-white shadow-2xl;
+  background: linear-gradient(135deg, #e0f2fe, #d1fae5);
+  aspect-ratio: 16 / 9;
+  min-height: 280px;
+}
+.contact-map-iframe {
+  @apply absolute inset-0 h-full w-full border-0;
+  filter: saturate(1.05) contrast(1.02);
+}
+.contact-map-glow {
+  @apply pointer-events-none absolute inset-0;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(56, 189, 248, 0.18), transparent 40%),
+    radial-gradient(circle at 88% 82%, rgba(251, 191, 36, 0.16), transparent 42%);
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.12);
+}
+.contact-map-bar {
+  @apply relative z-10 -mt-8 mx-4 md:mx-8 flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3.5 shadow-xl border border-sky-100;
+}
+.contact-map-pin {
+  @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white;
+  background: linear-gradient(135deg, #0ea5e9, #14b8a6);
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.35);
+}
+.contact-map-label {
+  @apply text-[0.7rem] font-bold uppercase tracking-wide text-sky-500;
+}
+.contact-map-address {
+  @apply text-sm font-semibold text-ink truncate;
+}
+.contact-map-open {
+  @apply inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3.5 py-2 text-xs font-bold text-sky-700 transition-colors hover:bg-sky-100 ml-auto;
+}
+
+/* Social links */
+.social-links-row {
+  @apply flex flex-wrap items-center gap-2.5;
+}
+.social-links-btn {
+  @apply inline-flex h-10 w-10 items-center justify-center rounded-full bg-sky-50 text-sky-700 border border-sky-100 transition-colors hover:bg-sky-500 hover:text-white hover:border-sky-500;
 }
 
 .kidscholl-page-hero {

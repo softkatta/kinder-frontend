@@ -136,12 +136,25 @@ function PublicLayoutInner() {
         phone={phone}
         email={email}
         address={address}
+        socialLinks={{
+          facebook_url: profile?.facebook_url,
+          instagram_url: profile?.instagram_url,
+          youtube_url: profile?.youtube_url,
+          twitter_url: profile?.twitter_url,
+          linkedin_url: profile?.linkedin_url,
+        }}
+        mapEmbedUrl={profile?.map_embed_url || profile?.map_url}
+        latitude={profile?.latitude || profile?.lat}
+        longitude={profile?.longitude || profile?.lng || profile?.lon}
         exploreLinks={exploreLinks}
         visitLinks={visitLinks}
         labels={{
           explore: t.footer.explore,
           visit: t.footer.visit,
           contact: t.nav.contact,
+          followUs: t.footer.followUs,
+          findUs: t.footer.findUs,
+          openInMaps: t.footer.openInMaps,
           apply: t.nav.applyNow,
           whatsapp: t.footer.whatsapp,
           rights: t.footer.rights,

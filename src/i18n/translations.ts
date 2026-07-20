@@ -48,6 +48,9 @@ export const translations = {
       privacy: 'Privacy Policy',
       terms: 'Terms & Conditions',
       whatsapp: 'WhatsApp',
+      followUs: 'Follow us',
+      findUs: 'Find us',
+      openInMaps: 'Open in Maps',
     },
     common: {
       home: 'Home',
@@ -287,6 +290,10 @@ export const translations = {
         phoneLabel: 'Phone',
         emailLabel: 'Email',
         hoursLabel: 'Hours',
+        mapLabel: 'Find us',
+        mapTitle: 'Visit our campus',
+        mapSubtitle: 'Come see our colourful classrooms and safe playground — we would love to welcome you.',
+        openInMaps: 'Open in Maps',
       },
       admission: {
         label: 'Admissions Open 2026–27',
@@ -696,6 +703,9 @@ export const translations = {
       privacy: 'गोपनीयता धोरण',
       terms: 'अटी व शर्ती',
       whatsapp: 'WhatsApp',
+      followUs: 'आम्हाला फॉलो करा',
+      findUs: 'आम्हाला शोधा',
+      openInMaps: 'Maps मध्ये उघडा',
     },
     common: {
       home: 'मुख्यपृष्ठ',
@@ -935,6 +945,10 @@ export const translations = {
         phoneLabel: 'फोन',
         emailLabel: 'ईमेल',
         hoursLabel: 'वेळ',
+        mapLabel: 'आम्हाला शोधा',
+        mapTitle: 'कॅम्पसला भेट द्या',
+        mapSubtitle: 'आमचे रंगीत वर्ग आणि सुरक्षित खेळाचे मैदान पहा — आपले स्वागत आहे.',
+        openInMaps: 'Maps मध्ये उघडा',
       },
       admission: {
         label: 'प्रवेश सुरू २०२६–२७',

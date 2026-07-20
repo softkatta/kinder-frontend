@@ -110,6 +110,14 @@ const emptyProfile: SettingsProfile = {
   address: '',
   city: '',
   hours: '',
+  facebook_url: '',
+  instagram_url: '',
+  youtube_url: '',
+  twitter_url: '',
+  linkedin_url: '',
+  map_embed_url: '',
+  latitude: '',
+  longitude: '',
   logo_image: adminImages.nursery,
   cover_image: adminImages.campus,
 }
@@ -520,6 +528,38 @@ export default function AdminSettingsPage() {
                       </div>
                     </FormGrid>
                   </div>
+
+                  <div className="admin-settings-form-section">
+                    <h3 className="admin-settings-form-section-title">Social media</h3>
+                    <p className="admin-settings-form-section-desc">Shown in the website footer under contact details. Leave blank to hide an icon.</p>
+                    <FormGrid>
+                      <Input label="Facebook URL" value={profile.facebook_url || ''} onChange={(e) => setProfile((p) => ({ ...p, facebook_url: e.target.value }))} placeholder="https://facebook.com/yourpage" />
+                      <Input label="Instagram URL" value={profile.instagram_url || ''} onChange={(e) => setProfile((p) => ({ ...p, instagram_url: e.target.value }))} placeholder="https://instagram.com/yourpage" />
+                      <Input label="YouTube URL" value={profile.youtube_url || ''} onChange={(e) => setProfile((p) => ({ ...p, youtube_url: e.target.value }))} placeholder="https://youtube.com/@yourchannel" />
+                      <Input label="X (Twitter) URL" value={profile.twitter_url || ''} onChange={(e) => setProfile((p) => ({ ...p, twitter_url: e.target.value }))} placeholder="https://x.com/yourhandle" />
+                      <div className="span-2">
+                        <Input label="LinkedIn URL" value={profile.linkedin_url || ''} onChange={(e) => setProfile((p) => ({ ...p, linkedin_url: e.target.value }))} placeholder="https://linkedin.com/company/yourschool" />
+                      </div>
+                    </FormGrid>
+                  </div>
+
+                  <div className="admin-settings-form-section">
+                    <h3 className="admin-settings-form-section-title">Map</h3>
+                    <p className="admin-settings-form-section-desc">Footer and contact page map. Address is used by default; optional lat/lng or embed URL for precise pin.</p>
+                    <FormGrid>
+                      <Input label="Latitude" value={profile.latitude || ''} onChange={(e) => setProfile((p) => ({ ...p, latitude: e.target.value }))} placeholder="19.4950" />
+                      <Input label="Longitude" value={profile.longitude || ''} onChange={(e) => setProfile((p) => ({ ...p, longitude: e.target.value }))} placeholder="77.2080" />
+                      <div className="span-2">
+                        <Input
+                          label="Map embed URL (optional)"
+                          value={profile.map_embed_url || ''}
+                          onChange={(e) => setProfile((p) => ({ ...p, map_embed_url: e.target.value }))}
+                          placeholder="https://www.google.com/maps/embed?pb=..."
+                        />
+                      </div>
+                    </FormGrid>
+                  </div>
+
                   <SettingsImageFields tabId="contact" profile={profile} setProfile={setProfile} title="Contact page photo" desc="Hero banner on /contact" />
                 </div>
               )}

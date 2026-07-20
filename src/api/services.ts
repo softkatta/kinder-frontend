@@ -107,6 +107,14 @@ export type SettingsProfile = {
   address?: string | null
   city?: string | null
   hours?: string | null
+  facebook_url?: string | null
+  instagram_url?: string | null
+  youtube_url?: string | null
+  twitter_url?: string | null
+  linkedin_url?: string | null
+  map_embed_url?: string | null
+  latitude?: string | null
+  longitude?: string | null
   logo_image?: string | null
   favicon_image?: string | null
   cover_image?: string | null

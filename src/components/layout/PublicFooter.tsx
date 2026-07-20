@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { GraduationCap, Phone, Mail, MapPin, MessageCircle, ArrowRight } from 'lucide-react'
 import { WaveFooterTop } from '@/components/design/WaveFooter'
+import { ContactMap } from '@/components/contact/ContactMap'
+import { SocialLinks, type SocialLinksData } from '@/components/contact/SocialLinks'
 import { whatsAppUrl } from '@/config/siteContent'
 
 interface FooterLink {
@@ -16,12 +18,19 @@ interface PublicFooterProps {
   phone: string
   email: string
   address: string
+  socialLinks?: SocialLinksData
+  mapEmbedUrl?: string | null
+  latitude?: string | null
+  longitude?: string | null
   exploreLinks: FooterLink[]
   visitLinks: FooterLink[]
   labels: {
     explore: string
     visit: string
     contact: string
+    followUs: string
+    findUs: string
+    openInMaps: string
     apply: string
     whatsapp: string
     rights: string
@@ -39,6 +48,10 @@ export function PublicFooter({
   phone,
   email,
   address,
+  socialLinks,
+  mapEmbedUrl,
+  latitude,
+  longitude,
   exploreLinks,
   visitLinks,
   labels,
@@ -122,6 +135,26 @@ export function PublicFooter({
                   <span>{address}</span>
                 </li>
               </ul>
+              <SocialLinks
+                links={socialLinks || {}}
+                label={labels.followUs}
+                className="site-footer-socials"
+                linkClassName="site-footer-social-btn"
+              />
+            </div>
+
+            <div className="site-footer-map">
+              <h3 className="site-footer-heading">{labels.findUs}</h3>
+              <ContactMap
+                compact
+                address={address}
+                schoolName={schoolName}
+                mapLabel={labels.findUs}
+                openMapsLabel={labels.openInMaps}
+                mapEmbedUrl={mapEmbedUrl}
+                latitude={latitude}
+                longitude={longitude}
+              />
             </div>
           </div>
 

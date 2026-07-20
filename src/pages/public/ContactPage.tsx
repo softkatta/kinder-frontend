@@ -6,6 +6,8 @@ import toast from 'react-hot-toast'
 import { MapPin, Phone, Mail, MessageCircle, Clock } from 'lucide-react'
 import { PublicPageHero } from '@/components/design/PublicPageHero'
 import { KidschollSection } from '@/components/design/KidschollSection'
+import { ContactMap } from '@/components/contact/ContactMap'
+import { SocialLinks } from '@/components/contact/SocialLinks'
 import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { FormCard, FormStack } from '@/components/ui/Form'
@@ -40,6 +42,8 @@ export default function ContactPage() {
 
   const phone = getSchoolField(profile, 'phone', locale)
   const email = getSchoolField(profile, 'email', locale)
+  const address = formatAddress(profile, locale)
+  const schoolName = getSchoolField(profile, 'schoolName', locale) || profile.title || 'School'
 
   return (
     <div>
@@ -51,7 +55,7 @@ export default function ContactPage() {
             <FadeIn className="lg:col-span-2 space-y-4">
               <KidschollSection align="left" label={p.sectionLabel} title={p.sectionTitle} className="!mb-6" />
               {[
-                { icon: MapPin, label: p.address, value: formatAddress(profile, locale) },
+                { icon: MapPin, label: p.address, value: address },
                 { icon: Phone, label: p.phoneLabel, value: phone, href: `tel:${phone.replace(/\s/g, '')}` },
                 { icon: Mail, label: p.emailLabel, value: email, href: `mailto:${email}` },
                 { icon: Clock, label: p.hoursLabel, value: getSchoolField(profile, 'hours', locale) },
@@ -68,6 +72,17 @@ export default function ContactPage() {
                 <a href={whatsAppUrl(phone)} className="btn-kidscholl flex-1 justify-center !py-3"><MessageCircle className="h-4 w-4" /> {t.footer.whatsapp}</a>
                 <a href={`tel:${phone.replace(/\s/g, '')}`} className="btn-kidscholl-outline flex-1 justify-center !py-3"><Phone className="h-4 w-4" /> {t.common.call}</a>
               </div>
+              <SocialLinks
+                links={{
+                  facebook_url: profile.facebook_url,
+                  instagram_url: profile.instagram_url,
+                  youtube_url: profile.youtube_url,
+                  twitter_url: profile.twitter_url,
+                  linkedin_url: profile.linkedin_url,
+                }}
+                label={t.footer.followUs}
+                className="pt-2"
+              />
             </FadeIn>
             <FadeIn delay={0.1} className="lg:col-span-3">
               <FormCard title={p.formTitle} subtitle={p.formSubtitle}>
@@ -85,6 +100,24 @@ export default function ContactPage() {
               </FormCard>
             </FadeIn>
           </div>
+        </div>
+      </section>
+
+      <section className="section bg-white relative overflow-hidden pb-20">
+        <SectionDecorations variant="about" />
+        <div className="mx-auto max-w-6xl px-4 relative z-10">
+          <KidschollSection label={p.mapLabel} title={p.mapTitle} subtitle={p.mapSubtitle} />
+          <FadeIn>
+            <ContactMap
+              address={address}
+              schoolName={schoolName}
+              mapLabel={p.mapLabel}
+              openMapsLabel={p.openInMaps}
+              mapEmbedUrl={profile.map_embed_url || profile.map_url}
+              latitude={profile.latitude || profile.lat}
+              longitude={profile.longitude || profile.lng || profile.lon}
+            />
+          </FadeIn>
         </div>
       </section>
     </div>
