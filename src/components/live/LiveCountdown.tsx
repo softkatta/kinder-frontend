@@ -12,6 +12,7 @@ function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
+/** Parse schedule time to match admin "Starts:" wall clock (naive = browser local / IST). */
 function parseScheduleTime(value: string): number {
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) {
     const [datePart, timePart] = value.split('T')
@@ -19,40 +20,49 @@ function parseScheduleTime(value: string): number {
     const [hour, minute] = timePart.split(':').map(Number)
     return new Date(year, month - 1, day, hour, minute, 0, 0).getTime()
   }
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)) {
+    const [datePart, timePart] = value.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute, second] = timePart.split(':').map(Number)
+    return new Date(year, month - 1, day, hour, minute, second || 0, 0).getTime()
+  }
   return new Date(value).getTime()
 }
 
+function secondsUntil(targetIso?: string | null, initialSeconds?: number | null): number {
+  // Prefer wall-clock target so countdown matches admin schedule display (avoids UTC skew from API).
+  if (targetIso) {
+    const target = parseScheduleTime(targetIso)
+    if (!Number.isNaN(target)) {
+      return Math.max(0, Math.floor((target - Date.now()) / 1000))
+    }
+  }
+  if (initialSeconds != null) return Math.max(0, initialSeconds)
+  return 0
+}
+
 export function LiveCountdown({ targetIso, initialSeconds, className = '', variant = 'default', onComplete }: LiveCountdownProps) {
-  const [seconds, setSeconds] = useState(() => {
-    if (initialSeconds != null) return Math.max(0, initialSeconds)
-    if (targetIso) return Math.max(0, Math.floor((parseScheduleTime(targetIso) - Date.now()) / 1000))
-    return 0
-  })
+  const [seconds, setSeconds] = useState(() => secondsUntil(targetIso, initialSeconds))
 
   useEffect(() => {
-    if (initialSeconds != null) {
-      setSeconds(Math.max(0, initialSeconds))
-    } else if (targetIso) {
-      setSeconds(Math.max(0, Math.floor((parseScheduleTime(targetIso) - Date.now()) / 1000)))
-    }
+    setSeconds(secondsUntil(targetIso, initialSeconds))
   }, [targetIso, initialSeconds])
 
   useEffect(() => {
-    if (seconds <= 0) {
-      onComplete?.()
-      return
+    let completed = false
+    const tick = () => {
+      const left = secondsUntil(targetIso, initialSeconds)
+      setSeconds(left)
+      if (left <= 0 && !completed) {
+        completed = true
+        onComplete?.()
+      }
     }
-    const t = setInterval(() => {
-      setSeconds((s) => {
-        if (s <= 1) {
-          onComplete?.()
-          return 0
-        }
-        return s - 1
-      })
-    }, 1000)
+
+    tick()
+    const t = setInterval(tick, 1000)
     return () => clearInterval(t)
-  }, [seconds > 0, onComplete])
+  }, [targetIso, initialSeconds, onComplete])
 
   const d = Math.floor(seconds / 86400)
   const h = Math.floor((seconds % 86400) / 3600)
