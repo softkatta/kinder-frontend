@@ -13,6 +13,7 @@ import { getSchoolName, getYearsSince, getProfileText } from '@/config/siteConte
 import { parsePipePairs, parseTextLines, parseTimelineItems } from '@/utils/homeProfile'
 import { mediaUrl } from '@/utils/mediaUrl'
 import { ShapedImage } from '@/components/design/ShapedImage'
+import { looksLikeHtml, sanitizeBasicHtml } from '@/components/ui/RichTextEditor'
 
 const valueIcons: LucideIcon[] = [Heart, Shield, Sparkles, Users]
 const valueColors = [
@@ -121,33 +122,40 @@ export default function AboutPage() {
       {principalMessage && (
         <section className="section bg-white relative overflow-hidden">
           <SectionDecorations variant="teachers" />
-          <div className="mx-auto max-w-4xl px-4 relative z-10">
+          <div className="mx-auto max-w-6xl px-4 relative z-10">
             <FadeIn>
               <div className="about-principal-card kidscholl-form-card !mb-0">
+                <div className="about-principal-body">
+                  <div className="about-principal-badge">{p.principalMsg}</div>
+                  {looksLikeHtml(principalMessage) ? (
+                    <div
+                      className="about-principal-quote about-principal-quote--html"
+                      dangerouslySetInnerHTML={{ __html: sanitizeBasicHtml(principalMessage) }}
+                    />
+                  ) : (
+                    <p className="about-principal-quote">
+                      &ldquo;{principalMessage}&rdquo;
+                    </p>
+                  )}
+                  {principalName ? (
+                    <p className="about-principal-name">— {principalName}</p>
+                  ) : null}
+                </div>
                 <div className="about-principal-photo-wrap">
                   {principalImage ? (
                     <ShapedImage
                       src={principalImage}
                       alt={principalName || p.principalMsg}
-                      shape="circle"
+                      shape="arch"
                       border="white"
                       className="about-principal-photo"
-                      fallback={<span className="text-4xl">👩‍🏫</span>}
+                      fallback={<span className="text-5xl">👩‍🏫</span>}
                     />
                   ) : (
                     <div className="about-principal-photo about-principal-photo--fallback" aria-hidden>
-                      <Award className="h-10 w-10 text-violet-500" />
+                      <Award className="h-14 w-14 text-violet-500" />
                     </div>
                   )}
-                </div>
-                <div className="about-principal-body">
-                  <div className="about-principal-badge">{p.principalMsg}</div>
-                  <p className="about-principal-quote">
-                    &ldquo;{principalMessage}&rdquo;
-                  </p>
-                  {principalName ? (
-                    <p className="about-principal-name">— {principalName}</p>
-                  ) : null}
                 </div>
               </div>
             </FadeIn>

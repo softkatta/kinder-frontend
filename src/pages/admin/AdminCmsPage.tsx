@@ -320,12 +320,14 @@ export default function AdminCmsPage() {
             meta={formMeta}
             onChange={(key, value) => setFormMeta({ ...formMeta, [key]: value })}
           />
-          {form.type !== 'notice' && (
-            <div className="rounded-xl border border-orange-100 bg-orange-50/40 p-4">
+          <div className="rounded-xl border border-orange-100 bg-orange-50/40 p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-orange-700 mb-3">Marathi (manual override)</p>
               <FormStack>
                 <Input label="Title (Marathi)" value={String(formMeta.title_mr ?? '')} onChange={(e) => setFormMeta({ ...formMeta, title_mr: e.target.value })} />
-                {form.type !== 'banner' && (
+                {form.type === 'banner' && (
+                  <Textarea label="Summary / subline (Marathi)" rows={2} value={String(formMeta.summary_mr ?? '')} onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })} />
+                )}
+                {form.type !== 'banner' && form.type !== 'notice' && (
                   <>
                     <Textarea label="Summary (Marathi)" rows={2} value={String(formMeta.summary_mr ?? '')} onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })} />
                     <Textarea label="Body (Marathi)" rows={3} value={String(formMeta.body_mr ?? '')} onChange={(e) => setFormMeta({ ...formMeta, body_mr: e.target.value })} />
@@ -333,7 +335,6 @@ export default function AdminCmsPage() {
                 )}
               </FormStack>
             </div>
-          )}
           <FormGrid cols={2}>
             <Select label="Status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
               <option value="published">Published</option>

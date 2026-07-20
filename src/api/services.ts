@@ -101,6 +101,7 @@ export const paymentApi = {
 
 export type SettingsProfile = {
   name: string
+  name_mr?: string | null
   short_name?: string | null
   email?: string | null
   phone?: string | null
@@ -150,6 +151,7 @@ export type SettingsProfile = {
   about_journey_title?: string | null
   about_timeline?: string | null
 } & Partial<Record<ProfileImageKey, string | null>>
+  & Partial<Record<`${string}_mr`, string | null>>
 
 export interface SettingsNotification {
   key?: string
