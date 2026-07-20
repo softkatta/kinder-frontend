@@ -378,6 +378,20 @@ export default function AdminSettingsPage() {
   }
 
   const testIntegration = async (type: 'email' | 'whatsapp' | 'broadcast' | 'livekit') => {
+    if (type === 'livekit') {
+      const url = (integrations.livekit?.url || '').trim()
+      const key = (integrations.livekit?.api_key || '').trim()
+      const hasSecret = Boolean(integrations.livekit?.api_secret?.trim()) || Boolean(integrations.livekit?.api_secret_set)
+      if (!integrations.livekit?.enabled) {
+        toast.error('Enable LiveKit and click Save first')
+        return
+      }
+      if (!url || !key || !hasSecret) {
+        toast.error('Fill LiveKit URL, API key, and API secret, then Save before testing')
+        return
+      }
+    }
+
     setTesting(type)
     try {
       if (type === 'broadcast') {
