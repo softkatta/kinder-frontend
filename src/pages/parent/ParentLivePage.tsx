@@ -1,4 +1,5 @@
 import { Radio, Wifi, WifiOff, Calendar } from 'lucide-react'
+import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
 import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
@@ -12,13 +13,18 @@ export default function ParentLivePage() {
   const { active, watch, cameraId, connected, reload } = useActiveLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
-  const isLive = active?.status === 'live' || active?.status === 'paused'
+  const broadcastPaused = isLiveBroadcastPaused(active?.status, active?.display_status)
+  const isLive = active?.status === 'live'
   const isUpcoming = Boolean(active?.is_upcoming || active?.display_status === 'upcoming')
   const isScheduled = Boolean(
     active?.is_scheduled || active?.status === 'scheduled' || active?.display_status === 'scheduled',
   )
-  const canPlay = Boolean(active?.is_watchable && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)))
-  const showWaiting = Boolean(active && !canPlay && active.status !== 'stopped')
+  const canPlay = Boolean(
+    !broadcastPaused
+    && active?.is_watchable
+    && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)),
+  )
+  const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
 
   return (
     <div className="space-y-6">
@@ -45,12 +51,17 @@ export default function ParentLivePage() {
               LIVE
             </span>
           )}
+          {broadcastPaused && (
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700">
+              PAUSED
+            </span>
+          )}
           {isUpcoming && (
             <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700">
               <Calendar className="h-3.5 w-3.5" /> UPCOMING
             </span>
           )}
-          {isScheduled && !isLive && !isUpcoming && (
+          {isScheduled && !isLive && !isUpcoming && !broadcastPaused && (
             <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700">
               <Calendar className="h-3.5 w-3.5" /> SCHEDULED
             </span>
@@ -86,7 +97,11 @@ export default function ParentLivePage() {
             </div>
           )}
 
-          {canPlay ? (
+          {broadcastPaused ? (
+            <div className="live-viewer-screen">
+              <LiveBroadcastPausedPanel title={active.title} />
+            </div>
+          ) : canPlay ? (
             <div className="live-viewer-screen">
               <LiveStreamPlayer
                 immersive

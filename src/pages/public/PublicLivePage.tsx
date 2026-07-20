@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Radio, LogIn } from 'lucide-react'
 import { PublicPageHero } from '@/components/design/PublicPageHero'
+import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
 import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
@@ -14,12 +15,15 @@ export default function PublicLivePage() {
   const { t } = useT()
   const { profile } = useSchoolBranding()
   const routeVisible = useLiveRouteVisible()
-  const { active, watch, upcoming, cameraId, isLive, isUpcoming, reload } = usePublicLiveStream()
+  const { active, watch, upcoming, cameraId, isLive, isPaused, isUpcoming, reload } = usePublicLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
-  const showWaiting = Boolean(active && !active.is_watchable)
+  const broadcastPaused = isPaused || isLiveBroadcastPaused(active?.status, active?.display_status)
+  const showWaiting = Boolean(active && !active.is_watchable && !broadcastPaused)
   const canPlay = Boolean(
-    active?.is_watchable && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)),
+    !broadcastPaused
+    && active?.is_watchable
+    && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)),
   )
 
   return (
@@ -38,6 +42,13 @@ export default function PublicLivePage() {
               <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-bold text-rose-600">
                 <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
                 LIVE NOW
+              </span>
+            </div>
+          )}
+          {broadcastPaused && (
+            <div className="flex justify-center mb-3 px-4">
+              <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700">
+                PAUSED
               </span>
             </div>
           )}
@@ -68,9 +79,12 @@ export default function PublicLivePage() {
                 </div>
               </div>
             </FadeIn>
+          ) : broadcastPaused && active ? (
+            <div className="live-viewer-screen">
+              <LiveBroadcastPausedPanel title={active.title} />
+            </div>
           ) : canPlay && active ? (
             <>
-              {/* Player stays outside FadeIn so keep-alive never remounts embeds */}
               <div className="live-viewer-screen">
                 <LiveStreamPlayer
                   immersive

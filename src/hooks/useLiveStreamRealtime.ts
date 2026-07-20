@@ -16,8 +16,23 @@ function applyRealtimePayload(
   setWatch: (v: LiveStreamWatch | null) => void,
   setCameraId: (v: number | null) => void,
   cameraRef: MutableRefObject<number | null>,
+  syncGenRef?: MutableRefObject<number>,
 ) {
+  if (syncGenRef) syncGenRef.current += 1
   setActive(payload.viewer)
+
+  if (payload.viewer.status === 'paused') {
+    const base = (payload.watch ?? payload.viewer) as LiveStreamWatch
+    const { playback: _p, playbacks: _ps, ...rest } = base
+    setWatch({ ...rest, playback: undefined, playbacks: [] } as LiveStreamWatch)
+    const camId = base.active_camera?.id ?? null
+    if (camId !== cameraRef.current) {
+      cameraRef.current = camId
+      setCameraId(camId)
+    }
+    return
+  }
+
   if (payload.watch) {
     setWatch(payload.watch)
     const camId = payload.watch.active_camera?.id ?? null
@@ -28,7 +43,9 @@ function applyRealtimePayload(
     return
   }
   if (payload.viewer.is_watchable && payload.viewer.id) {
+    const gen = syncGenRef?.current
     liveStreamApi.watch(payload.viewer.id).then((res) => {
+      if (syncGenRef && gen !== syncGenRef.current) return
       const wd = res.data.data as LiveStreamWatch
       setWatch(wd)
       const camId = wd.active_camera?.id ?? null
@@ -182,10 +199,13 @@ export function useActiveLiveStream() {
   const [cameraId, setCameraId] = useState<number | null>(null)
   const [connected, setConnected] = useState(false)
   const cameraRef = useRef<number | null>(null)
+  const syncGenRef = useRef(0)
 
   const sync = useCallback(async () => {
+    const gen = ++syncGenRef.current
     try {
       const res = await liveStreamApi.viewerActive()
+      if (gen !== syncGenRef.current) return
       const data = res.data.data as LiveStreamViewer | null
 
       if (!data) {
@@ -205,7 +225,13 @@ export function useActiveLiveStream() {
         return
       }
 
+      if (data.status === 'paused') {
+        setWatch({ ...data, playback: undefined, playbacks: [] } as LiveStreamWatch)
+        return
+      }
+
       const watchRes = await liveStreamApi.watch(data.id)
+      if (gen !== syncGenRef.current) return
       const watchData = watchRes.data.data as LiveStreamWatch
       setWatch(watchData)
       const camId = watchData.active_camera?.id ?? null
@@ -219,7 +245,7 @@ export function useActiveLiveStream() {
   }, [])
 
   const handleRealtime = useCallback((payload: LiveStreamRealtimePayload) => {
-    applyRealtimePayload(payload, setActive, setWatch, setCameraId, cameraRef)
+    applyRealtimePayload(payload, setActive, setWatch, setCameraId, cameraRef, syncGenRef)
   }, [])
 
   const activeIdRef = useRef<number | null>(null)
