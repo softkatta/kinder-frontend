@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { installApi, licenseApi, type CompanyApiPayload } from '@/api/installApi'
 import { clearLicenseGateLock } from '@/api/licenseRedirectGate'
+import { publicApi } from '@/api/services'
 import { markInstallVerified, resetInstallVerificationCache } from '@/components/install/InstallGate'
 
 const COPY: Record<string, { title: string; body: string }> = {
@@ -19,7 +20,7 @@ const COPY: Record<string, { title: string; body: string }> = {
   },
   'domain-not-authorized': {
     title: 'Domain Not Authorized',
-    body: 'This domain is not authorized for the activated license. Request a domain change from the SoftKatta Customer Portal.',
+    body: 'This domain is not authorized. SoftKatta Admin → Tenants must include kinder.softkatta.in and kinder-api.softkatta.in for this subscription.',
   },
   'product-disabled': {
     title: 'Product Disabled',
@@ -61,6 +62,43 @@ const CAN_REACTIVATE = new Set([
   'server-verification-failed',
 ])
 const CAN_CONFIGURE_COMPANY_API = new Set(['company-api-unavailable'])
+
+function activationErrorMessage(errCode: string | undefined, msg: string): string {
+  if (errCode === 'SUSPENDED_LICENSE' || /suspend/i.test(msg)) {
+    return 'License is still suspended on SoftKatta. Ask SoftKatta Admin to Activate first, then try Restore again.'
+  }
+  if (errCode === 'INVALID_SIGNATURE' || errCode === 'INVALID_API_KEY') {
+    return (
+      msg ||
+      'SoftKatta Product Integration keys do not match. SoftKatta Admin → Product Integrations → copy Public key + Reveal secret into the form below, then Restore again.'
+    )
+  }
+  if (errCode === 'DOMAIN_NOT_AUTHORIZED' || /domain/i.test(msg)) {
+    return (
+      msg ||
+      'Domain mismatch. SoftKatta Admin → Tenants must include kinder.softkatta.in (frontend) and kinder-api.softkatta.in (backend).'
+    )
+  }
+  if (errCode === 'EXPIRED_SUBSCRIPTION' || /subscription is not active/i.test(msg)) {
+    return 'Subscription is not active on SoftKatta. Set subscription status to Active, then try Restore again.'
+  }
+  if (errCode === 'TENANT_DOMAINS_REQUIRED') {
+    return 'Assign frontend + backend domains for this subscription in SoftKatta Admin → Tenants, then try again.'
+  }
+  if (errCode === 'INVALID_LICENSE') {
+    return (
+      msg ||
+      'License key was rejected. SoftKatta Admin “Active” must match this exact key — paste the current key from SoftKatta → License Keys.'
+    )
+  }
+  return typeof msg === 'string' && msg ? msg : 'Activation failed.'
+}
+
+async function finishRestoreSuccess(): Promise<void> {
+  await publicApi.schoolProfile()
+  resetInstallVerificationCache()
+  markInstallVerified()
+}
 
 export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
   const content = COPY[code] ?? COPY.invalid
@@ -106,6 +144,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
         if (shouldLiveRecover) {
           try {
             await licenseApi.verify(true)
+            await publicApi.schoolProfile()
             if (cancelled) return
             clearLicenseGateLock()
             resetInstallVerificationCache()
@@ -124,11 +163,17 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
           !s.needs_reactivation &&
           !s.last_error_code
         ) {
-          clearLicenseGateLock()
-          resetInstallVerificationCache()
-          markInstallVerified()
-          window.location.replace('/')
-          return
+          try {
+            await publicApi.schoolProfile()
+            if (cancelled) return
+            clearLicenseGateLock()
+            resetInstallVerificationCache()
+            markInstallVerified()
+            window.location.replace('/')
+            return
+          } catch {
+            /* SoftKatta status OK but public API still blocked — stay on restore */
+          }
         }
       } catch {
         /* keep page */
@@ -147,8 +192,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
     setBusy(true)
     try {
       await licenseApi.activate(licenseKey.trim())
-      resetInstallVerificationCache()
-      markInstallVerified()
+      await finishRestoreSuccess()
       setDone(true)
       window.setTimeout(() => {
         window.location.href = '/'
@@ -167,26 +211,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
         'Activation failed.'
       const errCode =
         ax.error_code ?? ax.response?.data?.error_code ?? ax.original?.response?.data?.error_code
-      if (errCode === 'SUSPENDED_LICENSE' || /suspend/i.test(msg)) {
-        setError(
-          'License is still suspended on SoftKatta. Ask SoftKatta Admin to Activate first, then try Restore again.',
-        )
-      } else if (errCode === 'DOMAIN_NOT_AUTHORIZED' || /domain/i.test(msg)) {
-        setError(
-          msg ||
-            'Domain mismatch. SoftKatta Admin → Tenants must include kinder.softkatta.in (frontend) and the API host (backend).',
-        )
-      } else if (errCode === 'EXPIRED_SUBSCRIPTION' || /subscription is not active/i.test(msg)) {
-        setError(
-          'Subscription is not active on SoftKatta. Set subscription status to Active, then try Restore again.',
-        )
-      } else if (errCode === 'TENANT_DOMAINS_REQUIRED') {
-        setError(
-          'Assign frontend + backend domains for this subscription in SoftKatta Admin → Tenants, then try again.',
-        )
-      } else {
-        setError(typeof msg === 'string' ? msg : 'Activation failed.')
-      }
+      setError(activationErrorMessage(errCode, typeof msg === 'string' ? msg : 'Activation failed.'))
     } finally {
       setBusy(false)
     }
@@ -197,13 +222,13 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
     setError(null)
     const publicKey = softkatta.public_api_key.trim()
     const secret = softkatta.api_secret.trim()
-    if (!/^sk_pub_[a-z0-9]+$/i.test(publicKey)) {
+    if (publicKey.includes('@') || !/^sk_pub_[a-z0-9]+$/i.test(publicKey)) {
       setError(
         'Public API Key must be sk_pub_... from SoftKatta Admin → Product Integrations. Do not paste your SoftKatta login email.',
       )
       return
     }
-    if (!/^sk_sec_[a-z0-9]+$/i.test(secret)) {
+    if (secret.includes('@') || !/^sk_sec_[a-z0-9]+$/i.test(secret)) {
       setError(
         'API Secret must be sk_sec_... from SoftKatta Admin → Product Integrations → Reveal. Do not paste your SoftKatta password.',
       )
@@ -228,8 +253,7 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
         await licenseApi.verify(true)
       }
 
-      resetInstallVerificationCache()
-      markInstallVerified()
+      await finishRestoreSuccess()
       setDone(true)
       window.setTimeout(() => {
         window.location.href = '/'

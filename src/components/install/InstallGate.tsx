@@ -10,6 +10,10 @@ import {
   setInstallVerified,
   suppressLicenseRedirect,
 } from '@/api/licenseRedirectGate'
+import {
+  isWrongProductionApiBuild,
+  WrongProductionApiBuildScreen,
+} from '@/components/install/WrongProductionApiBuild'
 
 const EXEMPT_PREFIXES = ['/install', '/license/']
 
@@ -139,12 +143,13 @@ export function InstallGate({ children }: { children: ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
   const exempt = isExemptPath(location.pathname)
+  const wrongApiBuild = isWrongProductionApiBuild()
 
   const [ready, setReady] = useState(() => exempt || getInstallVerified() === true)
   const [blockingMessage, setBlockingMessage] = useState('Checking installation…')
 
   useEffect(() => {
-    if (exempt) {
+    if (exempt || wrongApiBuild) {
       setReady(true)
       return
     }
@@ -183,10 +188,10 @@ export function InstallGate({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [exempt, location.pathname, navigate])
+  }, [exempt, wrongApiBuild, location.pathname, navigate])
 
   useEffect(() => {
-    if (exempt || !ready) {
+    if (exempt || wrongApiBuild || !ready) {
       return
     }
     const timer = window.setInterval(() => {
@@ -195,7 +200,11 @@ export function InstallGate({ children }: { children: ReactNode }) {
       })
     }, 12000)
     return () => window.clearInterval(timer)
-  }, [exempt, ready])
+  }, [exempt, wrongApiBuild, ready])
+
+  if (wrongApiBuild) {
+    return <WrongProductionApiBuildScreen />
+  }
 
   if (exempt) {
     return <>{children}</>
