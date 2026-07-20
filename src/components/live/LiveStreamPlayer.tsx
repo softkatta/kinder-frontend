@@ -49,10 +49,11 @@ function readyDelay(mode: LivePlayback['mode']): number {
   return 300
 }
 
-function youtubeEmbedSrc(videoId: string, muted: boolean, lockPlayback: boolean): string {
+function youtubeEmbedSrc(videoId: string, startMuted: boolean, lockPlayback: boolean): string {
   const params = new URLSearchParams({
     autoplay: '1',
-    mute: muted ? '1' : '0',
+    mute: startMuted ? '1' : '0',
+    enablejsapi: '1',
     rel: '0',
     playsinline: '1',
     modestbranding: '1',
@@ -61,14 +62,18 @@ function youtubeEmbedSrc(videoId: string, muted: boolean, lockPlayback: boolean)
     disablekb: lockPlayback ? '1' : '0',
     iv_load_policy: '3',
   })
+  if (typeof window !== 'undefined') {
+    params.set('origin', window.location.origin)
+  }
   return `https://www.youtube.com/embed/${videoId}?${params.toString()}`
 }
 
-function vimeoEmbedSrc(videoId: string, muted: boolean, lockPlayback: boolean): string {
+function vimeoEmbedSrc(videoId: string, startMuted: boolean, lockPlayback: boolean): string {
   const params = new URLSearchParams({
     autoplay: '1',
-    muted: muted ? '1' : '0',
+    muted: startMuted ? '1' : '0',
     playsinline: '1',
+    api: '1',
   })
   if (lockPlayback) {
     params.set('controls', '0')
@@ -78,6 +83,19 @@ function vimeoEmbedSrc(videoId: string, muted: boolean, lockPlayback: boolean): 
     params.set('portrait', '0')
   }
   return `https://player.vimeo.com/video/${videoId}?${params.toString()}`
+}
+
+function postYoutubeCommand(iframe: HTMLIFrameElement | null, func: 'mute' | 'unMute' | 'playVideo') {
+  iframe?.contentWindow?.postMessage(
+    JSON.stringify({ event: 'command', func, args: [] }),
+    '*',
+  )
+}
+
+function postVimeoCommand(iframe: HTMLIFrameElement | null, method: string, value?: number) {
+  const payload: { method: string; value?: number } = { method }
+  if (value !== undefined) payload.value = value
+  iframe?.contentWindow?.postMessage(JSON.stringify(payload), '*')
 }
 
 function resolvePanes(
@@ -115,8 +133,20 @@ function FeedEmbed({
   lockPlayback: boolean
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const readyRef = useRef(false)
   const timerRef = useRef<number | null>(null)
+  // Keep initial mute in embed URL only — later toggles use player API (no restart).
+  const startMutedRef = useRef(muted)
+  const [embedSrc] = useState(() => {
+    if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
+      return youtubeEmbedSrc(layer.playback.video_id, startMutedRef.current, lockPlayback)
+    }
+    if (layer.playback.mode === 'vimeo' && layer.playback.video_id) {
+      return vimeoEmbedSrc(layer.playback.video_id, startMutedRef.current, lockPlayback)
+    }
+    return null
+  })
 
   const markReady = useCallback(() => {
     if (!onReady || readyRef.current) return
@@ -136,43 +166,70 @@ function FeedEmbed({
     }
   }, [layer.id])
 
+  // HTML5 / HLS: set muted without reloading the stream
   useEffect(() => {
     if (layer.playback.mode !== 'signed_redirect' || !layer.playback.src) return
     const video = videoRef.current
     if (!video) return
-    video.src = layer.playback.src
-    video.muted = muted
-    video.load()
-    const play = () => video.play().catch(() => {
-      if (!muted) {
+
+    if (video.dataset.src !== layer.playback.src) {
+      video.dataset.src = layer.playback.src
+      video.src = layer.playback.src
+      video.load()
+      video.play().catch(() => {
         video.muted = true
         video.play().catch(() => {})
-      }
-    })
-    play()
+      })
+    }
+
+    video.muted = muted
   }, [layer.id, layer.playback.mode, layer.playback.src, muted])
 
-  const media = (() => {
-    if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
-      return (
+  // YouTube / Vimeo: mute via postMessage — do not remount iframe
+  useEffect(() => {
+    const iframe = iframeRef.current
+    if (!iframe) return
+
+    if (layer.playback.mode === 'youtube') {
+      postYoutubeCommand(iframe, muted ? 'mute' : 'unMute')
+      return
+    }
+
+    if (layer.playback.mode === 'vimeo') {
+      postVimeoCommand(iframe, 'setVolume', muted ? 0 : 1)
+      if (muted) postVimeoCommand(iframe, 'setMuted', 1)
+      else postVimeoCommand(iframe, 'setMuted', 0)
+    }
+  }, [muted, layer.playback.mode, layer.id])
+
+  if (layer.playback.mode === 'youtube' && layer.playback.video_id && embedSrc) {
+    return (
+      <>
         <iframe
+          ref={iframeRef}
           title={layer.cameraName || 'Live stream'}
-          src={youtubeEmbedSrc(layer.playback.video_id, muted, lockPlayback)}
+          src={embedSrc}
           className={`live-player-iframe ${lockPlayback ? 'live-player-iframe--locked' : ''}`}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen={!lockPlayback}
           tabIndex={lockPlayback ? -1 : undefined}
-          onLoad={markReady}
+          onLoad={() => {
+            markReady()
+            postYoutubeCommand(iframeRef.current, muted ? 'mute' : 'unMute')
+          }}
         />
-      )
-    }
+        {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
+      </>
+    )
+  }
 
-    if (
-      layer.playback.mode === 'builtin_camera'
-      && layer.playback.stream_id
-      && layer.playback.participant_identity
-    ) {
-      return (
+  if (
+    layer.playback.mode === 'builtin_camera'
+    && layer.playback.stream_id
+    && layer.playback.participant_identity
+  ) {
+    return (
+      <>
         <LiveKitViewer
           streamId={layer.playback.stream_id}
           participantIdentity={layer.playback.participant_identity}
@@ -181,24 +238,34 @@ function FeedEmbed({
           onReady={markReady}
           className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
         />
-      )
-    }
+        {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
+      </>
+    )
+  }
 
-    if (layer.playback.mode === 'vimeo' && layer.playback.video_id) {
-      return (
+  if (layer.playback.mode === 'vimeo' && layer.playback.video_id && embedSrc) {
+    return (
+      <>
         <iframe
+          ref={iframeRef}
           title={layer.cameraName || 'Live stream'}
-          src={vimeoEmbedSrc(layer.playback.video_id, muted, lockPlayback)}
+          src={embedSrc}
           className={`live-player-iframe ${lockPlayback ? 'live-player-iframe--locked' : ''}`}
           allow="autoplay; fullscreen; picture-in-picture"
           allowFullScreen={!lockPlayback}
           tabIndex={lockPlayback ? -1 : undefined}
-          onLoad={markReady}
+          onLoad={() => {
+            markReady()
+            postVimeoCommand(iframeRef.current, 'setVolume', muted ? 0 : 1)
+          }}
         />
-      )
-    }
+        {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
+      </>
+    )
+  }
 
-    return (
+  return (
+    <>
       <video
         ref={videoRef}
         className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
@@ -209,12 +276,6 @@ function FeedEmbed({
         onLoadedData={markReady}
         onCanPlay={markReady}
       />
-    )
-  })()
-
-  return (
-    <>
-      {media}
       {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
     </>
   )
@@ -430,7 +491,7 @@ export function LiveStreamPlayer({
               return (
               <div key={pane.id} className="live-player-pane">
                 <FeedEmbed
-                  key={`${pane.id}-${paneMuted ? 'muted' : 'unmuted'}-${playbackLocked ? 'lock' : 'free'}`}
+                  key={pane.id}
                   layer={pane}
                   muted={paneMuted}
                   webrtcAuth={webrtcAuth}
@@ -466,7 +527,7 @@ export function LiveStreamPlayer({
             return (
               <div key={layer.id} className={`live-player-layer ${roleClass}`}>
                 <FeedEmbed
-                  key={`${layer.id}-${(muted || Boolean(layer.playback.audio_muted)) ? 'muted' : 'unmuted'}-${playbackLocked ? 'lock' : 'free'}`}
+                  key={layer.id}
                   layer={layer}
                   muted={muted || Boolean(layer.playback.audio_muted)}
                   webrtcAuth={webrtcAuth}
