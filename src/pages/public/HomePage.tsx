@@ -27,7 +27,7 @@ import { HomeSection } from '@/components/home/HomeSection'
 import { useT } from '@/i18n/LanguageContext'
 import { getSchoolField, getSchoolName, getYearsSince, getProgramCopy, getHeroContent, type SchoolProfile } from '@/config/siteContent'
 import { getProfileImage } from '@/config/pageImages'
-import { getProgramPrices } from '@/utils/programPricing'
+import { getProgramPrices, formatProgramPriceDisplay } from '@/utils/programPricing'
 import { homeContentFromProfile } from '@/utils/homeProfile'
 
 const programEmojis: Record<string, string> = {
@@ -298,25 +298,39 @@ export default function HomePage() {
         <HomeSection tone="white" decorations="pricing" wave>
           <KidschollSection label={h.pricingLabel} title={h.pricingTitle} subtitle={h.pricingSubtitle} />
           <div className="home-pricing">
-            {feePlans.map((plan, i) => (
-              <FadeIn key={plan.id} delay={i * 0.1}>
-                <div className={`kidscholl-pricing-card h-full flex flex-col ${i === 1 ? 'featured' : ''}`}>
-                  <h3 className="font-display font-bold text-xl text-ink mb-2">{plan.name}</h3>
-                  <div className="font-display text-4xl font-bold text-sky-500 mb-1">
-                    ₹{Number(plan.amount).toLocaleString('en-IN')}
+            {feePlans.map((plan, i) => {
+              const row = plan as Record<string, unknown>
+              const level = String(row.grade_level || row.slug || '')
+              const prices = getProgramPrices(row, level, locale)
+              const displayPrice = formatProgramPriceDisplay(
+                prices.monthly || prices.sixMonth || prices.yearly || '',
+              )
+              const billingLabel = prices.monthly
+                ? t.common.monthly
+                : prices.sixMonth
+                  ? priceLabels.sixMonth
+                  : prices.yearly
+                    ? priceLabels.yearly
+                    : t.common.oneTime
+
+              return (
+                <FadeIn key={String(row.id ?? i)} delay={i * 0.1}>
+                  <div className={`kidscholl-pricing-card h-full flex flex-col ${i === 1 ? 'featured' : ''}`}>
+                    <h3 className="font-display font-bold text-xl text-ink mb-2">{String(row.name || row.title || '')}</h3>
+                    <div className="font-display text-4xl font-bold text-sky-500 mb-1">
+                      {displayPrice}
+                    </div>
+                    <p className="text-xs text-slate-400 mb-6">{billingLabel}</p>
+                    <ul className="text-sm text-slate-600 space-y-2 mb-8 text-left flex-1">
+                      {t.feeIncludes.map((f) => (
+                        <li key={f} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" /> {f}</li>
+                      ))}
+                    </ul>
+                    <Link to="/admission" className="btn-kidscholl w-full justify-center">{t.common.apply}</Link>
                   </div>
-                  <p className="text-xs text-slate-400 mb-6">
-                    {plan.type === 'monthly' ? t.common.monthly : t.common.oneTime}
-                  </p>
-                  <ul className="text-sm text-slate-600 space-y-2 mb-8 text-left flex-1">
-                    {t.feeIncludes.map((f) => (
-                      <li key={f} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" /> {f}</li>
-                    ))}
-                  </ul>
-                  <Link to="/admission" className="btn-kidscholl w-full justify-center">{t.common.apply}</Link>
-                </div>
-              </FadeIn>
-            ))}
+                </FadeIn>
+              )
+            })}
           </div>
         </HomeSection>
       )}
