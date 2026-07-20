@@ -85,7 +85,10 @@ function vimeoEmbedSrc(videoId: string, startMuted: boolean, lockPlayback: boole
   return `https://player.vimeo.com/video/${videoId}?${params.toString()}`
 }
 
-function postYoutubeCommand(iframe: HTMLIFrameElement | null, func: 'mute' | 'unMute' | 'playVideo') {
+function postYoutubeCommand(
+  iframe: HTMLIFrameElement | null,
+  func: 'mute' | 'unMute' | 'playVideo' | 'pauseVideo',
+) {
   iframe?.contentWindow?.postMessage(
     JSON.stringify({ event: 'command', func, args: [] }),
     '*',
@@ -123,12 +126,14 @@ function FeedEmbed({
   layer,
   onReady,
   muted,
+  paused = false,
   webrtcAuth,
   lockPlayback,
 }: {
   layer: FeedLayer
   onReady?: () => void
   muted: boolean
+  paused?: boolean
   webrtcAuth: WebrtcAuthMode
   lockPlayback: boolean
 }) {
@@ -166,7 +171,7 @@ function FeedEmbed({
     }
   }, [layer.id])
 
-  // HTML5 / HLS: set muted without reloading the stream
+  // HTML5 / HLS: mute + pause without reloading the stream
   useEffect(() => {
     if (layer.playback.mode !== 'signed_redirect' || !layer.playback.src) return
     const video = videoRef.current
@@ -176,39 +181,54 @@ function FeedEmbed({
       video.dataset.src = layer.playback.src
       video.src = layer.playback.src
       video.load()
-      video.play().catch(() => {
-        video.muted = true
-        video.play().catch(() => {})
-      })
+      if (!paused) {
+        video.play().catch(() => {
+          video.muted = true
+          video.play().catch(() => {})
+        })
+      }
     }
 
-    video.muted = muted
-  }, [layer.id, layer.playback.mode, layer.playback.src, muted])
+    video.muted = muted || paused
+    if (paused) {
+      video.pause()
+    } else {
+      video.play().catch(() => {})
+    }
+  }, [layer.id, layer.playback.mode, layer.playback.src, muted, paused])
 
-  // YouTube / Vimeo: mute via postMessage — do not remount iframe
+  // YouTube / Vimeo: mute + pause via postMessage — do not remount iframe
   useEffect(() => {
     const iframe = iframeRef.current
     if (!iframe) return
 
     if (layer.playback.mode === 'youtube') {
+      if (paused) {
+        postYoutubeCommand(iframe, 'mute')
+        postYoutubeCommand(iframe, 'pauseVideo')
+        return
+      }
       if (muted) {
         postYoutubeCommand(iframe, 'mute')
       } else {
         postYoutubeCommand(iframe, 'unMute')
-        postYoutubeCommand(iframe, 'playVideo')
       }
+      postYoutubeCommand(iframe, 'playVideo')
       return
     }
 
     if (layer.playback.mode === 'vimeo') {
-      postVimeoCommand(iframe, 'setVolume', muted ? 0 : 1)
-      if (muted) postVimeoCommand(iframe, 'setMuted', 1)
-      else {
-        postVimeoCommand(iframe, 'setMuted', 0)
-        postVimeoCommand(iframe, 'play')
+      if (paused) {
+        postVimeoCommand(iframe, 'setVolume', 0)
+        postVimeoCommand(iframe, 'setMuted', 1)
+        postVimeoCommand(iframe, 'pause')
+        return
       }
+      postVimeoCommand(iframe, 'setVolume', muted ? 0 : 1)
+      postVimeoCommand(iframe, 'setMuted', muted ? 1 : 0)
+      postVimeoCommand(iframe, 'play')
     }
-  }, [muted, layer.playback.mode, layer.id])
+  }, [muted, paused, layer.playback.mode, layer.id])
 
   if (layer.playback.mode === 'youtube' && layer.playback.video_id && embedSrc) {
     return (
@@ -223,7 +243,12 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
-            postYoutubeCommand(iframeRef.current, muted ? 'mute' : 'unMute')
+            if (paused) {
+              postYoutubeCommand(iframeRef.current, 'mute')
+              postYoutubeCommand(iframeRef.current, 'pauseVideo')
+            } else {
+              postYoutubeCommand(iframeRef.current, muted ? 'mute' : 'unMute')
+            }
           }}
         />
         {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
@@ -241,7 +266,8 @@ function FeedEmbed({
         <LiveKitViewer
           streamId={layer.playback.stream_id}
           participantIdentity={layer.playback.participant_identity}
-          muted={muted}
+          muted={muted || paused}
+          paused={paused}
           webrtcAuth={webrtcAuth}
           onReady={markReady}
           className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
@@ -264,7 +290,12 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
-            postVimeoCommand(iframeRef.current, 'setVolume', muted ? 0 : 1)
+            if (paused) {
+              postVimeoCommand(iframeRef.current, 'setVolume', 0)
+              postVimeoCommand(iframeRef.current, 'pause')
+            } else {
+              postVimeoCommand(iframeRef.current, 'setVolume', muted ? 0 : 1)
+            }
           }}
         />
         {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
@@ -279,8 +310,8 @@ function FeedEmbed({
         className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
         controls={!lockPlayback}
         playsInline
-        autoPlay
-        muted={muted}
+        autoPlay={!paused}
+        muted={muted || paused}
         onLoadedData={markReady}
         onCanPlay={markReady}
       />
@@ -427,6 +458,7 @@ export function LiveStreamPlayer({
                 <FeedEmbed
                   layer={pane}
                   muted={paneMuted}
+                  paused={isPaused}
                   webrtcAuth={webrtcAuth}
                   lockPlayback={playbackLocked}
                 />

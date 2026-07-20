@@ -9,6 +9,8 @@ interface LiveKitViewerProps {
   streamId: number
   participantIdentity: string
   muted?: boolean
+  /** Freeze remote video/audio while broadcast is paused (no reconnect). */
+  paused?: boolean
   className?: string
   onReady?: () => void
   webrtcAuth?: WebrtcAuthMode
@@ -30,6 +32,7 @@ export function LiveKitViewer({
   streamId,
   participantIdentity,
   muted = false,
+  paused = false,
   className = '',
   onReady,
   webrtcAuth = 'authenticated',
@@ -194,17 +197,31 @@ export function LiveKitViewer({
   useEffect(() => {
     const audioEl = audioRef.current
     if (!audioEl) return
-    audioEl.muted = muted
-    if (!muted) void playRemoteAudio(audioEl)
+    audioEl.muted = muted || paused
+    if (!muted && !paused) void playRemoteAudio(audioEl)
     else setAudioBlocked(false)
-  }, [muted, playRemoteAudio])
+  }, [muted, paused, playRemoteAudio])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    container.querySelectorAll('video').forEach((el) => {
+      const video = el as HTMLVideoElement
+      if (paused) {
+        video.pause()
+      } else {
+        video.play().catch(() => {})
+      }
+    })
+  }, [paused, status])
 
   const unmutePlayback = useCallback(() => {
+    if (paused) return
     const audioEl = audioRef.current
     if (!audioEl) return
     audioEl.muted = false
     void playRemoteAudio(audioEl)
-  }, [playRemoteAudio])
+  }, [playRemoteAudio, paused])
 
   if (status === 'error') {
     return (
@@ -216,7 +233,7 @@ export function LiveKitViewer({
 
   return (
     <div className={`relative w-full h-full bg-black ${className}`}>
-      <div ref={containerRef} className="w-full h-full" />
+      <div ref={containerRef} className={`w-full h-full ${paused ? 'opacity-0' : ''}`} />
       {status === 'waiting' && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 text-white text-sm">
           Waiting for camera feed…
@@ -227,7 +244,7 @@ export function LiveKitViewer({
           Connecting…
         </div>
       )}
-      {audioBlocked && !muted && status === 'connected' && (
+      {audioBlocked && !muted && !paused && status === 'connected' && (
         <button
           type="button"
           className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-ink shadow-lg"

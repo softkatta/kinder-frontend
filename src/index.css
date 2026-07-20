@@ -4048,8 +4048,16 @@ h1, h2, h3, h4, h5, h6 {
 .live-player-stack.is-paused .live-player-layer {
   @apply pointer-events-none;
 }
+/* Hide moving frames while paused — overlay stays visible as sibling */
+.live-player.is-paused .live-player-stage {
+  opacity: 0;
+  pointer-events: none;
+}
+.live-player.is-paused .live-player-pane-caption {
+  opacity: 0;
+}
 .live-player-pause-overlay {
-  @apply absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 text-center px-6;
+  @apply absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/85 text-center px-6;
 }
 .live-player-unmute-hint {
   @apply absolute bottom-14 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/75 px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg backdrop-blur-sm hover:bg-black/90 transition;
