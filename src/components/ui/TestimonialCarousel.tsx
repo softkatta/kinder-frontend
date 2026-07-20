@@ -16,27 +16,10 @@ interface TestimonialCarouselProps {
   variant?: 'default' | 'home'
 }
 
-function TestimonialCard({
-  item,
-  peek = false,
-}: {
-  item: Testimonial
-  peek?: boolean
-}) {
-  if (peek) {
-    return (
-      <div className="home-testimonial-card home-testimonial-card--peek" aria-hidden>
-        <p className="home-testimonial-card-message home-testimonial-card-message--peek">
-          {item.message}
-        </p>
-        <Quote className="home-testimonial-card-quote-deco" />
-      </div>
-    )
-  }
-
+function HomeTestimonialCard({ item }: { item: Testimonial }) {
   return (
     <div className="home-testimonial-card home-testimonial-card--active">
-      <div className="flex gap-0.5 mb-3">
+      <div className="flex gap-0.5 mb-3 justify-center">
         {Array.from({ length: Number(item.rating) || 5 }).map((_, j) => (
           <Star key={j} className="h-4 w-4 fill-[#F97316] text-[#F97316]" />
         ))}
@@ -69,7 +52,6 @@ export function TestimonialCarousel({ items, variant = 'default' }: TestimonialC
   if (!items.length) return null
 
   const item = items[index]
-  const peekItem = items.length > 1 ? items[(index + 1) % items.length] : null
   const prev = () => setIndex((i) => (i - 1 + items.length) % items.length)
   const next = () => setIndex((i) => (i + 1) % items.length)
 
@@ -88,9 +70,8 @@ export function TestimonialCarousel({ items, variant = 'default' }: TestimonialC
             </button>
           )}
 
-          <div className="home-testimonial-dual">
-            <TestimonialCard item={item} />
-            {peekItem && <TestimonialCard item={peekItem} peek />}
+          <div className="home-testimonial-single" key={item.id ?? index}>
+            <HomeTestimonialCard item={item} />
           </div>
 
           {items.length > 1 && (
