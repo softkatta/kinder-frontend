@@ -472,7 +472,7 @@ export const liveStreamApi = {
   list: () => api.get('/live-streams'),
   cmsEvents: () => api.get('/live-streams/cms-events'),
   linkFromCms: (cmsItemId: number) => api.post(`/live-streams/from-cms/${cmsItemId}`),
-  get: (id: number) => api.get(`/live-streams/${id}`),
+  get: (id: number, config?: { signal?: AbortSignal }) => api.get(`/live-streams/${id}`, config),
   create: (data: Record<string, unknown>) => api.post('/live-streams', data),
   update: (id: number, data: Record<string, unknown>) => api.put(`/live-streams/${id}`, data),
   remove: (id: number) => api.delete(`/live-streams/${id}`),
@@ -491,7 +491,7 @@ export const liveStreamApi = {
   cancel: (id: number) => api.post(`/live-streams/${id}/cancel`),
   viewerActive: () => api.get('/live-streams/active/viewer'),
   viewerUpcoming: () => api.get('/live-streams/upcoming/viewer'),
-  watch: (id: number) => api.get(`/live-streams/${id}/watch`),
+  watch: (id: number, config?: { signal?: AbortSignal }) => api.get(`/live-streams/${id}/watch`, config),
   disconnectCamera: (streamId: number, cameraId: number) =>
     api.post(`/live-streams/${streamId}/cameras/${cameraId}/disconnect`),
   muteCamera: (streamId: number, cameraId: number, muted: boolean) =>

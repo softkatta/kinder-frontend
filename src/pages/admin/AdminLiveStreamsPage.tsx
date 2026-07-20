@@ -161,17 +161,19 @@ export default function AdminLiveStreamsPage() {
 
   useLiveStreamRealtime(trackedStreamId, {
     onUpdate: async (_payload, staff) => {
-      if (!trackedStreamId) return
+      if (!trackedStreamId || selectedIdRef.current !== trackedStreamId) return
       if (staff) {
         patchStream(staff)
         return
       }
       try {
         const res = await liveStreamApi.get(trackedStreamId)
+        if (selectedIdRef.current !== trackedStreamId) return
         patchStream(res.data.data as LiveStreamStaff)
       } catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status
         if (status === 404) {
+          selectedIdRef.current = null
           setSelectedId(null)
           await load({ silent: true })
           await loadCmsEvents()
@@ -179,9 +181,10 @@ export default function AdminLiveStreamsPage() {
       }
     },
     onNotFound: () => {
+      selectedIdRef.current = null
       setSelectedId(null)
-      load({ silent: true })
-      loadCmsEvents()
+      void load({ silent: true })
+      void loadCmsEvents()
     },
   })
 
@@ -403,21 +406,24 @@ export default function AdminLiveStreamsPage() {
 
     const removedId = selected.id
     setBusy(true)
+    // Stop realtime polling before delete so GET /live-streams/{id} does not 404
+    selectedIdRef.current = null
+    setSelectedId(null)
+    setPreviewPlayback(null)
+    setStreams((prev) => prev.filter((s) => s.id !== removedId))
     try {
       await liveStreamApi.remove(removedId)
       if (guideCtaStreamId === removedId) {
         setShowGuideCta(false)
         setGuideCtaStreamId(null)
       }
-      setPreviewPlayback(null)
-      selectedIdRef.current = null
-      setSelectedId(null)
       await load({ silent: true })
       await loadCmsEvents()
       toast.success('Permanently deleted')
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       toast.error(message || 'Delete failed')
+      await load({ silent: true })
     } finally {
       setBusy(false)
     }
@@ -439,18 +445,20 @@ export default function AdminLiveStreamsPage() {
 
     const ids = [...selectedStreamIds]
     setBusy(true)
+    // Stop realtime polling before deletes
+    if (selectedId && ids.includes(selectedId)) {
+      selectedIdRef.current = null
+      setSelectedId(null)
+    }
+    setSelectedStreamIds([])
+    setPreviewPlayback(null)
+    setStreams((prev) => prev.filter((s) => !ids.includes(s.id)))
     try {
       const results = await Promise.allSettled(ids.map((id) => liveStreamApi.remove(id)))
       const failed = results.filter((r) => r.status === 'rejected').length
       const ok = ids.length - failed
       if (ok > 0) toast.success(`Deleted ${ok} event(s)`)
       if (failed > 0) toast.error(`${failed} delete(s) failed`)
-      if (selectedId && ids.includes(selectedId)) {
-        setSelectedId(null)
-        selectedIdRef.current = null
-      }
-      setSelectedStreamIds([])
-      setPreviewPlayback(null)
       await load({ silent: true })
       await loadCmsEvents()
     } finally {

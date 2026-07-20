@@ -58,23 +58,32 @@ export function useLiveStreamRealtime(
   const [connected, setConnected] = useState(false)
   const onUpdateRef = useRef(onUpdate)
   const onNotFoundRef = useRef(onNotFound)
+  const streamIdRef = useRef<number | null>(streamId)
+  const abortRef = useRef<AbortController | null>(null)
   onUpdateRef.current = onUpdate
   onNotFoundRef.current = onNotFound
+  streamIdRef.current = streamId
 
   const refresh = useCallback(async () => {
     if (!streamId) return
+    const requestId = streamId
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     try {
       if (viewer) {
-        const res = await liveStreamApi.watch(streamId)
+        const res = await liveStreamApi.watch(requestId, { signal: controller.signal })
+        if (streamIdRef.current !== requestId || controller.signal.aborted) return
         const data = res.data.data as LiveStreamWatch
         setWatchState(data)
         setViewerState(data)
       } else {
-        const res = await liveStreamApi.get(streamId)
+        const res = await liveStreamApi.get(requestId, { signal: controller.signal })
+        if (streamIdRef.current !== requestId || controller.signal.aborted) return
         const staff = res.data.data as LiveStreamStaff
         onUpdateRef.current?.({
           action: 'poll',
-          stream_id: streamId,
+          stream_id: requestId,
           viewer: {
             id: staff.id,
             title: staff.title,
@@ -95,6 +104,7 @@ export function useLiveStreamRealtime(
         }, staff)
       }
     } catch (err: unknown) {
+      if (controller.signal.aborted || streamIdRef.current !== requestId) return
       const status = (err as { response?: { status?: number } })?.response?.status
       if (status === 404) {
         onNotFoundRef.current?.()
@@ -103,9 +113,14 @@ export function useLiveStreamRealtime(
   }, [streamId, viewer])
 
   useEffect(() => {
-    if (!streamId) return
+    if (!streamId) {
+      abortRef.current?.abort()
+      abortRef.current = null
+      setConnected(false)
+      return
+    }
 
-    refresh()
+    void refresh()
 
     let cancelled = false
     let streamChannel: {
@@ -116,10 +131,11 @@ export function useLiveStreamRealtime(
     } | null = null
 
     ensureEcho().then((echo) => {
-      if (cancelled || !echo) return
+      if (cancelled || !echo || streamIdRef.current !== streamId) return
       refreshEchoAuth()
 
       const onEvent = (payload: LiveStreamRealtimePayload) => {
+        if (streamIdRef.current !== streamId) return
         setConnected(true)
         onUpdateRef.current?.(payload, payload.staff)
         if (viewer) {
@@ -134,10 +150,14 @@ export function useLiveStreamRealtime(
       streamChannel.listen('.stream.updated', onEvent)
       streamChannel.subscribed(() => setConnected(true))
       streamChannel.error(() => setConnected(false))
+    }).catch(() => {
+      // Echo optional — polling still works
     })
 
     return () => {
       cancelled = true
+      abortRef.current?.abort()
+      abortRef.current = null
       const echo = getEcho()
       if (echo && streamChannel) {
         streamChannel.stopListening('.stream.updated')
