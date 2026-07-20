@@ -55,6 +55,8 @@ $forwardHeaderNames = [
     'X-Tenant-ID',
     'X-Requested-With',
     'X-XSRF-TOKEN',
+    'Origin',
+    'Referer',
 ];
 
 foreach ($forwardHeaderNames as $name) {

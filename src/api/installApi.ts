@@ -8,6 +8,8 @@ export type InstallStatus = {
   domain: string
   fingerprint: string
   has_license: boolean
+  has_install_token?: boolean
+  wizard_resume_step?: number | null
   needs_reactivation?: boolean
   last_error_code?: string | null
   database_unavailable?: boolean

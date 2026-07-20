@@ -112,12 +112,19 @@ export function InstallWizard() {
             PRODUCT_DISABLED: '/license/product-disabled',
             INVALID_INSTALL_TOKEN: '/license/invalid-install-token',
             DOMAIN_NOT_AUTHORIZED: '/license/domain-not-authorized',
+            TENANT_DOMAINS_REQUIRED: '/license/domain-not-authorized',
             GRACE_EXPIRED: '/license/grace-expired',
             COMPANY_API_UNAVAILABLE: '/license/company-api-unavailable',
+            COMPANY_API_NOT_CONFIGURED: '/license/company-api-unavailable',
+            INVALID_SIGNATURE: '/license/company-api-unavailable',
+            INVALID_API_KEY: '/license/company-api-unavailable',
             DATABASE_UNAVAILABLE: '/license/database-unavailable',
           };
           navigate(map[s.last_error_code ?? ''] ?? '/license/invalid-install-token', { replace: true });
           return;
+        }
+        if (typeof s.wizard_resume_step === 'number' && s.wizard_resume_step > 0) {
+          setStep(s.wizard_resume_step);
         }
         const api = s?.company_api;
         if (s?.database) {
@@ -367,7 +374,7 @@ export function InstallWizard() {
               </p>
               <div className="grid gap-3">
                 <label className="block text-sm sm:col-span-2">
-                  <span className="mb-1 block text-slate-600">Application URL (APP_URL)</span>
+                  <span className="mb-1 block text-slate-600">Public site URL (FRONTEND_URL)</span>
                   <input
                     type="url"
                     className="w-full rounded-lg border border-slate-200 px-3 py-2"
@@ -376,7 +383,7 @@ export function InstallWizard() {
                     placeholder="https://your-domain.com"
                   />
                   <span className="mt-1 block text-xs text-slate-500">
-                    Public site URL for license domain binding — use https://your-kindergarten-domain.com (not API).
+                    Kindergarten SPA URL for SoftKatta domain binding — e.g. https://kinder.softkatta.in (not the API host).
                   </span>
                 </label>
                 <label className="block text-sm">
