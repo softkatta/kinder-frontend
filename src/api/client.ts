@@ -7,39 +7,25 @@ import {
   shouldSuppressLicenseRedirect,
 } from '@/api/licenseRedirectGate'
 
-const API_HOST = 'kinder-api.softkatta.in'
+const PRODUCTION_API_BASE = 'https://kinder-api.softkatta.in/api/v1'
 const SPA_HOSTS = new Set(['kinder.softkatta.in', 'www.kinder.softkatta.in'])
 
-/**
- * Production SPA must call same-origin /api/v1 (api-proxy.php).
- * Cross-origin POSTs to kinder-api often get bare Hostinger 403s without CORS bodies.
- */
+/** SPA on kinder.softkatta.in → API on kinder-api.softkatta.in (separate Hostinger vhost). */
 function resolveApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase()
     if (SPA_HOSTS.has(host)) {
-      return `${window.location.origin}/api/v1`
+      return PRODUCTION_API_BASE
     }
   }
   const fromEnv = (import.meta.env.VITE_API_BASE_URL || '').trim()
-  if (fromEnv.includes(API_HOST)) {
-    return typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '/api/v1'
+  if (fromEnv.startsWith('http')) {
+    return fromEnv.replace(/\/$/, '')
   }
-  return fromEnv || '/api/v1'
-}
-
-function rewriteAwayFromApiHost(config: InternalAxiosRequestConfig): void {
-  if (typeof window === 'undefined') return
-  const host = window.location.hostname.toLowerCase()
-  if (!SPA_HOSTS.has(host)) return
-
-  const sameOrigin = `${window.location.origin}/api/v1`
-  config.baseURL = sameOrigin
-
-  const raw = config.url || ''
-  if (raw.includes(API_HOST)) {
-    config.url = raw.replace(/^https?:\/\/kinder-api\.softkatta\.in\/api\/v1/i, '')
+  if (fromEnv) {
+    return fromEnv
   }
+  return PRODUCTION_API_BASE
 }
 
 const api = axios.create({
@@ -52,7 +38,12 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  rewriteAwayFromApiHost(config)
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase()
+    if (SPA_HOSTS.has(host)) {
+      config.baseURL = PRODUCTION_API_BASE
+    }
+  }
 
   const token = localStorage.getItem('auth_token')
   if (token) {
@@ -168,13 +159,13 @@ export function apiErrorMessage(err: unknown, fallback = 'Request failed'): stri
     const plain = data.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     if (plain) {
       if (status === 403 || /forbidden/i.test(plain)) {
-        return 'Save blocked by host firewall (ModSecurity 403). In Hostinger hPanel → Security → ModSecurity, disable for kinder.softkatta.in and kinder-api.softkatta.in, then retry.'
+        return 'Save blocked (403). Check super_admin role, SoftKatta license, or Hostinger ModSecurity on kinder-api.softkatta.in.'
       }
       return plain.slice(0, 160)
     }
   }
   if (contentType.includes('text/html') && (status === 403 || status === 406)) {
-    return 'Save blocked by host firewall (ModSecurity). Disable ModSecurity for kinder domains in Hostinger, then retry.'
+    return 'Save blocked by host firewall (ModSecurity). Disable ModSecurity for kinder-api.softkatta.in in Hostinger, then retry.'
   }
   if (typeof ax.message === 'string' && ax.message.trim()) return ax.message
   return fallback
