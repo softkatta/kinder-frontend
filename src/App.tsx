@@ -39,7 +39,6 @@ const ContactPage = lazy(() => import('@/pages/public/ContactPage'))
 const LegalPage = lazy(() => import('@/pages/public/LegalPage'))
 const AdmissionPage = lazy(() => import('@/pages/public/AdmissionPage'))
 const PaymentInfoPage = lazy(() => import('@/pages/public/PaymentInfoPage'))
-const PublicLivePage = lazy(() => import('@/pages/public/PublicLivePage'))
 const CareersPage = lazy(() => import('@/pages/public/CareersPage'))
 const JobDetailPage = lazy(() => import('@/pages/public/JobDetailPage'))
 const VerifyCertificatePage = lazy(() => import('@/pages/public/VerifyCertificatePage'))
@@ -89,7 +88,6 @@ const ParentChildrenPage = lazy(() => import('@/pages/parent/ParentChildrenPage'
 const ParentFeesPage = lazy(() => import('@/pages/parent/ParentFeesPage'))
 const ParentAttendancePage = lazy(() => import('@/pages/parent/ParentAttendancePage'))
 const ParentNoticesPage = lazy(() => import('@/pages/parent/ParentNoticesPage'))
-const ParentLivePage = lazy(() => import('@/pages/parent/ParentLivePage'))
 
 const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard'))
 const StudentHomeworkPage = lazy(() => import('@/pages/student/StudentHomeworkPage'))
@@ -145,7 +143,8 @@ export default function App() {
                 <Route path="gallery" element={<Shell><GalleryPage /></Shell>} />
                 <Route path="events" element={<Shell><EventsPage /></Shell>} />
                 <Route path="events/:id" element={<Shell><EventDetailPage /></Shell>} />
-                <Route path="live" element={<Shell><PublicLivePage /></Shell>} />
+                {/* Mounted by PublicLayout LiveRouteKeepAlive so the player survives navigation */}
+                <Route path="live" element={null} />
                 <Route path="s/:scanCode" element={<Shell><ScanGatePage /></Shell>} />
                 <Route path="verify/:certNumber" element={<Shell><VerifyCertificatePage /></Shell>} />
                 <Route path="blog" element={<Shell><BlogPage /></Shell>} />
@@ -222,7 +221,8 @@ export default function App() {
                   <Route path="fees" element={<Shell><ParentFeesPage /></Shell>} />
                   <Route path="attendance" element={<Shell><ParentAttendancePage /></Shell>} />
                   <Route path="notices" element={<Shell><ParentNoticesPage /></Shell>} />
-                  <Route path="live" element={<Shell><ParentLivePage /></Shell>} />
+                  {/* Mounted by ParentLayout LiveRouteKeepAlive so the player survives navigation */}
+                  <Route path="live" element={null} />
                   <Route path="notifications" element={<Shell><NotificationsPage /></Shell>} />
                 </Route>
               </Route>

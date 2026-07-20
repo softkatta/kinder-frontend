@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
 import { Radio, LogIn } from 'lucide-react'
 import { PublicPageHero } from '@/components/design/PublicPageHero'
-import { LivePlayerDock, usePublicLiveKeepAlive } from '@/components/live/LivePlayerKeepAlive'
+import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
+import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
+import { usePublicLiveStream } from '@/hooks/usePublicLiveStream'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { useT } from '@/i18n/LanguageContext'
 import { FadeIn } from '@/components/ui/Motion'
@@ -11,7 +13,8 @@ import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
 export default function PublicLivePage() {
   const { t } = useT()
   const { profile } = useSchoolBranding()
-  const { active, watch, upcoming = [], isLive, isUpcoming, reload } = usePublicLiveKeepAlive()
+  const routeVisible = useLiveRouteVisible()
+  const { active, watch, upcoming, cameraId, isLive, isUpcoming, reload } = usePublicLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
   const showWaiting = Boolean(active && !active.is_watchable)
@@ -64,13 +67,26 @@ export default function PublicLivePage() {
                 <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">{t.pages.live.waitingDesc}</p>
               </div>
             </div>
-          ) : canPlay ? (
+          ) : canPlay && active ? (
             <>
               <div className="live-viewer-screen">
-                <LivePlayerDock />
+                <LiveStreamPlayer
+                  immersive
+                  lockPlayback
+                  cameraId={cameraId}
+                  playback={watch?.playback}
+                  playbacks={watch?.playbacks}
+                  layoutMode={watch?.layout_mode ?? active.layout_mode}
+                  title={active.title}
+                  cameraName={watch?.active_camera?.name}
+                  cameraLocation={watch?.active_camera?.location ?? undefined}
+                  status={active.status}
+                  muted={!routeVisible || active.audio_enabled === false}
+                  webrtcAuth="public"
+                />
               </div>
               <div className="live-viewer-meta">
-                <h2 className="font-display text-xl font-bold text-ink text-center">{active!.title}</h2>
+                <h2 className="font-display text-xl font-bold text-ink text-center">{active.title}</h2>
                 {(watch?.active_cameras?.length ?? 0) > 1 ? (
                   <p className="text-center text-sm text-slate-600 mt-2">
                     {t.pages.live.nowShowing}:{' '}

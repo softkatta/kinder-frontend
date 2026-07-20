@@ -1,12 +1,15 @@
 import { Radio, Wifi, WifiOff, Calendar } from 'lucide-react'
-import { LivePlayerDock, useParentLiveKeepAlive } from '@/components/live/LivePlayerKeepAlive'
+import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
+import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
+import { useActiveLiveStream } from '@/hooks/useLiveStreamRealtime'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
 
 export default function ParentLivePage() {
   const { profile } = useSchoolBranding()
-  const { active, watch, connected, reload } = useParentLiveKeepAlive()
+  const routeVisible = useLiveRouteVisible()
+  const { active, watch, cameraId, connected, reload } = useActiveLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
   const isLive = active?.status === 'live' || active?.status === 'paused'
@@ -85,7 +88,19 @@ export default function ParentLivePage() {
 
           {canPlay ? (
             <div className="live-viewer-screen">
-              <LivePlayerDock />
+              <LiveStreamPlayer
+                immersive
+                lockPlayback
+                cameraId={cameraId}
+                playback={watch?.playback}
+                playbacks={watch?.playbacks}
+                layoutMode={watch?.layout_mode ?? active.layout_mode}
+                title={active.title}
+                cameraName={watch?.active_camera?.name}
+                cameraLocation={watch?.active_camera?.location ?? undefined}
+                status={active.status}
+                muted={!routeVisible || active.audio_enabled === false}
+              />
             </div>
           ) : active?.status === 'stopped' ? (
             <div className="live-viewer-empty rounded-3xl border border-slate-100 bg-slate-50/80 p-12 text-center">

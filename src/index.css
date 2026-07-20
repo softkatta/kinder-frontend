@@ -4146,21 +4146,35 @@ h1, h2, h3, h4, h5, h6 {
 .live-viewer-meta {
   @apply mt-3 px-4;
 }
+/* Keep live page mounted in a tiny on-screen corner so embeds do not reload */
+.live-route-keep {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 2px;
+  height: 2px;
+  opacity: 0.02;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+.live-route-keep--active {
+  position: static;
+  width: auto;
+  height: auto;
+  opacity: 1;
+  overflow: visible;
+  pointer-events: auto;
+  z-index: auto;
+}
+.live-route-outlet-suppressed {
+  display: none !important;
+}
 .live-viewer-screen {
   width: 100%;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-}
-/* Stable DOM shell — player never remounts when leaving / returning to live */
-.live-keepalive-shell {
-  overflow: hidden;
-}
-.live-keepalive-shell .live-player {
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  max-height: none;
 }
 .live-viewer-screen .live-player,
 .live-viewer-screen .live-upcoming-panel,

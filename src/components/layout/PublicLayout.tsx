@@ -1,6 +1,6 @@
+import { lazy, Suspense, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import { Phone, Mail, MapPin, Clock } from 'lucide-react'
-import { useState } from 'react'
 import { useAppSelector } from '@/store/hooks'
 import { selectIsAuthenticated, selectRoles } from '@/store/slices/authSlice'
 import { getPortalHome } from '@/utils/auth'
@@ -11,10 +11,12 @@ import { KindergartenNavbar } from '@/components/layout/KindergartenNavbar'
 import { LanguageDropdown } from '@/components/layout/LanguageDropdown'
 import { PublicFooter } from '@/components/layout/PublicFooter'
 import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
-import { PublicLiveKeepAliveProvider } from '@/components/live/LivePlayerKeepAlive'
+import { LiveRouteKeepAlive } from '@/components/live/LiveRouteKeepAlive'
 import { SchoolProfileProvider } from '@/contexts/SchoolProfileContext'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { mediaUrl } from '@/utils/mediaUrl'
+
+const PublicLivePage = lazy(() => import('@/pages/public/PublicLivePage'))
 
 function PublicLayoutInner() {
   const { t, locale } = useT()
@@ -123,7 +125,16 @@ function PublicLayoutInner() {
 
       <main className="flex-1 pb-20 xl:pb-0 overflow-x-hidden">
         <SchoolProfileProvider profile={profile as Record<string, string> | null}>
-          <Outlet />
+          <LiveRouteKeepAlive
+            path="/live"
+            page={(
+              <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center text-slate-400">Loading...</div>}>
+                <PublicLivePage />
+              </Suspense>
+            )}
+          >
+            <Outlet />
+          </LiveRouteKeepAlive>
         </SchoolProfileProvider>
       </main>
 
@@ -169,9 +180,5 @@ function PublicLayoutInner() {
 }
 
 export default function PublicLayout() {
-  return (
-    <PublicLiveKeepAliveProvider>
-      <PublicLayoutInner />
-    </PublicLiveKeepAliveProvider>
-  )
+  return <PublicLayoutInner />
 }

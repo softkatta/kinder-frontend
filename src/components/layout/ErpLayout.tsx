@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { LiveRouteKeepAlive } from '@/components/live/LiveRouteKeepAlive'
 import {
   GraduationCap, LogOut, Menu, X, Bell, Search, ExternalLink, Sparkles,
   ChevronRight, PanelLeftClose, PanelLeft, HelpCircle,
@@ -26,9 +27,14 @@ interface YearCardData {
 export default function ErpLayout({
   config,
   yearCard,
+  keepAlivePath,
+  keepAlivePage,
 }: {
   config: ErpPortalConfig
   yearCard?: YearCardData | null
+  /** Keep this portal page mounted when navigating away (e.g. live player). */
+  keepAlivePath?: string
+  keepAlivePage?: ReactNode
 }) {
   const { portalLabel, homePath, nav, pageMeta, showYearCard = true, compactTopbar = false } = config
   const dispatch = useAppDispatch()
@@ -359,7 +365,13 @@ export default function ErpLayout({
 
         <main className="admin-main flex-1">
           <div className="admin-page">
-            <Outlet />
+            {keepAlivePath && keepAlivePage ? (
+              <LiveRouteKeepAlive path={keepAlivePath} page={keepAlivePage}>
+                <Outlet />
+              </LiveRouteKeepAlive>
+            ) : (
+              <Outlet />
+            )}
           </div>
         </main>
       </div>

@@ -191,14 +191,22 @@ function FeedEmbed({
     if (!iframe) return
 
     if (layer.playback.mode === 'youtube') {
-      postYoutubeCommand(iframe, muted ? 'mute' : 'unMute')
+      if (muted) {
+        postYoutubeCommand(iframe, 'mute')
+      } else {
+        postYoutubeCommand(iframe, 'unMute')
+        postYoutubeCommand(iframe, 'playVideo')
+      }
       return
     }
 
     if (layer.playback.mode === 'vimeo') {
       postVimeoCommand(iframe, 'setVolume', muted ? 0 : 1)
       if (muted) postVimeoCommand(iframe, 'setMuted', 1)
-      else postVimeoCommand(iframe, 'setMuted', 0)
+      else {
+        postVimeoCommand(iframe, 'setMuted', 0)
+        postVimeoCommand(iframe, 'play')
+      }
     }
   }, [muted, layer.playback.mode, layer.id])
 

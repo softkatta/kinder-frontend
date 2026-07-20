@@ -214,10 +214,7 @@ export function useActiveLiveStream() {
         setCameraId(camId)
       }
     } catch {
-      setActive(null)
-      setWatch(null)
-      cameraRef.current = null
-      setCameraId(null)
+      // Keep last good snapshot on transient API failures so the player does not remount.
     }
   }, [])
 
