@@ -36,8 +36,8 @@ interface CmsEventOption {
 const emptyCamera = {
   name: '',
   location: '',
-  stream_type: 'youtube',
-  stream_url: '',
+  stream_type: 'builtin_camera',
+  stream_url: 'builtin://camera',
   is_enabled: true,
 }
 
@@ -936,35 +936,85 @@ export default function AdminLiveStreamsPage() {
         <FormStack>
           <Input label="Camera Name" requiredMark value={cameraForm.name} onChange={(e) => setCameraForm({ ...cameraForm, name: e.target.value })} placeholder="Camera 1 — Main Stage" />
           <Input label="Camera Location" value={cameraForm.location} onChange={(e) => setCameraForm({ ...cameraForm, location: e.target.value })} placeholder="Auditorium Stage" />
-          <Select
-            label="Stream Type"
-            value={cameraForm.stream_type}
-            onChange={(e) => {
-              const stream_type = e.target.value
-              setCameraForm({
-                ...cameraForm,
-                stream_type,
-                stream_url: stream_type === 'builtin_camera' ? 'builtin://camera' : cameraForm.stream_url,
-              })
-            }}
-          >
-            <option value="builtin_camera">Built-In Camera (Browser)</option>
-            <option value="hls">HLS (.m3u8)</option>
-            <option value="youtube">YouTube Live</option>
-            <option value="vimeo">Vimeo</option>
-            <option value="facebook">Facebook Live</option>
-            <option value="rtmp">RTMP</option>
-            <option value="embed">Other URL</option>
-          </Select>
+
+          <div className="space-y-2">
+            <p className="form-label">How will this camera stream?</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setCameraForm({
+                  ...cameraForm,
+                  stream_type: 'builtin_camera',
+                  stream_url: 'builtin://camera',
+                })}
+                className={`rounded-xl border px-3 py-3 text-left transition ${
+                  cameraForm.stream_type === 'builtin_camera'
+                    ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-200'
+                    : 'border-slate-200 hover:border-violet-300'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <Video className="h-4 w-4 text-violet-600" /> Use device camera
+                </span>
+                <span className="mt-1 block text-xs text-slate-500">
+                  Laptop webcam, USB cam, or teacher phone (LiveKit)
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCameraForm({
+                  ...cameraForm,
+                  stream_type: cameraForm.stream_type === 'builtin_camera' ? 'youtube' : cameraForm.stream_type,
+                  stream_url: cameraForm.stream_type === 'builtin_camera' ? '' : cameraForm.stream_url,
+                })}
+                className={`rounded-xl border px-3 py-3 text-left transition ${
+                  cameraForm.stream_type !== 'builtin_camera'
+                    ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-200'
+                    : 'border-slate-200 hover:border-violet-300'
+                }`}
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <Radio className="h-4 w-4 text-violet-600" /> External stream URL
+                </span>
+                <span className="mt-1 block text-xs text-slate-500">
+                  YouTube Live, HLS, Vimeo, Facebook, RTMP
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {cameraForm.stream_type !== 'builtin_camera' && (
+            <Select
+              label="Stream Type"
+              value={cameraForm.stream_type}
+              onChange={(e) => {
+                const stream_type = e.target.value
+                setCameraForm({
+                  ...cameraForm,
+                  stream_type,
+                  stream_url: stream_type === 'builtin_camera' ? 'builtin://camera' : cameraForm.stream_url,
+                })
+              }}
+            >
+              <option value="youtube">YouTube Live</option>
+              <option value="hls">HLS (.m3u8)</option>
+              <option value="vimeo">Vimeo</option>
+              <option value="facebook">Facebook Live</option>
+              <option value="rtmp">RTMP</option>
+              <option value="embed">Other URL</option>
+            </Select>
+          )}
           {cameraForm.stream_type !== 'builtin_camera' ? (
             <Input label="Stream URL" requiredMark value={cameraForm.stream_url} onChange={(e) => setCameraForm({ ...cameraForm, stream_url: e.target.value })} placeholder="https://..." />
           ) : (
-            <p className="text-xs text-slate-500 rounded-xl border border-violet-100 bg-violet-50/50 px-3 py-2">
-              No URL needed. After going live, use the camera studio on each device to broadcast from mobile camera, laptop webcam, or USB camera.
+            <p className="text-xs text-slate-600 rounded-xl border border-violet-100 bg-violet-50/50 px-3 py-2">
+              URL लागणार नाही. Save केल्यानंतर याच पेजवर <strong>camera studio</strong> उघडेल — browser/webcam किंवा teacher <strong>Join Live</strong> मधून phone camera connect करा. LiveKit Settings मध्ये enable असावे.
             </p>
           )}
           <Checkbox label="Enabled" checked={cameraForm.is_enabled} onChange={(e) => setCameraForm({ ...cameraForm, is_enabled: e.target.checked })} />
-          <p className="text-xs text-slate-500">External stream URLs are only visible to staff. Parents receive a secure playback feed.</p>
+          {cameraForm.stream_type !== 'builtin_camera' && (
+            <p className="text-xs text-slate-500">External stream URLs are only visible to staff. Parents receive a secure playback feed.</p>
+          )}
         </FormStack>
       </AdminModal>
 
