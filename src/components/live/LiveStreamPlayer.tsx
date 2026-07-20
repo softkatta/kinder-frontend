@@ -219,7 +219,8 @@ export function LiveStreamPlayer({
 
   const panes = resolvePanes(playback, playbacks, layoutMode, cameraId, cameraName, cameraLocation)
   const isGrid = panes.length > 1
-  const gridMode = Math.min(4, Math.max(panes.length, layoutMode ?? panes.length)) as 1 | 2 | 3 | 4
+  // Layout from actual active feeds only — do not reserve empty slots for unused layout_mode.
+  const gridMode = Math.min(4, Math.max(1, panes.length)) as 1 | 2 | 3 | 4
   const rotateEnabled = showRotate ?? immersive
   const primaryPane = panes[0]
   const primaryKey = primaryPane?.id ?? null
