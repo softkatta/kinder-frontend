@@ -105,7 +105,6 @@ export default function ErpLayout({
     }
     clearEntitlementsCache()
     dispatch(logout())
-    localStorage.removeItem('tenant_id')
     navigate('/login')
   }
 

@@ -52,7 +52,6 @@ $headers = [];
 $forwardHeaderNames = [
     'Accept',
     'Authorization',
-    'X-Tenant-ID',
     'X-Requested-With',
     'X-XSRF-TOKEN',
     'Origin',

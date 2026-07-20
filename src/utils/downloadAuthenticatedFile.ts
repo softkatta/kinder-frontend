@@ -1,10 +1,8 @@
 export async function downloadAuthenticatedFile(url: string, filename: string) {
   const token = localStorage.getItem('auth_token')
-  const tenantId = localStorage.getItem('tenant_id') || '1'
   const res = await fetch(url, {
     headers: {
       Authorization: token ? `Bearer ${token}` : '',
-      'X-Tenant-ID': tenantId,
       Accept: 'application/pdf',
     },
     credentials: 'include',

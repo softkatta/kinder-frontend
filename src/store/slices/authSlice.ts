@@ -43,9 +43,6 @@ const authSlice = createSlice({
       state.isAuthenticated = true
       localStorage.setItem('auth_token', action.payload.token)
       localStorage.setItem('auth_roles', JSON.stringify(action.payload.roles))
-      if (action.payload.user.tenant_id) {
-        localStorage.setItem('tenant_id', String(action.payload.user.tenant_id))
-      }
     },
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload
@@ -62,7 +59,6 @@ const authSlice = createSlice({
       state.bootstrapped = true
       localStorage.removeItem('auth_token')
       localStorage.removeItem('auth_roles')
-      localStorage.removeItem('tenant_id')
     },
     setBootstrapped: (state, action: PayloadAction<boolean>) => {
       state.bootstrapped = action.payload

@@ -61,8 +61,6 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
-  const tenantId = localStorage.getItem('tenant_id') || '1'
-  config.headers['X-Tenant-ID'] = tenantId
   if (config.data instanceof FormData) {
     config.headers.delete('Content-Type')
   }
