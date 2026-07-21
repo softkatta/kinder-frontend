@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Radio, Plus, Play, Pause, Square, ChevronUp, ChevronDown, Eye, Pencil, Trash2,
-  Video, BookOpen, Volume2, VolumeX, Calendar,
+  Video, BookOpen, Volume2, VolumeX, Calendar, Copy, Share2, ExternalLink,
+  LayoutGrid, Monitor, Smartphone, Users, Signal, Link2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -772,7 +773,24 @@ export default function AdminLiveStreamsPage() {
           </aside>
 
           {selected ? (
-            <div className="space-y-5">
+            (() => {
+              const mobileCount = selected.cameras.filter((c) => c.is_mobile_publisher || c.publisher_user_id).length
+              const parentLiveUrl = `${window.location.origin}/live`
+              const copyParentLink = () => {
+                void navigator.clipboard.writeText(parentLiveUrl).then(
+                  () => toast.success('Parent live link copied'),
+                  () => toast.error('Could not copy link'),
+                )
+              }
+              const shareParentLink = () => {
+                if (typeof navigator.share === 'function') {
+                  void navigator.share({ title: selected.title, url: parentLiveUrl }).catch(() => {})
+                } else {
+                  copyParentLink()
+                }
+              }
+              return (
+            <div className="als-studio">
               {showGuideCta && guideCtaStreamId === selected.id && (
                 <div className="admin-live-studio__guide">
                   <div>
@@ -788,36 +806,467 @@ export default function AdminLiveStreamsPage() {
                 </div>
               )}
 
-              <section className={`admin-live-studio__hero ${isBroadcasting ? 'is-live' : ''}`}>
-                <div className="admin-live-studio__hero-top">
-                  <div className="min-w-0 flex-1">
-                    <p className="admin-live-studio__kicker">
-                      <Radio className="h-3.5 w-3.5" /> Broadcast desk
-                    </p>
-                    <h2 className="admin-live-studio__title">{selected.title}</h2>
-                    <p className="admin-live-studio__desc">
-                      {selected.description || 'Manage cameras and go live for the public /live page.'}
-                    </p>
-                    {isBroadcasting && (
-                      <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-rose-600">
-                        <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
-                        On air · parents see this on /live
+              <div className={`als-studio__workspace ${isBroadcasting ? 'is-live' : ''}`}>
+                <div className="als-studio__main">
+                  {/* a. Studio top bar */}
+                  <header className="als-topbar">
+                    <div className="als-topbar__info min-w-0 flex-1">
+                      <p className="als-topbar__kicker">
+                        <Radio className="h-3.5 w-3.5" /> Broadcast Studio
                       </p>
-                    )}
+                      <div className="als-topbar__title-row">
+                        <h2 className="als-topbar__title">{selected.title}</h2>
+                        <AdminBadge tone={statusTone(selected.status)}>
+                          {selected.display_status === 'upcoming' ? 'Upcoming' : selected.status_label}
+                        </AdminBadge>
+                        {isBroadcasting && (
+                          <span className="als-onair-dot">On air</span>
+                        )}
+                      </div>
+                      <div className="als-topbar__chips">
+                        {selected.scheduled_start_at && (
+                          <span className="admin-live-studio__chip">
+                            <Calendar className="h-3.5 w-3.5" />
+                            Starts: {formatScheduleDisplay(selected.scheduled_start_at)}
+                          </span>
+                        )}
+                        {selected.scheduled_end_at && (
+                          <span className="admin-live-studio__chip">
+                            Ends: {formatScheduleDisplay(selected.scheduled_end_at)}
+                          </span>
+                        )}
+                        {(selected.status === 'draft' || selected.status === 'stopped' || selected.status === 'cancelled') && selected.scheduled_start_at && (
+                          <span className="admin-live-studio__chip admin-live-studio__chip--warn">
+                            Start time saved — click Schedule Event to publish countdown
+                          </span>
+                        )}
+                        {selected.active_camera && (
+                          <span className="admin-live-studio__chip">
+                            Primary: <strong>{selected.active_camera.name}</strong>
+                            {(selected.active_cameras?.length ?? 0) > 1 && (
+                              <> · Grid: <strong>{selected.active_cameras!.length}</strong> cams</>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="als-topbar__link">
+                      <div className="als-parent-link">
+                        <Link2 className="h-4 w-4 shrink-0 text-sky-600" />
+                        <a
+                          href="/live"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="als-parent-link__url"
+                        >
+                          /live <ExternalLink className="h-3 w-3 inline" />
+                        </a>
+                        <button type="button" className="als-icon-btn" onClick={copyParentLink} title="Copy parent live link">
+                          <Copy className="h-3.5 w-3.5" />
+                        </button>
+                        <button type="button" className="als-icon-btn" onClick={shareParentLink} title="Share parent live link">
+                          <Share2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </header>
+
+                  {!canStartLive && !isBroadcasting && (
+                    <p className="admin-live-studio__warn">
+                      No cameras on this event yet. A teacher can connect from <strong>Join Live</strong> on their phone,
+                      or you can add an external camera below.
+                    </p>
+                  )}
+
+                  {/* b. Preview + Controls row */}
+                  <div className="als-stage-row">
+                    <div className="als-card als-preview-card">
+                      <div className="als-card__head">
+                        <Monitor className="h-4 w-4 text-sky-600" />
+                        <span>Live Preview</span>
+                      </div>
+                      <div className="als-preview-body">
+                        {previewPlayback ? (
+                          <LiveStreamPlayer
+                            playback={previewPlayback}
+                            status={selected.status}
+                            className="als-preview-player"
+                            muted={false}
+                          />
+                        ) : (
+                          <div className="als-preview-placeholder">
+                            <Video className="h-10 w-10 opacity-40" />
+                            <p>Select a camera to preview</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="als-card als-controls-card">
+                      <div className="als-card__head">
+                        <Signal className="h-4 w-4 text-sky-600" />
+                        <span>Broadcast Controls</span>
+                      </div>
+                      <div className="als-controls-stack">
+                        <AdminBtn
+                          variant="secondary"
+                          to={`${guideBase}?event=${encodeURIComponent(selected.title)}`}
+                        >
+                          <BookOpen className="h-4 w-4" /> Setup Guide
+                        </AdminBtn>
+                        <AdminBtn variant="secondary" onClick={openEdit}>
+                          <Pencil className="h-4 w-4" /> Edit
+                        </AdminBtn>
+                        {selected.status === 'live' && (
+                          <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.pause(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Paused')}>
+                            <Pause className="h-4 w-4" /> Pause
+                          </AdminBtn>
+                        )}
+                        {selected.status === 'paused' && (
+                          <AdminBtn variant="primary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.resume(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Resumed')}>
+                            <Play className="h-4 w-4" /> Resume
+                          </AdminBtn>
+                        )}
+                        {!['live', 'paused'].includes(selected.status) && selected.status !== 'scheduled' && (
+                          <AdminBtn
+                            variant="primary"
+                            disabled={busy}
+                            onClick={() => void scheduleEvent()}
+                            title={selected.scheduled_start_at ? 'Publish as Scheduled (public countdown)' : 'Opens editor to set start time'}
+                          >
+                            <Calendar className="h-4 w-4" /> Schedule
+                          </AdminBtn>
+                        )}
+                        {['live', 'paused'].includes(selected.status) ? (
+                          <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.stop(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Ended')}>
+                            <Square className="h-4 w-4" /> End Live
+                          </AdminBtn>
+                        ) : selected.status === 'scheduled' ? (
+                          <>
+                            <AdminBtn
+                              variant="primary"
+                              disabled={busy || !canStartLive}
+                              title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
+                              onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
+                            >
+                              <Radio className="h-4 w-4" /> Start Now
+                            </AdminBtn>
+                            <AdminBtn variant="secondary" disabled={busy} onClick={cancelEvent}>Cancel Event</AdminBtn>
+                          </>
+                        ) : (
+                          <AdminBtn
+                            variant="secondary"
+                            disabled={busy || !canStartLive}
+                            title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
+                            onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
+                          >
+                            <Radio className="h-4 w-4" /> Start Live
+                          </AdminBtn>
+                        )}
+                        <AdminBtn
+                          variant="secondary"
+                          className="!text-rose-600 hover:!bg-rose-50"
+                          disabled={busy}
+                          onClick={deleteStream}
+                        >
+                          <Trash2 className="h-4 w-4" /> Delete
+                        </AdminBtn>
+                      </div>
+                    </div>
                   </div>
-                  <div className="admin-live-studio__toolbar">
-                    <div className="admin-live-studio__toolbar-group">
+
+                  {/* c. Stats row */}
+                  <div className="als-stats">
+                    <div className="als-stat">
+                      <div className="als-stat__icon"><Video className="h-4 w-4" /></div>
+                      <div>
+                        <p className="als-stat__label">Connected Cameras</p>
+                        <p className="als-stat__value">{enabledCameraCount}</p>
+                      </div>
+                    </div>
+                    <div className="als-stat">
+                      <div className="als-stat__icon"><Smartphone className="h-4 w-4" /></div>
+                      <div>
+                        <p className="als-stat__label">Mobile devices</p>
+                        <p className="als-stat__value">{mobileCount}</p>
+                      </div>
+                    </div>
+                    <div className="als-stat">
+                      <div className="als-stat__icon"><LayoutGrid className="h-4 w-4" /></div>
+                      <div>
+                        <p className="als-stat__label">Layout mode</p>
+                        <p className="als-stat__value">{layoutMode}-up</p>
+                      </div>
+                    </div>
+                    <div className="als-stat">
+                      <div className="als-stat__icon"><Signal className="h-4 w-4" /></div>
+                      <div>
+                        <p className="als-stat__label">Live status</p>
+                        <p className="als-stat__value">{selected.status_label}</p>
+                      </div>
+                    </div>
+                    <div className="als-stat">
+                      <div className="als-stat__icon"><Monitor className="h-4 w-4" /></div>
+                      <div>
+                        <p className="als-stat__label">Recording</p>
+                        <p className="als-stat__value">—</p>
+                      </div>
+                    </div>
+                    <div className="als-stat">
+                      <div className="als-stat__icon"><Users className="h-4 w-4" /></div>
+                      <div>
+                        <p className="als-stat__label">Viewers</p>
+                        <p className="als-stat__value">—</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* d. Layout selector */}
+                  {enabledCameraCount > 0 && (
+                    <section className="als-card als-layout-section">
+                      <div className="als-card__head als-card__head--row">
+                        <div className="flex items-center gap-2">
+                          <LayoutGrid className="h-4 w-4 text-sky-600" />
+                          <span>Layout</span>
+                        </div>
+                        <p className="text-xs text-slate-500">How many camera panes parents see (max {maxScreens})</p>
+                      </div>
+                      <div className="als-layout-picker">
+                        {[1, 2, 3, 4].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            disabled={busy || n > maxScreens}
+                            onClick={() => setLayoutMode(n)}
+                            className={`als-layout-card ${layoutMode === n ? 'is-active' : ''}`}
+                          >
+                            <span className={`als-layout-preview als-layout-preview--${n}`}>
+                              {Array.from({ length: n }).map((_, i) => (
+                                <span key={i} />
+                              ))}
+                            </span>
+                            <span className="als-layout-card__label">{n} screen{n === 1 ? '' : 's'}</span>
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          disabled
+                          title="Picture-in-Picture coming soon"
+                          className="als-layout-card is-disabled"
+                        >
+                          <span className="als-layout-preview als-layout-preview--pip">
+                            <span className="als-layout-preview__pip-main" />
+                            <span className="als-layout-preview__pip-mini" />
+                          </span>
+                          <span className="als-layout-card__label">PiP</span>
+                        </button>
+                      </div>
+                      {maxScreens > 1 && (
+                        <div className="als-layout-activate">
+                          <p className="text-xs text-slate-500 mr-auto">
+                            Select up to {maxScreens} cameras (max 4), then activate for the live grid.
+                          </p>
+                          <AdminBtn
+                            variant="primary"
+                            className="!px-3 !py-1.5 text-xs"
+                            disabled={busy || layoutDraftIds.length === 0}
+                            onClick={applyLayoutCameras}
+                          >
+                            Activate {Math.min(layoutDraftIds.length, maxScreens)} camera
+                            {Math.min(layoutDraftIds.length, maxScreens) === 1 ? '' : 's'}
+                          </AdminBtn>
+                        </div>
+                      )}
+                    </section>
+                  )}
+
+                  {/* e. Mobile Cameras */}
+                  <section className="admin-live-studio__section">
+                    <div className="admin-live-studio__section-head">
+                      <div>
+                        <h3 className="admin-live-studio__section-title">Mobile Cameras</h3>
+                        <p className="admin-live-studio__section-sub">
+                          Connected teacher & staff phone cameras — preview, go live, or switch instantly
+                        </p>
+                      </div>
+                    </div>
+                    <AdminLiveCameraPanel
+                      stream={selected}
+                      busy={busy}
+                      switchingId={switchingId}
+                      isBroadcasting={isBroadcasting}
+                      layoutMode={maxScreens}
+                      layoutDraftIds={layoutDraftIds}
+                      onToggleInclude={toggleLayoutDraft}
+                      onSwitch={isBroadcasting ? switchCamera : goLiveWithCamera}
+                      onPreview={preview}
+                      onDisconnect={disconnectMobileCamera}
+                      onMute={muteCameraAudio}
+                    />
+                  </section>
+
+                  {/* f. Cameras grid */}
+                  <section className="admin-live-studio__section">
+                    <div className="admin-live-studio__section-head">
+                      <div>
+                        <h3 className="admin-live-studio__section-title">Cameras</h3>
+                        <p className="admin-live-studio__section-sub">
+                          External streams and admin browser cameras
+                        </p>
+                      </div>
                       <AdminBtn
                         variant="secondary"
-                        to={`${guideBase}?event=${encodeURIComponent(selected.title)}`}
+                        onClick={() => {
+                          setCameraForm(emptyCamera)
+                          setCameraModal({ mode: 'add' })
+                        }}
                       >
-                        <BookOpen className="h-4 w-4" /> Setup Guide
-                      </AdminBtn>
-                      <AdminBtn variant="secondary" onClick={openEdit}>
-                        <Pencil className="h-4 w-4" /> Edit Stream
+                        <Plus className="h-4 w-4" /> Add Camera
                       </AdminBtn>
                     </div>
-                    <div className="admin-live-studio__toolbar-group">
+                    <div className="als-camera-grid">
+                      {[...selected.cameras].sort((a, b) => a.display_order - b.display_order).map((camera, i, arr) => (
+                        <div
+                          key={camera.id}
+                          className={`als-camera-card ${camera.is_active ? 'is-active' : ''}`}
+                        >
+                          <div className="als-camera-card__top">
+                            <div className="admin-live-studio__reorder">
+                              <button type="button" disabled={i === 0 || busy} onClick={() => moveCamera(camera, -1)} aria-label="Move up">
+                                <ChevronUp className="h-4 w-4" />
+                              </button>
+                              <button type="button" disabled={i === arr.length - 1 || busy} onClick={() => moveCamera(camera, 1)} aria-label="Move down">
+                                <ChevronDown className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="admin-live-studio__camera-icon">
+                              <Video className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-ink text-sm truncate">{camera.name}</p>
+                              <p className="text-xs text-slate-500 truncate">{camera.location || '—'} · {camera.stream_type === 'builtin_camera' ? 'BUILT-IN' : camera.stream_type.toUpperCase()}</p>
+                            </div>
+                          </div>
+                          <div className="als-camera-card__badges">
+                            {!camera.is_enabled && <AdminBadge tone="neutral">Disabled</AdminBadge>}
+                            {camera.is_primary && isBroadcasting && <AdminBadge tone="success">Primary</AdminBadge>}
+                            {camera.is_active && !camera.is_primary && isBroadcasting && <AdminBadge tone="warning">In Grid</AdminBadge>}
+                            {camera.is_active && !isBroadcasting && (
+                              <AdminBadge tone={camera.is_primary ? 'neutral' : 'warning'}>
+                                {camera.is_primary ? 'Selected' : 'In layout'}
+                              </AdminBadge>
+                            )}
+                            {maxScreens > 1 && camera.is_enabled && (
+                              <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                                  checked={layoutDraftIds.includes(camera.id)}
+                                  disabled={busy}
+                                  onChange={() => toggleLayoutDraft(camera.id)}
+                                />
+                                Include
+                              </label>
+                            )}
+                          </div>
+                          <div className="als-camera-card__actions">
+                            <AdminBtn
+                              variant={camera.is_primary ? 'primary' : 'secondary'}
+                              className="!px-2.5 !py-1.5 text-xs"
+                              disabled={!camera.is_enabled || camera.is_primary || switchingId === camera.id}
+                              onClick={() => switchCamera(camera)}
+                            >
+                              {switchingId === camera.id
+                                ? '…'
+                                : camera.is_primary
+                                  ? (isBroadcasting ? 'Primary' : 'Selected')
+                                  : (isBroadcasting ? 'Make primary' : 'Select')}
+                            </AdminBtn>
+                            <AdminBtn variant="secondary" className="!px-2 !py-1.5" onClick={() => preview(camera)} title="Preview">
+                              <Eye className="h-3.5 w-3.5" />
+                            </AdminBtn>
+                            <AdminBtn
+                              variant={camera.audio_muted ? 'secondary' : 'primary'}
+                              className="!px-2 !py-1.5"
+                              disabled={busy || !camera.is_enabled}
+                              title={camera.audio_muted ? 'या कॅमेऱ्याचा आवाज चालू करा' : 'या कॅमेऱ्याचा आवाज बंद करा'}
+                              onClick={() => muteCameraAudio(camera, !camera.audio_muted)}
+                            >
+                              {camera.audio_muted ? (
+                                <VolumeX className="h-3.5 w-3.5" />
+                              ) : (
+                                <Volume2 className="h-3.5 w-3.5" />
+                              )}
+                            </AdminBtn>
+                            <AdminBtn
+                              variant="secondary"
+                              className="!px-2 !py-1.5"
+                              onClick={() => {
+                                setCameraForm({
+                                  name: camera.name,
+                                  location: camera.location || '',
+                                  stream_type: camera.stream_type,
+                                  stream_url: camera.stream_url,
+                                  is_enabled: camera.is_enabled,
+                                })
+                                setCameraModal({ mode: 'edit', camera })
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </AdminBtn>
+                            <AdminBtn
+                              variant="secondary"
+                              className="!px-2 !py-1.5 text-rose-600"
+                              disabled={busy}
+                              onClick={() => {
+                                if (!confirm(`Remove ${camera.name}?`)) return
+                                runWithPatch(() => liveStreamApi.removeCamera(selected.id, camera.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Camera removed')
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </AdminBtn>
+                          </div>
+                          {camera.stream_type === 'builtin_camera' && !camera.publisher_user_id && (
+                            <div className="als-camera-card__studio">
+                              <BuiltinCameraStudio
+                                streamId={selected.id}
+                                cameraId={camera.id}
+                                cameraName={camera.name}
+                                isActive={Boolean(camera.is_primary || camera.is_active)}
+                                isBroadcasting={isBroadcasting}
+                                streamPaused={selected.status === 'paused'}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {selected.cameras.length === 0 && (
+                        <p className="admin-live-studio__empty als-camera-grid__empty">
+                          Add cameras — use Built-In Camera for browser webcam/mobile, or paste stream URLs.
+                        </p>
+                      )}
+                    </div>
+                  </section>
+                </div>
+
+                {/* Optional right quick panel */}
+                <aside className="als-quick-panel">
+                  <div className="als-quick-panel__inner">
+                    <p className="als-quick-panel__title">Quick status</p>
+                    <div className="als-quick-panel__status">
+                      <AdminBadge tone={statusTone(selected.status)}>
+                        {selected.display_status === 'upcoming' ? 'Upcoming' : selected.status_label}
+                      </AdminBadge>
+                      <p className="text-sm text-slate-600 mt-2">
+                        {enabledCameraCount} camera{enabledCameraCount === 1 ? '' : 's'} · {layoutMode}-up layout
+                      </p>
+                      {selected.active_camera && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Primary: {selected.active_camera.name}
+                        </p>
+                      )}
+                    </div>
+                    <div className="als-quick-panel__actions">
                       {selected.status === 'live' && (
                         <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.pause(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Paused')}>
                           <Pause className="h-4 w-4" /> Pause
@@ -833,299 +1282,39 @@ export default function AdminLiveStreamsPage() {
                           <Square className="h-4 w-4" /> End Live
                         </AdminBtn>
                       ) : selected.status === 'scheduled' ? (
-                        <>
-                          <AdminBtn
-                            variant="primary"
-                            disabled={busy || !canStartLive}
-                            title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
-                            onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
-                          >
-                            <Radio className="h-4 w-4" /> Start Now
-                          </AdminBtn>
-                          <AdminBtn variant="secondary" disabled={busy} onClick={cancelEvent}>Cancel Event</AdminBtn>
-                        </>
-                      ) : (
-                        <>
-                          <AdminBtn
-                            variant="primary"
-                            disabled={busy}
-                            onClick={() => void scheduleEvent()}
-                            title={selected.scheduled_start_at ? 'Publish as Scheduled (public countdown)' : 'Opens editor to set start time'}
-                          >
-                            <Calendar className="h-4 w-4" /> Schedule Event
-                          </AdminBtn>
-                          <AdminBtn
-                            variant="secondary"
-                            disabled={busy || !canStartLive}
-                            title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
-                            onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
-                          >
-                            <Radio className="h-4 w-4" /> Start Live
-                          </AdminBtn>
-                        </>
-                      )}
-                    </div>
-                    <div className="admin-live-studio__toolbar-group">
-                      <AdminBtn
-                        variant="secondary"
-                        className="!text-rose-600 hover:!bg-rose-50"
-                        disabled={busy}
-                        onClick={deleteStream}
-                      >
-                        <Trash2 className="h-4 w-4" /> Delete Stream
-                      </AdminBtn>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="admin-live-studio__meta">
-                  <AdminBadge tone={statusTone(selected.status)}>{selected.display_status === 'upcoming' ? 'Upcoming' : selected.status_label}</AdminBadge>
-                  {selected.scheduled_start_at && (
-                    <span className="admin-live-studio__chip">
-                      Starts: {formatScheduleDisplay(selected.scheduled_start_at)}
-                    </span>
-                  )}
-                  {(selected.status === 'draft' || selected.status === 'stopped' || selected.status === 'cancelled') && selected.scheduled_start_at && (
-                    <span className="admin-live-studio__chip admin-live-studio__chip--warn">
-                      Start time saved — click Schedule Event to publish countdown
-                    </span>
-                  )}
-                  {selected.active_camera && (
-                    <span className="admin-live-studio__chip">
-                      Primary: <strong>{selected.active_camera.name}</strong>
-                      {(selected.active_cameras?.length ?? 0) > 1 && (
-                        <> · Grid: <strong>{selected.active_cameras!.length}</strong> cams</>
-                      )}
-                    </span>
-                  )}
-                </div>
-
-                {enabledCameraCount > 0 && (
-                  <div className="admin-live-studio__screens">
-                    <div className="admin-live-studio__screens-row">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-sky-600">Screens</p>
-                        <p className="text-sm text-slate-600 mt-0.5">
-                          How many camera panes parents see (max {maxScreens})
-                        </p>
-                      </div>
-                      <div className="admin-live-studio__screen-picker">
-                        {[1, 2, 3, 4].map((n) => (
-                          <button
-                            key={n}
-                            type="button"
-                            disabled={busy || n > maxScreens}
-                            onClick={() => setLayoutMode(n)}
-                            className={`admin-live-studio__screen-btn ${layoutMode === n ? 'is-active' : ''}`}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {maxScreens > 1 && (
-                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-3">
-                        <p className="text-xs text-slate-500 mr-auto">
-                          Select up to {maxScreens} cameras (max 4), then activate for the live grid.
-                        </p>
                         <AdminBtn
                           variant="primary"
-                          className="!px-3 !py-1.5 text-xs"
-                          disabled={busy || layoutDraftIds.length === 0}
-                          onClick={applyLayoutCameras}
+                          disabled={busy || !canStartLive}
+                          title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
+                          onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
                         >
-                          Activate {Math.min(layoutDraftIds.length, maxScreens)} camera
-                          {Math.min(layoutDraftIds.length, maxScreens) === 1 ? '' : 's'}
+                          <Radio className="h-4 w-4" /> Start Now
                         </AdminBtn>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {!canStartLive && !isBroadcasting && (
-                  <p className="admin-live-studio__warn">
-                    No cameras on this event yet. A teacher can connect from <strong>Join Live</strong> on their phone,
-                    or you can add an external camera below.
-                  </p>
-                )}
-
-                {previewPlayback && (
-                  <div className="mt-5">
-                    <p className="text-xs font-bold uppercase tracking-wide text-sky-600 mb-2">Preview</p>
-                    <LiveStreamPlayer
-                      playback={previewPlayback}
-                      status={selected.status}
-                      className="max-w-2xl rounded-xl overflow-hidden ring-1 ring-slate-200/80"
-                      muted={false}
-                    />
-                  </div>
-                )}
-              </section>
-
-              <section className="admin-live-studio__section">
-                <div className="admin-live-studio__section-head">
-                  <div>
-                    <h3 className="admin-live-studio__section-title">Mobile Cameras</h3>
-                    <p className="admin-live-studio__section-sub">
-                      Connected teacher & staff phone cameras — preview, go live, or switch instantly
-                    </p>
-                  </div>
-                </div>
-                <AdminLiveCameraPanel
-                  stream={selected}
-                  busy={busy}
-                  switchingId={switchingId}
-                  isBroadcasting={isBroadcasting}
-                  layoutMode={maxScreens}
-                  layoutDraftIds={layoutDraftIds}
-                  onToggleInclude={toggleLayoutDraft}
-                  onSwitch={isBroadcasting ? switchCamera : goLiveWithCamera}
-                  onPreview={preview}
-                  onDisconnect={disconnectMobileCamera}
-                  onMute={muteCameraAudio}
-                />
-              </section>
-
-              <section className="admin-live-studio__section">
-                <div className="admin-live-studio__section-head">
-                  <div>
-                    <h3 className="admin-live-studio__section-title">Cameras</h3>
-                    <p className="admin-live-studio__section-sub">
-                      External streams and admin browser cameras
-                    </p>
-                  </div>
-                  <AdminBtn
-                    variant="secondary"
-                    onClick={() => {
-                      setCameraForm(emptyCamera)
-                      setCameraModal({ mode: 'add' })
-                    }}
-                  >
-                    <Plus className="h-4 w-4" /> Add Camera
-                  </AdminBtn>
-                </div>
-                <div className="admin-live-studio__camera-list">
-                  {[...selected.cameras].sort((a, b) => a.display_order - b.display_order).map((camera, i, arr) => (
-                    <div
-                      key={camera.id}
-                      className={`admin-live-studio__camera ${camera.is_active ? 'is-active' : ''}`}
-                    >
-                      <div className="admin-live-studio__reorder">
-                        <button type="button" disabled={i === 0 || busy} onClick={() => moveCamera(camera, -1)} aria-label="Move up">
-                          <ChevronUp className="h-4 w-4" />
-                        </button>
-                        <button type="button" disabled={i === arr.length - 1 || busy} onClick={() => moveCamera(camera, 1)} aria-label="Move down">
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className="admin-live-studio__camera-icon">
-                        <Video className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-[180px]">
-                        <p className="font-semibold text-ink text-sm">{camera.name}</p>
-                        <p className="text-xs text-slate-500">{camera.location || '—'} · {camera.stream_type === 'builtin_camera' ? 'BUILT-IN' : camera.stream_type.toUpperCase()}</p>
-                      </div>
-                      {!camera.is_enabled && <AdminBadge tone="neutral">Disabled</AdminBadge>}
-                      {camera.is_primary && isBroadcasting && <AdminBadge tone="success">Primary</AdminBadge>}
-                      {camera.is_active && !camera.is_primary && isBroadcasting && <AdminBadge tone="warning">In Grid</AdminBadge>}
-                      {camera.is_active && !isBroadcasting && (
-                        <AdminBadge tone={camera.is_primary ? 'neutral' : 'warning'}>
-                          {camera.is_primary ? 'Selected' : 'In layout'}
-                        </AdminBadge>
+                      ) : (
+                        <AdminBtn
+                          variant="primary"
+                          disabled={busy || !canStartLive}
+                          title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
+                          onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
+                        >
+                          <Radio className="h-4 w-4" /> Start Live
+                        </AdminBtn>
                       )}
-                      {maxScreens > 1 && camera.is_enabled && (
-                        <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                            checked={layoutDraftIds.includes(camera.id)}
-                            disabled={busy}
-                            onChange={() => toggleLayoutDraft(camera.id)}
-                          />
-                          Include
-                        </label>
-                      )}
-                      <div className="flex flex-wrap gap-1.5 ml-auto">
-                        <AdminBtn
-                          variant={camera.is_primary ? 'primary' : 'secondary'}
-                          className="!px-2.5 !py-1.5 text-xs"
-                          disabled={!camera.is_enabled || camera.is_primary || switchingId === camera.id}
-                          onClick={() => switchCamera(camera)}
-                        >
-                          {switchingId === camera.id
-                            ? '…'
-                            : camera.is_primary
-                              ? (isBroadcasting ? 'Primary' : 'Selected')
-                              : (isBroadcasting ? 'Make primary' : 'Select')}
-                        </AdminBtn>
-                        <AdminBtn variant="secondary" className="!px-2 !py-1.5" onClick={() => preview(camera)} title="Preview">
-                          <Eye className="h-3.5 w-3.5" />
-                        </AdminBtn>
-                        <AdminBtn
-                          variant={camera.audio_muted ? 'secondary' : 'primary'}
-                          className="!px-2 !py-1.5"
-                          disabled={busy || !camera.is_enabled}
-                          title={camera.audio_muted ? 'या कॅमेऱ्याचा आवाज चालू करा' : 'या कॅमेऱ्याचा आवाज बंद करा'}
-                          onClick={() => muteCameraAudio(camera, !camera.audio_muted)}
-                        >
-                          {camera.audio_muted ? (
-                            <VolumeX className="h-3.5 w-3.5" />
-                          ) : (
-                            <Volume2 className="h-3.5 w-3.5" />
-                          )}
-                        </AdminBtn>
-                        <AdminBtn
-                          variant="secondary"
-                          className="!px-2 !py-1.5"
-                          onClick={() => {
-                            setCameraForm({
-                              name: camera.name,
-                              location: camera.location || '',
-                              stream_type: camera.stream_type,
-                              stream_url: camera.stream_url,
-                              is_enabled: camera.is_enabled,
-                            })
-                            setCameraModal({ mode: 'edit', camera })
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </AdminBtn>
-                        <AdminBtn
-                          variant="secondary"
-                          className="!px-2 !py-1.5 text-rose-600"
-                          disabled={busy}
-                          onClick={() => {
-                            if (!confirm(`Remove ${camera.name}?`)) return
-                            runWithPatch(() => liveStreamApi.removeCamera(selected.id, camera.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Camera removed')
-                          }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </AdminBtn>
-                      </div>
-                      {camera.stream_type === 'builtin_camera' && !camera.publisher_user_id && (
-                        <div className="w-full basis-full">
-                          <BuiltinCameraStudio
-                            streamId={selected.id}
-                            cameraId={camera.id}
-                            cameraName={camera.name}
-                            isActive={Boolean(camera.is_primary || camera.is_active)}
-                            isBroadcasting={isBroadcasting}
-                            streamPaused={selected.status === 'paused'}
-                          />
-                        </div>
-                      )}
+                      <AdminBtn variant="secondary" onClick={openEdit}>
+                        <Pencil className="h-4 w-4" /> Edit
+                      </AdminBtn>
+                      <button type="button" className="als-quick-link" onClick={copyParentLink}>
+                        <Copy className="h-3.5 w-3.5" /> Copy /live link
+                      </button>
                     </div>
-                  ))}
-                  {selected.cameras.length === 0 && (
-                    <p className="admin-live-studio__empty">
-                      Add cameras — use Built-In Camera for browser webcam/mobile, or paste stream URLs.
-                    </p>
-                  )}
-                </div>
-              </section>
+                  </div>
+                </aside>
+              </div>
             </div>
+              )
+            })()
           ) : (
-            <section className="admin-live-studio__section">
+            <section className="admin-live-studio__section als-empty-select">
               <div className="admin-live-studio__section-head">
                 <div>
                   <h3 className="admin-live-studio__section-title">Select a CMS event</h3>
@@ -1134,9 +1323,14 @@ export default function AdminLiveStreamsPage() {
                   </p>
                 </div>
               </div>
-              <p className="admin-live-studio__empty">
-                Events are managed in CMS → Events. Select one from the dropdown above to begin.
-              </p>
+              <div className="als-empty-select__body">
+                <div className="als-empty-select__icon">
+                  <Radio className="h-7 w-7" />
+                </div>
+                <p className="admin-live-studio__empty !py-0">
+                  Events are managed in CMS → Events. Select one from the dropdown above to begin.
+                </p>
+              </div>
             </section>
           )}
         </div>

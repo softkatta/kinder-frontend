@@ -58,8 +58,8 @@ export function AdminLiveCameraPanel({
 
   if (mobileCameras.length === 0) {
     return (
-      <div className="admin-live-studio__empty px-6 py-10">
-        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-sky-50 text-sky-600">
+      <div className="als-mobile-empty">
+        <div className="als-mobile-empty__icon">
           <Video className="h-6 w-6" />
         </div>
         <p className="font-semibold text-slate-700">No mobile cameras yet</p>
@@ -85,11 +85,7 @@ export function AdminLiveCameraPanel({
         return (
           <div
             key={camera.id}
-            className={`rounded-2xl border overflow-hidden bg-white shadow-sm transition ${
-              isLive
-                ? 'border-rose-300 ring-2 ring-rose-100 shadow-rose-100/60'
-                : 'border-slate-200/90 hover:border-sky-200 hover:shadow-md'
-            }`}
+            className={`als-mobile-card ${isLive ? 'is-live' : ''}`}
           >
             <div className="relative aspect-video bg-slate-900">
               {showPreview && isBroadcasting ? (
