@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { Radio, Calendar } from 'lucide-react'
 import { usePublicLiveStatus } from '@/hooks/usePublicLiveStream'
 import { useT } from '@/i18n/LanguageContext'
@@ -10,6 +11,13 @@ export function PublicLiveBanner({ variant = 'bar' }: { variant?: BannerVariant 
   const status = usePublicLiveStatus()
   const { t } = useT()
   const { pathname } = useLocation()
+
+  // Prefetch live route chunk as soon as we know a stream is on — faster /live open.
+  useEffect(() => {
+    if (status === 'off') return
+    void import('@/pages/public/PublicLivePage')
+    void import('@/components/live/LiveStreamPlayer')
+  }, [status])
 
   if (status === 'off') return null
 

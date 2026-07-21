@@ -85,9 +85,13 @@ export function usePublicLiveStream() {
       }
 
       if (viewer.is_watchable || viewer.status === 'paused') {
-        // While paused, prefer keeping cached embeds; refresh watch only when live.
         if (viewer.status === 'paused') {
           applyWatch(watchRef.current ?? (viewer as LiveStreamWatch), viewer)
+          return
+        }
+        // /public/live/active now includes playbacks when live — skip a second round-trip.
+        if (hasPlaybacks(viewer as LiveStreamWatch)) {
+          applyWatch(viewer as LiveStreamWatch, viewer)
           return
         }
         const watchRes = await publicApi.liveWatch(viewer.id)

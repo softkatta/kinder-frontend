@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { Maximize2, Minimize2, Radio, RotateCw } from 'lucide-react'
-import { LiveKitViewer, type WebrtcAuthMode } from '@/components/live/LiveKitViewer'
+import type { WebrtcAuthMode } from '@/components/live/LiveKitViewer'
 import type { LivePlayback } from '@/types/liveStream'
 import { isPipLayout, layoutPaneCount } from '@/types/liveStream'
 import { readLivePlaybackUnlocked, readLiveSoundUnlocked, unlockLivePlayback, unlockLiveSound } from '@/utils/liveSoundUnlock'
+
+const LiveKitViewer = lazy(() =>
+  import('@/components/live/LiveKitViewer').then((m) => ({ default: m.LiveKitViewer })),
+)
 
 type PlayerOrientation = 'landscape' | 'portrait'
 
@@ -50,10 +54,10 @@ function layerId(cameraId: number | null | undefined, playback: LivePlayback): s
 }
 
 function readyDelay(mode: LivePlayback['mode']): number {
-  if (mode === 'youtube') return 1200
-  if (mode === 'vimeo') return 800
-  if (mode === 'builtin_camera') return 500
-  return 300
+  if (mode === 'youtube') return 400
+  if (mode === 'vimeo') return 300
+  if (mode === 'builtin_camera') return 200
+  return 150
 }
 
 function youtubeEmbedSrc(videoId: string, startMuted: boolean, lockPlayback: boolean): string {
@@ -257,7 +261,8 @@ function FeedEmbed({
     }
 
     setEmbedSrc(null)
-    const delay = 450 + paneIndex * 550
+    // Tiny stagger only — side cams must appear almost immediately.
+    const delay = paneIndex * 80
     const timer = window.setTimeout(() => {
       if (layer.playback.mode === 'youtube') {
         setEmbedSrc(youtubeEmbedSrc(layer.playback.video_id!, true, lockPlayback))
@@ -556,14 +561,14 @@ function FeedEmbed({
     }
     autoKickPlayRef.current(iframeRef.current, true)
 
-    const retries = [1200, 2800, 5000].map((ms) =>
+    const retries = [400, 1200, 2500].map((ms) =>
       window.setTimeout(() => {
         if (playingRef.current || paused || everPlayedRef.current) return
         if (layer.playback.mode === 'youtube') {
           postYoutubeListening(iframeRef.current, ytWidgetIdRef.current)
         }
         autoKickPlayRef.current(iframeRef.current, true)
-        if (ms >= 2800) showPlayPrompt()
+        if (ms >= 1200) showPlayPrompt()
       }, ms),
     )
 
@@ -740,17 +745,19 @@ function FeedEmbed({
   ) {
     return (
       <>
-        <LiveKitViewer
-          streamId={layer.playback.stream_id}
-          participantIdentity={layer.playback.participant_identity}
-          muted={muted || paused || volume === 0}
-          volume={volume}
-          paused={paused}
-          showUnmutePrompt={!lockPlayback}
-          webrtcAuth={webrtcAuth}
-          onReady={markReady}
-          className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
-        />
+        <Suspense fallback={<div className="live-player-pane-loading" aria-busy="true"><span className="live-player-pane-loading__dot" /></div>}>
+          <LiveKitViewer
+            streamId={layer.playback.stream_id}
+            participantIdentity={layer.playback.participant_identity}
+            muted={muted || paused || volume === 0}
+            volume={volume}
+            paused={paused}
+            showUnmutePrompt={!lockPlayback}
+            webrtcAuth={webrtcAuth}
+            onReady={markReady}
+            className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
+          />
+        </Suspense>
         {lockPlayback && (
           <div className="live-player-lock-overlay" aria-hidden onPointerDown={unlockOverlay} />
         )}

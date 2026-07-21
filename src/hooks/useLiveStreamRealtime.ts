@@ -247,6 +247,18 @@ export function useActiveLiveStream() {
         return
       }
 
+      // /active/viewer includes playbacks when live — skip second watch request.
+      if (hasPlaybacks(data as LiveStreamWatch)) {
+        const watchData = data as LiveStreamWatch
+        setWatch(watchData)
+        const camId = watchData.active_camera?.id ?? null
+        if (camId !== cameraRef.current) {
+          cameraRef.current = camId
+          setCameraId(camId)
+        }
+        return
+      }
+
       const watchRes = await liveStreamApi.watch(data.id)
       if (gen !== syncGenRef.current) return
       const watchData = watchRes.data.data as LiveStreamWatch

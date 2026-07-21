@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ConnectionQuality, Room, RoomEvent, Track } from 'livekit-client'
+import { ConnectionQuality, LogLevel, Room, RoomEvent, Track, setLogLevel } from 'livekit-client'
 import { Volume2 } from 'lucide-react'
 import { liveStreamApi, publicApi } from '@/api/services'
+
+// Keep LiveKit off the main public bundle — only load when a builtin camera plays.
+setLogLevel(LogLevel.silent)
 
 export type WebrtcAuthMode = 'authenticated' | 'public'
 
