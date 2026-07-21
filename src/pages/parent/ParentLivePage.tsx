@@ -5,6 +5,7 @@ import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
 import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
 import { useActiveLiveStream } from '@/hooks/useLiveStreamRealtime'
+import { useLiveViewerPresence } from '@/hooks/useLiveViewerPresence'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
 import { parseWallClockInTimeZone } from '@/utils/scheduleTime'
@@ -50,6 +51,8 @@ export default function ParentLivePage() {
     && (active?.is_watchable || active?.status === 'paused')
   )
   const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
+
+  useLiveViewerPresence(active?.id, Boolean(routeVisible && canPlay))
 
   const startDue = Boolean(active && countdownElapsed && !canPlay && !broadcastPaused)
 

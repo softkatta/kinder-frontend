@@ -39,6 +39,8 @@ export const publicApi = {
   liveActive: () => api.get('/public/live/active'),
   liveUpcoming: () => api.get('/public/live/upcoming'),
   liveWatch: (id: number) => api.get(`/public/live/${id}/watch`),
+  liveViewerHeartbeat: (id: number, viewerKey: string) =>
+    api.post(`/public/live/${id}/viewer-heartbeat`, { viewer_key: viewerKey }),
   liveWebrtcToken: (id: number) => api.post(`/public/live/${id}/webrtc-token`, { role: 'viewer' }),
   verifyCertificate: (certNumber: string) => api.get(`/public/certificates/verify/${encodeURIComponent(certNumber)}`),
 }
@@ -507,6 +509,8 @@ export const liveStreamApi = {
   viewerActive: () => api.get('/live-streams/active/viewer'),
   viewerUpcoming: () => api.get('/live-streams/upcoming/viewer'),
   watch: (id: number, config?: { signal?: AbortSignal }) => api.get(`/live-streams/${id}/watch`, config),
+  viewerHeartbeat: (id: number, viewerKey: string) =>
+    api.post(`/live-streams/${id}/viewer-heartbeat`, { viewer_key: viewerKey }),
   livekitConfig: () => api.get('/live-streams/livekit/config'),
   webrtcToken: (id: number, data?: { role?: 'publisher' | 'viewer'; camera_id?: number }) =>
     api.post(`/live-streams/${id}/webrtc-token`, data ?? {}),

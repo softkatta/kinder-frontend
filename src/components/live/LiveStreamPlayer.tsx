@@ -97,10 +97,26 @@ function postYoutubeCommand(
   func: string,
   args: unknown[] = [],
 ) {
-  iframe?.contentWindow?.postMessage(
-    JSON.stringify({ event: 'command', func, args }),
-    '*',
-  )
+  try {
+    iframe?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'command', func, args }),
+      '*',
+    )
+  } catch {
+    // YouTube may throw during teardown / before widget API is ready.
+  }
+}
+
+/** Tell the embed we listen for API events — required before reliable commands. */
+function postYoutubeListening(iframe: HTMLIFrameElement | null) {
+  try {
+    iframe?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
+      '*',
+    )
+  } catch {
+    /* ignore */
+  }
 }
 
 function postVimeoCommand(iframe: HTMLIFrameElement | null, method: string, value?: number) {
@@ -163,6 +179,7 @@ function FeedEmbed({
   const videoRef = useRef<HTMLVideoElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const readyRef = useRef(false)
+  const ytApiReadyRef = useRef(false)
   const timerRef = useRef<number | null>(null)
   const playingRef = useRef(false)
   // One viewer gesture unlocks sound + play for this tab — layout changes must not re-ask.
@@ -208,8 +225,15 @@ function FeedEmbed({
     const level = Math.max(0, Math.min(100, volume))
     const silent = nextMuted || level === 0
     if (layer.playback.mode === 'youtube') {
-      postYoutubeCommand(iframe, 'setVolume', [silent ? 0 : level])
-      postYoutubeCommand(iframe, silent ? 'mute' : 'unMute')
+      // Avoid YouTube widget crash (isExternalMethodAvailable) before API ready.
+      if (!ytApiReadyRef.current) return
+      if (silent) {
+        postYoutubeCommand(iframe, 'mute')
+        postYoutubeCommand(iframe, 'setVolume', [0])
+      } else {
+        postYoutubeCommand(iframe, 'unMute')
+        postYoutubeCommand(iframe, 'setVolume', [level])
+      }
       if (wantPlay) postYoutubeCommand(iframe, 'playVideo')
       return
     }
@@ -224,10 +248,14 @@ function FeedEmbed({
     if (!iframe) return
     const stayMuted = forceMute || muted || !soundUnlockedRef.current || volume === 0
     if (layer.playback.mode === 'youtube') {
+      if (!ytApiReadyRef.current) {
+        postYoutubeListening(iframe)
+        return
+      }
       if (stayMuted) {
         postYoutubeCommand(iframe, 'mute')
-        postYoutubeCommand(iframe, 'setVolume', [0])
       } else {
+        postYoutubeCommand(iframe, 'unMute')
         postYoutubeCommand(iframe, 'setVolume', [Math.max(0, Math.min(100, volume))])
       }
       postYoutubeCommand(iframe, 'playVideo')
@@ -322,6 +350,7 @@ function FeedEmbed({
   useEffect(() => {
     readyRef.current = false
     playingRef.current = false
+    ytApiReadyRef.current = false
     // Keep session unlock across remounts (layout change adds new panes).
     soundUnlockedRef.current = readLiveSoundUnlocked()
     playUnlockedRef.current = readLivePlaybackUnlocked()
@@ -356,9 +385,11 @@ function FeedEmbed({
             ? payload.info.playerState
             : undefined
         if (payload.event === 'onReady' || payload.event === 'initialDelivery') {
+          ytApiReadyRef.current = true
           kickPlay(iframeRef.current, true)
         }
         if (state === 1) {
+          ytApiReadyRef.current = true
           playingRef.current = true
           markPlayUnlocked()
           setGesturePrompt((p) => (p === 'play' ? null : p))
@@ -386,18 +417,28 @@ function FeedEmbed({
     if (layer.playback.mode !== 'youtube' && layer.playback.mode !== 'vimeo') return
     if (paused) {
       const iframe = iframeRef.current
-      applyMuteState(iframe, true, { play: false })
-      if (layer.playback.mode === 'youtube') postYoutubeCommand(iframe, 'pauseVideo')
-      if (layer.playback.mode === 'vimeo') postVimeoCommand(iframe, 'pause')
+      if (layer.playback.mode === 'youtube') {
+        if (ytApiReadyRef.current) {
+          applyMuteState(iframe, true, { play: false })
+          postYoutubeCommand(iframe, 'pauseVideo')
+        }
+      } else {
+        applyMuteState(iframe, true, { play: false })
+        postVimeoCommand(iframe, 'pause')
+      }
       return
     }
 
     if (readLivePlaybackUnlocked()) playUnlockedRef.current = true
+    if (layer.playback.mode === 'youtube') {
+      postYoutubeListening(iframeRef.current)
+    }
     kickPlay(iframeRef.current, true)
 
     const retries = [300, 800, 1600, 2800, 4500, 7000].map((ms) =>
       window.setTimeout(() => {
         if (playingRef.current || paused) return
+        if (layer.playback.mode === 'youtube') postYoutubeListening(iframeRef.current)
         kickPlay(iframeRef.current, true)
         // Only ask for Tap to play on first visit — never after a prior unlock / layout change.
         if (ms >= 2800) showPlayPrompt()
@@ -528,10 +569,7 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
-            iframeRef.current?.contentWindow?.postMessage(
-              JSON.stringify({ event: 'listening', id: layer.id, channel: 'widget' }),
-              '*',
-            )
+            postYoutubeListening(iframeRef.current)
             kickPlay(iframeRef.current, true)
             if (readLiveSoundUnlocked() && !muted) {
               soundUnlockedRef.current = true

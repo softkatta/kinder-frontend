@@ -4186,9 +4186,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 .live-player-grid--pip .live-player-pane:nth-child(2) {
   position: absolute;
-  top: 3%;
+  top: 5%;
   right: 2.5%;
-  width: min(32%, 220px);
+  width: 280px;
   aspect-ratio: 16 / 9;
   z-index: 4;
   border-radius: 8px;

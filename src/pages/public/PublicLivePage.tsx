@@ -8,6 +8,7 @@ import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
 import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
 import { usePublicLiveStream } from '@/hooks/usePublicLiveStream'
+import { useLiveViewerPresence } from '@/hooks/useLiveViewerPresence'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { useT } from '@/i18n/LanguageContext'
 import { FadeIn } from '@/components/ui/Motion'
@@ -52,6 +53,8 @@ export default function PublicLivePage() {
     && (active?.status === 'live' || active?.status === 'paused')
     && (active?.is_watchable || active?.status === 'paused')
   )
+
+  useLiveViewerPresence(active?.id, Boolean(routeVisible && canPlay), { public: true })
   const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
 
   const startDue = Boolean(active && countdownElapsed && !canPlay && !broadcastPaused)
