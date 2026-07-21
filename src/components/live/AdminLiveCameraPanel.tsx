@@ -58,9 +58,15 @@ export function AdminLiveCameraPanel({
 
   if (mobileCameras.length === 0) {
     return (
-      <p className="text-sm text-slate-500 p-6 text-center">
-        No mobile cameras connected yet. Teachers and staff can join from their phones.
-      </p>
+      <div className="admin-live-studio__empty px-6 py-10">
+        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-sky-50 text-sky-600">
+          <Video className="h-6 w-6" />
+        </div>
+        <p className="font-semibold text-slate-700">No mobile cameras yet</p>
+        <p className="mt-1 text-sm text-slate-500">
+          Teachers and staff can join from their phones via Join Live.
+        </p>
+      </div>
     )
   }
 
@@ -79,8 +85,10 @@ export function AdminLiveCameraPanel({
         return (
           <div
             key={camera.id}
-            className={`rounded-xl border overflow-hidden bg-white shadow-sm ${
-              isLive ? 'border-rose-300 ring-2 ring-rose-100' : 'border-slate-200'
+            className={`rounded-2xl border overflow-hidden bg-white shadow-sm transition ${
+              isLive
+                ? 'border-rose-300 ring-2 ring-rose-100 shadow-rose-100/60'
+                : 'border-slate-200/90 hover:border-sky-200 hover:shadow-md'
             }`}
           >
             <div className="relative aspect-video bg-slate-900">
@@ -118,8 +126,8 @@ export function AdminLiveCameraPanel({
                     className="h-10 w-10 rounded-full object-cover border border-slate-100"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center">
-                    <User className="h-5 w-5 text-violet-600" />
+                  <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center">
+                    <User className="h-5 w-5 text-sky-600" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
@@ -161,7 +169,7 @@ export function AdminLiveCameraPanel({
                 <label className="inline-flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                    className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                     checked={layoutDraftIds.includes(camera.id)}
                     disabled={busy}
                     onChange={() => onToggleInclude(camera.id)}

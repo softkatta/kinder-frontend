@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
-  AdminPageHeader, AdminPageShell, AdminBadge, AdminBtn, AdminModal, AdminPanel,
+  AdminPageHeader, AdminPageShell, AdminBadge, AdminBtn, AdminModal,
 } from '@/components/admin/AdminUi'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -665,9 +665,10 @@ export default function AdminLiveStreamsPage() {
 
   return (
     <AdminPageShell>
+      <div className="admin-live-studio">
       <AdminPageHeader
         title="Live Streams"
-        subtitle="Select a CMS event, add cameras, and go live."
+        subtitle="Broadcast control — pick a CMS event, set cameras, then go live for parents."
         breadcrumbs={[{ label: portalLabel, to: portalHome }, { label: 'Live Streams' }]}
         actions={
           <div className="flex flex-wrap items-end gap-2">
@@ -699,7 +700,7 @@ export default function AdminLiveStreamsPage() {
       />
 
       {onAirStream && onAirStream.id !== selected?.id && (
-        <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className="admin-live-studio__banner text-sm text-rose-900">
           <p className="font-semibold">
             “{onAirStream.title}” is live on <code className="text-xs bg-white/70 px-1 rounded">/live</code> right now.
           </p>
@@ -719,24 +720,24 @@ export default function AdminLiveStreamsPage() {
       {loading && linkedStreams.length === 0 ? (
         <p className="text-sm text-slate-500 text-center py-12">Loading…</p>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
-          <AdminPanel
-            title="Events"
-            subtitle={`${linkedStreams.length} linked event(s)`}
-            noPadding
-            action={
-              selectedStreamIds.length > 0 ? (
+        <div className="admin-live-studio__grid">
+          <aside className="admin-live-studio__rail">
+            <div className="admin-live-studio__rail-head">
+              <div>
+                <p className="admin-live-studio__rail-title">Events</p>
+                <p className="admin-live-studio__rail-sub">{linkedStreams.length} linked event(s)</p>
+              </div>
+              {selectedStreamIds.length > 0 && (
                 <AdminBtn variant="secondary" onClick={() => void bulkDeleteStreams()} disabled={busy}>
                   <Trash2 className="h-4 w-4" /> Delete ({selectedStreamIds.length})
                 </AdminBtn>
-              ) : undefined
-            }
-          >
-            <div className="divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
+              )}
+            </div>
+            <div className="admin-live-studio__event-list">
               {linkedStreams.map((s) => (
                 <div
                   key={s.id}
-                  className={`flex items-start gap-2 px-4 py-3 transition hover:bg-violet-50/50 ${selectedId === s.id ? 'bg-violet-50 border-l-4 border-violet-500' : ''}`}
+                  className={`admin-live-studio__event ${selectedId === s.id ? 'is-selected' : ''}`}
                 >
                   <input
                     type="checkbox"
@@ -750,128 +751,141 @@ export default function AdminLiveStreamsPage() {
                     onClick={() => setSelectedId(s.id)}
                     className="flex-1 text-left min-w-0"
                   >
-                  <p className="font-semibold text-ink text-sm">{s.title}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {['live', 'paused'].includes(s.status) && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide text-rose-600">On /live</span>
-                    )}
-                    <AdminBadge tone={statusTone(s.status)}>{s.status_label}</AdminBadge>
-                    <span className="text-xs text-slate-400">{(s.cameras ?? []).length} cameras</span>
-                  </div>
+                    <p className="admin-live-studio__event-name">{s.title}</p>
+                    <div className="admin-live-studio__event-meta">
+                      {['live', 'paused'].includes(s.status) && (
+                        <span className="admin-live-studio__onair-pill">On /live</span>
+                      )}
+                      <AdminBadge tone={statusTone(s.status)}>{s.status_label}</AdminBadge>
+                      <span className="text-xs text-slate-400">{(s.cameras ?? []).length} cameras</span>
+                    </div>
                   </button>
                 </div>
               ))}
               {linkedStreams.length === 0 && (
-                <div className="text-sm text-slate-500 p-4 space-y-2">
+                <div className="admin-live-studio__empty space-y-2">
                   <p>No CMS event selected yet.</p>
                   <p className="text-xs">Choose an event from the dropdown above. Add events in CMS first if the list is empty.</p>
                 </div>
               )}
             </div>
-          </AdminPanel>
+          </aside>
 
           {selected ? (
-            <div className="space-y-6">
+            <div className="space-y-5">
               {showGuideCta && guideCtaStreamId === selected.id && (
-                <div className="rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-sky-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="admin-live-studio__guide">
                   <div>
                     <p className="font-bold text-ink">Event created successfully!</p>
                     <p className="text-sm text-slate-600 mt-0.5">Follow the setup guide to connect cameras and go live.</p>
                   </div>
                   <Link
                     to={`${guideBase}?event=${encodeURIComponent(selected.title)}`}
-                    className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-violet-700 transition"
+                    className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-sky-700 transition"
                   >
-                    🎥 Live Stream Setup Guide
+                    Live Stream Setup Guide
                   </Link>
                 </div>
               )}
 
-              <AdminPanel
-                title={selected.title}
-                subtitle={selected.description || 'Manage cameras and go live'}
-                action={
-                  <div className="flex flex-wrap gap-2">
-                    <AdminBtn
-                      variant="secondary"
-                      to={`${guideBase}?event=${encodeURIComponent(selected.title)}`}
-                    >
-                      <BookOpen className="h-4 w-4" /> Setup Guide
-                    </AdminBtn>
-                    <AdminBtn variant="secondary" onClick={openEdit}>
-                      <Pencil className="h-4 w-4" /> Edit Stream
-                    </AdminBtn>
-                    {selected.status === 'live' && (
-                      <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.pause(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Paused')}>
-                        <Pause className="h-4 w-4" /> Pause
-                      </AdminBtn>
-                    )}
-                    {selected.status === 'paused' && (
-                      <AdminBtn variant="primary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.resume(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Resumed')}>
-                        <Play className="h-4 w-4" /> Resume
-                      </AdminBtn>
-                    )}
-                    {['live', 'paused'].includes(selected.status) ? (
-                      <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.stop(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Ended')}>
-                        <Square className="h-4 w-4" /> End Live
-                      </AdminBtn>
-                    ) : selected.status === 'scheduled' ? (
-                      <>
-                        <AdminBtn
-                          variant="primary"
-                          disabled={busy || !canStartLive}
-                          title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
-                          onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
-                        >
-                          <Radio className="h-4 w-4" /> Start Now
-                        </AdminBtn>
-                        <AdminBtn variant="secondary" disabled={busy} onClick={cancelEvent}>Cancel Event</AdminBtn>
-                      </>
-                    ) : (
-                      <>
-                        <AdminBtn
-                          variant="primary"
-                          disabled={busy}
-                          onClick={() => void scheduleEvent()}
-                          title={selected.scheduled_start_at ? 'Publish as Scheduled (public countdown)' : 'Opens editor to set start time'}
-                        >
-                          <Calendar className="h-4 w-4" /> Schedule Event
-                        </AdminBtn>
-                        <AdminBtn
-                          variant="secondary"
-                          disabled={busy || !canStartLive}
-                          title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
-                          onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
-                        >
-                          <Radio className="h-4 w-4" /> Start Live
-                        </AdminBtn>
-                      </>
-                    )}
-                    <AdminBtn
-                      variant="secondary"
-                      className="!text-rose-600 hover:!bg-rose-50"
-                      disabled={busy}
-                      onClick={deleteStream}
-                    >
-                      <Trash2 className="h-4 w-4" /> Delete Stream
-                    </AdminBtn>
+              <section className={`admin-live-studio__hero ${isBroadcasting ? 'is-live' : ''}`}>
+                <div className="admin-live-studio__hero-top">
+                  <div className="min-w-0 flex-1">
+                    <p className="admin-live-studio__kicker">
+                      <Radio className="h-3.5 w-3.5" /> Broadcast desk
+                    </p>
+                    <h2 className="admin-live-studio__title">{selected.title}</h2>
+                    <p className="admin-live-studio__desc">
+                      {selected.description || 'Manage cameras and go live for the public /live page.'}
+                    </p>
                   </div>
-                }
-              >
-                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <div className="admin-live-studio__toolbar">
+                    <div className="admin-live-studio__toolbar-group">
+                      <AdminBtn
+                        variant="secondary"
+                        to={`${guideBase}?event=${encodeURIComponent(selected.title)}`}
+                      >
+                        <BookOpen className="h-4 w-4" /> Setup Guide
+                      </AdminBtn>
+                      <AdminBtn variant="secondary" onClick={openEdit}>
+                        <Pencil className="h-4 w-4" /> Edit Stream
+                      </AdminBtn>
+                    </div>
+                    <div className="admin-live-studio__toolbar-group">
+                      {selected.status === 'live' && (
+                        <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.pause(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Paused')}>
+                          <Pause className="h-4 w-4" /> Pause
+                        </AdminBtn>
+                      )}
+                      {selected.status === 'paused' && (
+                        <AdminBtn variant="primary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.resume(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Resumed')}>
+                          <Play className="h-4 w-4" /> Resume
+                        </AdminBtn>
+                      )}
+                      {['live', 'paused'].includes(selected.status) ? (
+                        <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.stop(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Ended')}>
+                          <Square className="h-4 w-4" /> End Live
+                        </AdminBtn>
+                      ) : selected.status === 'scheduled' ? (
+                        <>
+                          <AdminBtn
+                            variant="primary"
+                            disabled={busy || !canStartLive}
+                            title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
+                            onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
+                          >
+                            <Radio className="h-4 w-4" /> Start Now
+                          </AdminBtn>
+                          <AdminBtn variant="secondary" disabled={busy} onClick={cancelEvent}>Cancel Event</AdminBtn>
+                        </>
+                      ) : (
+                        <>
+                          <AdminBtn
+                            variant="primary"
+                            disabled={busy}
+                            onClick={() => void scheduleEvent()}
+                            title={selected.scheduled_start_at ? 'Publish as Scheduled (public countdown)' : 'Opens editor to set start time'}
+                          >
+                            <Calendar className="h-4 w-4" /> Schedule Event
+                          </AdminBtn>
+                          <AdminBtn
+                            variant="secondary"
+                            disabled={busy || !canStartLive}
+                            title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
+                            onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
+                          >
+                            <Radio className="h-4 w-4" /> Start Live
+                          </AdminBtn>
+                        </>
+                      )}
+                    </div>
+                    <div className="admin-live-studio__toolbar-group">
+                      <AdminBtn
+                        variant="secondary"
+                        className="!text-rose-600 hover:!bg-rose-50"
+                        disabled={busy}
+                        onClick={deleteStream}
+                      >
+                        <Trash2 className="h-4 w-4" /> Delete Stream
+                      </AdminBtn>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-live-studio__meta">
                   <AdminBadge tone={statusTone(selected.status)}>{selected.display_status === 'upcoming' ? 'Upcoming' : selected.status_label}</AdminBadge>
                   {selected.scheduled_start_at && (
-                    <span className="text-xs text-slate-500">
+                    <span className="admin-live-studio__chip">
                       Starts: {formatScheduleDisplay(selected.scheduled_start_at)}
                     </span>
                   )}
                   {(selected.status === 'draft' || selected.status === 'stopped' || selected.status === 'cancelled') && selected.scheduled_start_at && (
-                    <span className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
-                      Start time saved — click <strong>Schedule Event</strong> to publish countdown
+                    <span className="admin-live-studio__chip admin-live-studio__chip--warn">
+                      Start time saved — click Schedule Event to publish countdown
                     </span>
                   )}
                   {selected.active_camera && (
-                    <span className="text-sm text-slate-600">
+                    <span className="admin-live-studio__chip">
                       Primary: <strong>{selected.active_camera.name}</strong>
                       {(selected.active_cameras?.length ?? 0) > 1 && (
                         <> · Grid: <strong>{selected.active_cameras!.length}</strong> cams</>
@@ -881,26 +895,22 @@ export default function AdminLiveStreamsPage() {
                 </div>
 
                 {enabledCameraCount > 0 && (
-                  <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="admin-live-studio__screens">
+                    <div className="admin-live-studio__screens-row">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Screens</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-sky-600">Screens</p>
                         <p className="text-sm text-slate-600 mt-0.5">
                           How many camera panes parents see (max {maxScreens})
                         </p>
                       </div>
-                      <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+                      <div className="admin-live-studio__screen-picker">
                         {[1, 2, 3, 4].map((n) => (
                           <button
                             key={n}
                             type="button"
                             disabled={busy || n > maxScreens}
                             onClick={() => setLayoutMode(n)}
-                            className={`min-w-[2.25rem] rounded-md px-3 py-1.5 text-sm font-semibold transition disabled:opacity-30 ${
-                              layoutMode === n
-                                ? 'bg-violet-600 text-white shadow-sm'
-                                : 'text-slate-600 hover:bg-slate-50'
-                            }`}
+                            className={`admin-live-studio__screen-btn ${layoutMode === n ? 'is-active' : ''}`}
                           >
                             {n}
                           </button>
@@ -927,30 +937,34 @@ export default function AdminLiveStreamsPage() {
                 )}
 
                 {!canStartLive && !isBroadcasting && (
-                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-4">
+                  <p className="admin-live-studio__warn">
                     No cameras on this event yet. A teacher can connect from <strong>Join Live</strong> on their phone,
                     or you can add an external camera below.
                   </p>
                 )}
 
                 {previewPlayback && (
-                  <div className="mb-6">
-                    <p className="text-xs font-bold uppercase text-slate-400 mb-2">Preview</p>
+                  <div className="mt-5">
+                    <p className="text-xs font-bold uppercase tracking-wide text-sky-600 mb-2">Preview</p>
                     <LiveStreamPlayer
                       playback={previewPlayback}
                       status={selected.status}
-                      className="max-w-2xl"
+                      className="max-w-2xl rounded-xl overflow-hidden ring-1 ring-slate-200/80"
                       muted={false}
                     />
                   </div>
                 )}
-              </AdminPanel>
+              </section>
 
-              <AdminPanel
-                title="Mobile Cameras"
-                subtitle="Connected teacher & staff phone cameras — preview, go live, or switch instantly"
-                noPadding
-              >
+              <section className="admin-live-studio__section">
+                <div className="admin-live-studio__section-head">
+                  <div>
+                    <h3 className="admin-live-studio__section-title">Mobile Cameras</h3>
+                    <p className="admin-live-studio__section-sub">
+                      Connected teacher & staff phone cameras — preview, go live, or switch instantly
+                    </p>
+                  </div>
+                </div>
                 <AdminLiveCameraPanel
                   stream={selected}
                   busy={busy}
@@ -964,12 +978,16 @@ export default function AdminLiveStreamsPage() {
                   onDisconnect={disconnectMobileCamera}
                   onMute={muteCameraAudio}
                 />
-              </AdminPanel>
+              </section>
 
-              <AdminPanel
-                title="Cameras"
-                subtitle="External streams and admin browser cameras"
-                action={
+              <section className="admin-live-studio__section">
+                <div className="admin-live-studio__section-head">
+                  <div>
+                    <h3 className="admin-live-studio__section-title">Cameras</h3>
+                    <p className="admin-live-studio__section-sub">
+                      External streams and admin browser cameras
+                    </p>
+                  </div>
                   <AdminBtn
                     variant="secondary"
                     onClick={() => {
@@ -979,24 +997,24 @@ export default function AdminLiveStreamsPage() {
                   >
                     <Plus className="h-4 w-4" /> Add Camera
                   </AdminBtn>
-                }
-                noPadding
-              >
-                <div className="divide-y divide-slate-100">
+                </div>
+                <div className="admin-live-studio__camera-list">
                   {[...selected.cameras].sort((a, b) => a.display_order - b.display_order).map((camera, i, arr) => (
                     <div
                       key={camera.id}
-                      className={`flex flex-wrap items-center gap-3 px-4 py-3 ${camera.is_active ? 'bg-emerald-50/60' : ''}`}
+                      className={`admin-live-studio__camera ${camera.is_active ? 'is-active' : ''}`}
                     >
-                      <div className="flex flex-col gap-0.5">
-                        <button type="button" disabled={i === 0 || busy} onClick={() => moveCamera(camera, -1)} className="p-0.5 text-slate-400 hover:text-violet-600 disabled:opacity-30">
+                      <div className="admin-live-studio__reorder">
+                        <button type="button" disabled={i === 0 || busy} onClick={() => moveCamera(camera, -1)} aria-label="Move up">
                           <ChevronUp className="h-4 w-4" />
                         </button>
-                        <button type="button" disabled={i === arr.length - 1 || busy} onClick={() => moveCamera(camera, 1)} className="p-0.5 text-slate-400 hover:text-violet-600 disabled:opacity-30">
+                        <button type="button" disabled={i === arr.length - 1 || busy} onClick={() => moveCamera(camera, 1)} aria-label="Move down">
                           <ChevronDown className="h-4 w-4" />
                         </button>
                       </div>
-                      <Video className={`h-5 w-5 shrink-0 ${camera.is_active ? 'text-emerald-600' : 'text-slate-400'}`} />
+                      <div className="admin-live-studio__camera-icon">
+                        <Video className="h-5 w-5" />
+                      </div>
                       <div className="flex-1 min-w-[180px]">
                         <p className="font-semibold text-ink text-sm">{camera.name}</p>
                         <p className="text-xs text-slate-500">{camera.location || '—'} · {camera.stream_type === 'builtin_camera' ? 'BUILT-IN' : camera.stream_type.toUpperCase()}</p>
@@ -1013,7 +1031,7 @@ export default function AdminLiveStreamsPage() {
                         <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
                           <input
                             type="checkbox"
-                            className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                            className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                             checked={layoutDraftIds.includes(camera.id)}
                             disabled={busy}
                             onChange={() => toggleLayoutDraft(camera.id)}
@@ -1034,7 +1052,7 @@ export default function AdminLiveStreamsPage() {
                               ? (isBroadcasting ? 'Primary' : 'Selected')
                               : (isBroadcasting ? 'Make primary' : 'Select')}
                         </AdminBtn>
-                        <AdminBtn variant="secondary" className="!px-2 !py-1.5" onClick={() => preview(camera)}>
+                        <AdminBtn variant="secondary" className="!px-2 !py-1.5" onClick={() => preview(camera)} title="Preview">
                           <Eye className="h-3.5 w-3.5" />
                         </AdminBtn>
                         <AdminBtn
@@ -1081,32 +1099,43 @@ export default function AdminLiveStreamsPage() {
                       {camera.stream_type === 'builtin_camera' && !camera.publisher_user_id && (
                         <div className="w-full basis-full">
                           <BuiltinCameraStudio
-                          streamId={selected.id}
-                          cameraId={camera.id}
-                          cameraName={camera.name}
-                          isActive={Boolean(camera.is_primary || camera.is_active)}
-                          isBroadcasting={isBroadcasting}
-                          streamPaused={selected.status === 'paused'}
-                        />
+                            streamId={selected.id}
+                            cameraId={camera.id}
+                            cameraName={camera.name}
+                            isActive={Boolean(camera.is_primary || camera.is_active)}
+                            isBroadcasting={isBroadcasting}
+                            streamPaused={selected.status === 'paused'}
+                          />
                         </div>
                       )}
                     </div>
                   ))}
                   {selected.cameras.length === 0 && (
-                    <p className="text-sm text-slate-500 p-6 text-center">Add cameras — use Built-In Camera for browser webcam/mobile, or paste stream URLs.</p>
+                    <p className="admin-live-studio__empty">
+                      Add cameras — use Built-In Camera for browser webcam/mobile, or paste stream URLs.
+                    </p>
                   )}
                 </div>
-              </AdminPanel>
+              </section>
             </div>
           ) : (
-            <AdminPanel title="Select a CMS event" subtitle="Pick a website event from the dropdown to set up live streaming.">
-              <p className="text-sm text-slate-500">
+            <section className="admin-live-studio__section">
+              <div className="admin-live-studio__section-head">
+                <div>
+                  <h3 className="admin-live-studio__section-title">Select a CMS event</h3>
+                  <p className="admin-live-studio__section-sub">
+                    Pick a website event from the dropdown to set up live streaming.
+                  </p>
+                </div>
+              </div>
+              <p className="admin-live-studio__empty">
                 Events are managed in CMS → Events. Select one from the dropdown above to begin.
               </p>
-            </AdminPanel>
+            </section>
           )}
         </div>
       )}
+      </div>
 
       <AdminModal
         open={!!cameraModal}
