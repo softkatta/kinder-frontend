@@ -183,6 +183,7 @@ export default function AdminLiveStreamsPage() {
       setCmsEvents((res.data.data ?? []) as CmsEventOption[])
     } catch {
       setCmsEvents([])
+      toast.error('Failed to load CMS events')
     } finally {
       setCmsEventsLoading(false)
     }
@@ -370,15 +371,30 @@ export default function AdminLiveStreamsPage() {
   const muteCameraAudio = async (camera: LiveStreamCameraStaff, muted: boolean) => {
     if (!selected || mutingId) return
     setMutingId(camera.id)
+    const restoredVolume = !muted && (camera.audio_volume ?? 0) <= 0 ? 100 : (camera.audio_volume ?? 100)
     // Optimistic UI so the Volume icon flips immediately.
     patchStream({
       ...selected,
       cameras: selected.cameras.map((c) => (
-        c.id === camera.id ? { ...c, audio_muted: muted } : c
+        c.id === camera.id
+          ? {
+              ...c,
+              audio_muted: muted,
+              audio_volume: muted ? c.audio_volume : restoredVolume,
+            }
+          : c
       )),
     })
     if (previewCameraId === camera.id) {
-      setPreviewPlayback((prev) => (prev ? { ...prev, audio_muted: muted } : prev))
+      setPreviewPlayback((prev) => (
+        prev
+          ? {
+              ...prev,
+              audio_muted: muted,
+              audio_volume: muted ? prev.audio_volume : restoredVolume,
+            }
+          : prev
+      ))
     }
     try {
       const res = await liveStreamApi.muteCamera(selected.id, camera.id, muted)
@@ -395,8 +411,14 @@ export default function AdminLiveStreamsPage() {
 
   const volumeTimersRef = useRef<Record<number, number>>({})
 
+  useEffect(() => () => {
+    Object.values(volumeTimersRef.current).forEach((id) => window.clearTimeout(id))
+    volumeTimersRef.current = {}
+  }, [selected?.id])
+
   const setCameraVolume = (camera: LiveStreamCameraStaff, volume: number) => {
     if (!selected) return
+    const streamId = selected.id
     const next = Math.max(0, Math.min(100, Math.round(volume)))
     patchStream({
       ...selected,
@@ -415,10 +437,13 @@ export default function AdminLiveStreamsPage() {
     if (existing) window.clearTimeout(existing)
     volumeTimersRef.current[camera.id] = window.setTimeout(() => {
       void (async () => {
+        if (selectedIdRef.current !== streamId) return
         try {
-          const res = await liveStreamApi.setCameraVolume(selected.id, camera.id, next)
+          const res = await liveStreamApi.setCameraVolume(streamId, camera.id, next)
+          if (selectedIdRef.current !== streamId) return
           patchStream(res.data.data as LiveStreamStaff)
         } catch (err: unknown) {
+          if (selectedIdRef.current !== streamId) return
           const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
           toast.error(message || 'Could not update volume')
           await load({ silent: true })
@@ -978,7 +1003,11 @@ export default function AdminLiveStreamsPage() {
                             playback={previewPlayback}
                             status={selected.status}
                             className="als-preview-player"
-                            muted={Boolean(previewCamera?.audio_muted || previewPlayback.audio_muted)}
+                            muted={Boolean(
+                              !selected.audio_enabled
+                              || previewCamera?.audio_muted
+                              || previewPlayback.audio_muted,
+                            )}
                           />
                         ) : (
                           <div className="als-preview-placeholder">

@@ -119,10 +119,14 @@ function postYoutubeListening(iframe: HTMLIFrameElement | null) {
   }
 }
 
-function postVimeoCommand(iframe: HTMLIFrameElement | null, method: string, value?: number) {
-  const payload: { method: string; value?: number } = { method }
+function postVimeoCommand(iframe: HTMLIFrameElement | null, method: string, value?: number | string) {
+  const payload: { method: string; value?: number | string } = { method }
   if (value !== undefined) payload.value = value
-  iframe?.contentWindow?.postMessage(JSON.stringify(payload), '*')
+  try {
+    iframe?.contentWindow?.postMessage(JSON.stringify(payload), '*')
+  } catch {
+    /* ignore */
+  }
 }
 
 function resolvePanes(
@@ -181,7 +185,11 @@ function FeedEmbed({
   const readyRef = useRef(false)
   const ytApiReadyRef = useRef(false)
   const timerRef = useRef<number | null>(null)
+  const recoverTimerRef = useRef<number | null>(null)
   const playingRef = useRef(false)
+  /** True after YouTube/Vimeo reported playing at least once — avoids load-time kick loops. */
+  const everPlayedRef = useRef(false)
+  const autoKickCountRef = useRef(0)
   // One viewer gesture unlocks sound + play for this tab — layout changes must not re-ask.
   const soundUnlockedRef = useRef(readLiveSoundUnlocked())
   const playUnlockedRef = useRef(readLivePlaybackUnlocked())
@@ -234,13 +242,14 @@ function FeedEmbed({
         postYoutubeCommand(iframe, 'unMute')
         postYoutubeCommand(iframe, 'setVolume', [level])
       }
-      if (wantPlay) postYoutubeCommand(iframe, 'playVideo')
+      // Re-calling playVideo while already playing restarts the buffer spinner loop.
+      if (wantPlay && !playingRef.current) postYoutubeCommand(iframe, 'playVideo')
       return
     }
     if (layer.playback.mode === 'vimeo') {
       postVimeoCommand(iframe, 'setVolume', silent ? 0 : level / 100)
       postVimeoCommand(iframe, 'setMuted', silent ? 1 : 0)
-      if (wantPlay) postVimeoCommand(iframe, 'play')
+      if (wantPlay && !playingRef.current) postVimeoCommand(iframe, 'play')
     }
   }, [layer.playback.mode, volume])
 
@@ -272,31 +281,49 @@ function FeedEmbed({
     }
   }, [layer.playback.mode, muted, volume])
 
+  /** Bounded autoplay kicks — unlimited playVideo is what causes hard-refresh spinner loops. */
+  const autoKickPlay = useCallback((iframe: HTMLIFrameElement | null, forceMute = false) => {
+    if (!iframe || paused) return
+    if (playingRef.current) return
+    if (autoKickCountRef.current >= 4) {
+      showPlayPrompt()
+      return
+    }
+    autoKickCountRef.current += 1
+    kickPlay(iframe, forceMute)
+  }, [kickPlay, paused, showPlayPrompt])
+
+  const kickPlayRef = useRef(kickPlay)
+  const autoKickPlayRef = useRef(autoKickPlay)
+  const applyMuteStateRef = useRef(applyMuteState)
+  kickPlayRef.current = kickPlay
+  autoKickPlayRef.current = autoKickPlay
+  applyMuteStateRef.current = applyMuteState
+
   const syncDesiredAudio = useCallback(() => {
     const iframe = iframeRef.current
     if (!iframe || paused) return
-    // Admin / non-locked players: honor muted prop immediately (no Tap-for-sound gate).
+    // Only nudge play when not already playing — mute/volume alone must not restart video.
+    const playIfNeeded = !playingRef.current
     if (!lockPlayback) {
-      applyMuteState(iframe, muted, { play: true })
+      applyMuteState(iframe, muted, { play: playIfNeeded })
       if (!muted) soundUnlockedRef.current = true
       setGesturePrompt((p) => (p === 'sound' || p === 'play' ? null : p))
       return
     }
     if (muted) {
-      applyMuteState(iframe, true, { play: true })
+      applyMuteState(iframe, true, { play: playIfNeeded })
       setGesturePrompt((p) => (p === 'sound' ? null : p))
       return
     }
-    // Refresh unlock from session (Watch Live click may have set it before mount).
     if (!soundUnlockedRef.current && readLiveSoundUnlocked()) {
       soundUnlockedRef.current = true
     }
     if (soundUnlockedRef.current) {
-      applyMuteState(iframe, false, { play: true })
+      applyMuteState(iframe, false, { play: playIfNeeded })
       setGesturePrompt((p) => (p === 'sound' ? null : p))
       return
     }
-    // Public/parent: wait for ambient gesture / nav click.
     if (playingRef.current) {
       setGesturePrompt((p) => (p === 'play' ? p : 'sound'))
     }
@@ -350,14 +377,18 @@ function FeedEmbed({
   useEffect(() => {
     readyRef.current = false
     playingRef.current = false
+    everPlayedRef.current = false
     ytApiReadyRef.current = false
+    autoKickCountRef.current = 0
     // Keep session unlock across remounts (layout change adds new panes).
     soundUnlockedRef.current = readLiveSoundUnlocked()
     playUnlockedRef.current = readLivePlaybackUnlocked()
     setGesturePrompt(null)
     if (timerRef.current) window.clearTimeout(timerRef.current)
+    if (recoverTimerRef.current) window.clearTimeout(recoverTimerRef.current)
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
+      if (recoverTimerRef.current) window.clearTimeout(recoverTimerRef.current)
     }
   }, [layer.id])
 
@@ -365,6 +396,10 @@ function FeedEmbed({
     if (layer.playback.mode !== 'youtube' && layer.playback.mode !== 'vimeo') return
 
     const onMessage = (event: MessageEvent) => {
+      const iframe = iframeRef.current
+      // Ignore other panes' players — multi-cam postMessage crosstalk caused false kicks.
+      if (!iframe?.contentWindow || event.source !== iframe.contentWindow) return
+
       if (typeof event.origin === 'string'
         && !event.origin.includes('youtube.com')
         && !event.origin.includes('youtube-nocookie.com')
@@ -386,44 +421,59 @@ function FeedEmbed({
             : undefined
         if (payload.event === 'onReady' || payload.event === 'initialDelivery') {
           ytApiReadyRef.current = true
-          kickPlay(iframeRef.current, true)
+          // One muted kick after API ready — embed already has autoplay=1&mute=1.
+          autoKickPlayRef.current(iframe, true)
         }
         if (state === 1) {
           ytApiReadyRef.current = true
           playingRef.current = true
+          everPlayedRef.current = true
+          autoKickCountRef.current = 0
           markPlayUnlocked()
           setGesturePrompt((p) => (p === 'play' ? null : p))
           syncDesiredAudio()
-        } else if ((state === 2 || state === -1 || state === 5) && !paused) {
+        } else if (state === 3) {
+          // Buffering — keep everPlayed; do NOT clear playing in a way that re-triggers playVideo.
+          // Mark as "in progress" so mute sync won't restart the clip.
+          if (everPlayedRef.current) playingRef.current = true
+        } else if (state === 2 && !paused && everPlayedRef.current) {
+          // Only recover unexpected pause after we already played (not during first load).
           playingRef.current = false
-          window.setTimeout(() => kickPlay(iframeRef.current, true), 350)
+          if (recoverTimerRef.current) window.clearTimeout(recoverTimerRef.current)
+          recoverTimerRef.current = window.setTimeout(() => {
+            autoKickPlayRef.current(iframeRef.current, true)
+          }, 500)
         }
+        // Ignore -1 (unstarted) and 5 (cued): autoplay URL + onReady kick handle first start.
       }
 
-      if (layer.playback.mode === 'vimeo' && payload.event === 'play') {
-        playingRef.current = true
-        markPlayUnlocked()
-        setGesturePrompt((p) => (p === 'play' ? null : p))
-        syncDesiredAudio()
+      if (layer.playback.mode === 'vimeo') {
+        if (payload.event === 'play' || payload.event === 'playing') {
+          playingRef.current = true
+          everPlayedRef.current = true
+          markPlayUnlocked()
+          setGesturePrompt((p) => (p === 'play' ? null : p))
+          syncDesiredAudio()
+        }
       }
     }
 
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [layer.playback.mode, kickPlay, syncDesiredAudio, paused, markPlayUnlocked])
+  }, [layer.playback.mode, syncDesiredAudio, paused, markPlayUnlocked])
 
-  // Autoload muted play — do NOT depend on `muted` (admin toggles must not remute-kick).
+  // Autoload muted play — do NOT depend on `muted` / kickPlay identity (avoids restart loops).
   useEffect(() => {
     if (layer.playback.mode !== 'youtube' && layer.playback.mode !== 'vimeo') return
     if (paused) {
       const iframe = iframeRef.current
       if (layer.playback.mode === 'youtube') {
         if (ytApiReadyRef.current) {
-          applyMuteState(iframe, true, { play: false })
+          applyMuteStateRef.current(iframe, true, { play: false })
           postYoutubeCommand(iframe, 'pauseVideo')
         }
       } else {
-        applyMuteState(iframe, true, { play: false })
+        applyMuteStateRef.current(iframe, true, { play: false })
         postVimeoCommand(iframe, 'pause')
       }
       return
@@ -433,20 +483,19 @@ function FeedEmbed({
     if (layer.playback.mode === 'youtube') {
       postYoutubeListening(iframeRef.current)
     }
-    kickPlay(iframeRef.current, true)
+    autoKickPlayRef.current(iframeRef.current, true)
 
-    const retries = [300, 800, 1600, 2800, 4500, 7000].map((ms) =>
+    const retries = [1200, 2800, 5000].map((ms) =>
       window.setTimeout(() => {
-        if (playingRef.current || paused) return
+        if (playingRef.current || paused || everPlayedRef.current) return
         if (layer.playback.mode === 'youtube') postYoutubeListening(iframeRef.current)
-        kickPlay(iframeRef.current, true)
-        // Only ask for Tap to play on first visit — never after a prior unlock / layout change.
+        autoKickPlayRef.current(iframeRef.current, true)
         if (ms >= 2800) showPlayPrompt()
       }, ms),
     )
 
     return () => retries.forEach((id) => window.clearTimeout(id))
-  }, [paused, layer.id, layer.playback.mode, kickPlay, applyMuteState, showPlayPrompt])
+  }, [paused, layer.id, layer.playback.mode, showPlayPrompt])
 
   // Admin / route mute changes — apply immediately once sound is unlocked.
   useEffect(() => {
@@ -460,9 +509,11 @@ function FeedEmbed({
     if (!iframe) return
     markPlayUnlocked()
     markSoundUnlocked()
+    autoKickCountRef.current = 0
     kickPlay(iframe, true)
     window.setTimeout(() => {
       playingRef.current = true
+      everPlayedRef.current = true
       if (!muted) {
         applyMuteState(iframe, false, { play: true })
       }
@@ -477,7 +528,10 @@ function FeedEmbed({
       playUnlockedRef.current = true
       soundUnlockedRef.current = readLiveSoundUnlocked()
       setGesturePrompt((p) => (p === 'play' ? null : p))
-      if (!paused) kickPlay(iframeRef.current, true)
+      if (!paused && !playingRef.current) {
+        autoKickCountRef.current = 0
+        autoKickPlayRef.current(iframeRef.current, true)
+      }
     }
     window.addEventListener('kinder-live-play-unlock', onUnlock)
     window.addEventListener('kinder-live-sound-unlock', onUnlock)
@@ -485,7 +539,7 @@ function FeedEmbed({
       window.removeEventListener('kinder-live-play-unlock', onUnlock)
       window.removeEventListener('kinder-live-sound-unlock', onUnlock)
     }
-  }, [lockPlayback, paused, kickPlay])
+  }, [lockPlayback, paused])
 
   useEffect(() => {
     if (layer.playback.mode !== 'signed_redirect' || !layer.playback.src) return
@@ -570,7 +624,8 @@ function FeedEmbed({
           onLoad={() => {
             markReady()
             postYoutubeListening(iframeRef.current)
-            kickPlay(iframeRef.current, true)
+            // Prefer embed autoplay; only nudge once via bounded kick (not unlimited playVideo).
+            autoKickPlayRef.current(iframeRef.current, true)
             if (readLiveSoundUnlocked() && !muted) {
               soundUnlockedRef.current = true
               window.setTimeout(() => syncDesiredAudio(), 500)
@@ -631,7 +686,10 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
-            kickPlay(iframeRef.current, true)
+            // Register Vimeo play events so everPlayed / Tap-to-play state stays correct.
+            postVimeoCommand(iframeRef.current, 'addEventListener', 'play')
+            postVimeoCommand(iframeRef.current, 'addEventListener', 'playing')
+            autoKickPlayRef.current(iframeRef.current, true)
             if (readLiveSoundUnlocked() && !muted) {
               soundUnlockedRef.current = true
               window.setTimeout(() => syncDesiredAudio(), 500)
