@@ -427,6 +427,9 @@ export function MobileCameraPublisher({ streamId, eventTitle, canJoin }: MobileC
         if (updated.audio_muted && roomRef.current) {
           void roomRef.current.localParticipant.setMicrophoneEnabled(false)
           setMicEnabled(false)
+        } else if (!updated.audio_muted && roomRef.current) {
+          void roomRef.current.localParticipant.setMicrophoneEnabled(true)
+          setMicEnabled(true)
         }
       })
     })

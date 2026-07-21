@@ -15,6 +15,25 @@ export type StreamSource =
   | 'hls'
   | 'custom_embed'
 
+/** Picture-in-picture layout (primary + mini). Stored as layout_mode = 5. */
+export const LAYOUT_PIP = 5
+
+export function normalizeLayoutMode(mode: number | undefined | null): number {
+  const n = Math.floor(Number(mode) || 1)
+  if (n === LAYOUT_PIP) return LAYOUT_PIP
+  return Math.max(1, Math.min(4, n > 0 ? n : 1))
+}
+
+/** How many camera panes this layout shows. */
+export function layoutPaneCount(mode: number | undefined | null): number {
+  const n = normalizeLayoutMode(mode)
+  return n === LAYOUT_PIP ? 2 : n
+}
+
+export function isPipLayout(mode: number | undefined | null): boolean {
+  return normalizeLayoutMode(mode) === LAYOUT_PIP
+}
+
 export type CameraConnectionStatus =
   | 'available'
   | 'connecting'

@@ -22,7 +22,13 @@ import { FormGrid } from '@/components/ui/Form'
 import { liveStreamApi } from '@/api/services'
 import { useLiveStreamRealtime } from '@/hooks/useLiveStreamRealtime'
 import type { LivePlayback, LiveStreamCameraStaff, LiveStreamStaff, StreamSource } from '@/types/liveStream'
-import { STREAM_SOURCES } from '@/types/liveStream'
+import {
+  LAYOUT_PIP,
+  STREAM_SOURCES,
+  isPipLayout,
+  layoutPaneCount,
+  normalizeLayoutMode,
+} from '@/types/liveStream'
 
 interface CmsEventOption {
   id: number
@@ -96,7 +102,9 @@ export default function AdminLiveStreamsPage() {
   const [cameraModal, setCameraModal] = useState<{ mode: 'add' | 'edit'; camera?: LiveStreamCameraStaff } | null>(null)
   const [cameraForm, setCameraForm] = useState(emptyCamera)
   const [previewPlayback, setPreviewPlayback] = useState<LivePlayback | null>(null)
+  const [previewCameraId, setPreviewCameraId] = useState<number | null>(null)
   const [switchingId, setSwitchingId] = useState<number | null>(null)
+  const [mutingId, setMutingId] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editForm, setEditForm] = useState(emptyEditForm)
@@ -108,9 +116,15 @@ export default function AdminLiveStreamsPage() {
   const onAirStream = streams.find((s) => ['live', 'paused'].includes(s.status)) ?? null
   const isBroadcasting = selected ? ['live', 'paused'].includes(selected.status) : false
   const enabledCameraCount = selected?.cameras.filter((c) => c.is_enabled).length ?? 0
-  const layoutMode = Math.max(1, Math.min(4, selected?.layout_mode ?? 1))
+  const layoutMode = normalizeLayoutMode(selected?.layout_mode)
+  const pipActive = isPipLayout(layoutMode)
   const maxScreens = Math.max(1, Math.min(4, enabledCameraCount || 1))
+  const paneSlots = pipActive ? Math.min(2, maxScreens) : Math.min(layoutPaneCount(layoutMode), maxScreens)
   const canStartLive = enabledCameraCount > 0
+  const canSelectPip = enabledCameraCount >= 2 && maxScreens >= 2
+  const previewCamera = previewCameraId
+    ? selected?.cameras.find((c) => c.id === previewCameraId) ?? null
+    : null
   const trackedStreamId = linkedStreams.some((s) => s.id === selectedId) ? selectedId : null
   const selectedIdRef = useRef<number | null>(null)
   const loadSeqRef = useRef(0)
@@ -127,8 +141,8 @@ export default function AdminLiveStreamsPage() {
     const ids = selected.active_camera_ids?.length
       ? selected.active_camera_ids
       : (selected.active_camera_id ? [selected.active_camera_id] : [])
-    setLayoutDraftIds(ids)
-  }, [selected?.id, selected?.active_camera_id, selected?.active_camera_ids?.join(',')])
+    setLayoutDraftIds(ids.slice(0, layoutPaneCount(selected.layout_mode)))
+  }, [selected?.id, selected?.layout_mode, selected?.active_camera_id, selected?.active_camera_ids?.join(',')])
 
   useEffect(() => {
     if (!selectedId) return
@@ -230,7 +244,7 @@ export default function AdminLiveStreamsPage() {
     setSwitchingId(camera.id)
     setStreams((prev) => prev.map((s) => {
       if (s.id !== selected.id) return s
-      const layout = Math.max(1, Math.min(4, s.layout_mode ?? 1))
+      const layout = layoutPaneCount(s.layout_mode)
       let ids = [...(s.active_camera_ids ?? (s.active_camera_id ? [s.active_camera_id] : []))]
       ids = ids.filter((id) => id !== camera.id)
       ids.unshift(camera.id)
@@ -264,11 +278,17 @@ export default function AdminLiveStreamsPage() {
 
   const setLayoutMode = async (mode: number) => {
     if (!selected || busy) return
-    const next = Math.max(1, Math.min(maxScreens, mode))
+    const next = mode === LAYOUT_PIP
+      ? LAYOUT_PIP
+      : Math.max(1, Math.min(4, mode))
     if (next === layoutMode) return
+    if (next === LAYOUT_PIP && !canSelectPip) {
+      toast.error('PiP needs at least 2 enabled cameras')
+      return
+    }
     await runWithPatch(
       () => liveStreamApi.setLayout(selected.id, next) as Promise<{ data: { data: LiveStreamStaff } }>,
-      `Screens: ${next}`,
+      next === LAYOUT_PIP ? 'Layout: PiP' : `Layout: ${next}-up (parents see this)`,
     )
   }
 
@@ -278,8 +298,10 @@ export default function AdminLiveStreamsPage() {
         if (prev.length <= 1) return prev
         return prev.filter((id) => id !== cameraId)
       }
-      if (prev.length >= maxScreens) {
-        toast.error(`Maximum ${maxScreens} cameras can be activated`)
+      if (prev.length >= paneSlots) {
+        toast.error(pipActive
+          ? 'PiP uses at most 2 cameras (main + mini)'
+          : `Maximum ${paneSlots} cameras can be activated`)
         return prev
       }
       return [...prev, cameraId]
@@ -288,7 +310,7 @@ export default function AdminLiveStreamsPage() {
 
   const applyLayoutCameras = async () => {
     if (!selected || busy) return
-    const ids = layoutDraftIds.slice(0, maxScreens)
+    const ids = layoutDraftIds.slice(0, paneSlots)
     if (ids.length === 0) {
       toast.error('Select at least one camera')
       return
@@ -346,17 +368,38 @@ export default function AdminLiveStreamsPage() {
   }
 
   const muteCameraAudio = async (camera: LiveStreamCameraStaff, muted: boolean) => {
-    if (!selected || busy) return
-    setBusy(true)
+    if (!selected || mutingId) return
+    setMutingId(camera.id)
+    // Optimistic UI so the Volume icon flips immediately.
+    patchStream({
+      ...selected,
+      cameras: selected.cameras.map((c) => (
+        c.id === camera.id ? { ...c, audio_muted: muted } : c
+      )),
+    })
+    if (previewCameraId === camera.id) {
+      setPreviewPlayback((prev) => (prev ? { ...prev, audio_muted: muted } : prev))
+    }
     try {
       const res = await liveStreamApi.muteCamera(selected.id, camera.id, muted)
       patchStream(res.data.data as LiveStreamStaff)
+      toast.success(muted ? 'Camera muted for parents' : 'Camera unmuted for parents')
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       toast.error(message || 'Could not update audio')
+      await load({ silent: true })
     } finally {
-      setBusy(false)
+      setMutingId(null)
     }
+  }
+
+  const toggleMasterAudio = async () => {
+    if (!selected || busy) return
+    const next = !selected.audio_enabled
+    await runWithPatch(
+      () => liveStreamApi.update(selected.id, { audio_enabled: next }) as Promise<{ data: { data: LiveStreamStaff } }>,
+      next ? 'Parent sound enabled' : 'Parent sound muted',
+    )
   }
 
   const saveEdit = async () => {
@@ -471,6 +514,7 @@ export default function AdminLiveStreamsPage() {
     selectedIdRef.current = null
     setSelectedId(null)
     setPreviewPlayback(null)
+    setPreviewCameraId(null)
     setStreams((prev) => prev.filter((s) => s.id !== removedId))
     try {
       await liveStreamApi.remove(removedId)
@@ -513,6 +557,7 @@ export default function AdminLiveStreamsPage() {
     }
     setSelectedStreamIds([])
     setPreviewPlayback(null)
+    setPreviewCameraId(null)
     setStreams((prev) => prev.filter((s) => !ids.includes(s.id)))
     try {
       const results = await Promise.allSettled(ids.map((id) => liveStreamApi.remove(id)))
@@ -650,7 +695,12 @@ export default function AdminLiveStreamsPage() {
     }
     try {
       const res = await liveStreamApi.previewCamera(selected.id, camera.id)
-      setPreviewPlayback(res.data.data.preview as LivePlayback)
+      const payload = res.data.data as { camera_id?: number; preview: LivePlayback }
+      setPreviewCameraId(payload.camera_id ?? camera.id)
+      setPreviewPlayback({
+        ...payload.preview,
+        audio_muted: Boolean(camera.audio_muted || payload.preview.audio_muted),
+      })
     } catch {
       toast.error('Preview failed')
     }
@@ -784,7 +834,9 @@ export default function AdminLiveStreamsPage() {
               }
               const shareParentLink = () => {
                 if (typeof navigator.share === 'function') {
-                  void navigator.share({ title: selected.title, url: parentLiveUrl }).catch(() => {})
+                  void navigator.share({ title: selected.title, url: parentLiveUrl }).catch(() => {
+                    copyParentLink()
+                  })
                 } else {
                   copyParentLink()
                 }
@@ -891,7 +943,7 @@ export default function AdminLiveStreamsPage() {
                             playback={previewPlayback}
                             status={selected.status}
                             className="als-preview-player"
-                            muted={false}
+                            muted={Boolean(previewCamera?.audio_muted || previewPlayback.audio_muted)}
                           />
                         ) : (
                           <div className="als-preview-placeholder">
@@ -908,6 +960,15 @@ export default function AdminLiveStreamsPage() {
                         <span>Broadcast Controls</span>
                       </div>
                       <div className="als-controls-stack">
+                        <AdminBtn
+                          variant={selected.audio_enabled ? 'primary' : 'secondary'}
+                          disabled={busy}
+                          onClick={() => void toggleMasterAudio()}
+                          title={selected.audio_enabled ? 'Mute all parent audio' : 'Unmute parent audio'}
+                        >
+                          {selected.audio_enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                          {selected.audio_enabled ? 'Sound On' : 'Sound Off'}
+                        </AdminBtn>
                         <AdminBtn
                           variant="secondary"
                           to={`${guideBase}?event=${encodeURIComponent(selected.title)}`}
@@ -995,7 +1056,7 @@ export default function AdminLiveStreamsPage() {
                       <div className="als-stat__icon"><LayoutGrid className="h-4 w-4" /></div>
                       <div>
                         <p className="als-stat__label">Layout mode</p>
-                        <p className="als-stat__value">{layoutMode}-up</p>
+                        <p className="als-stat__value">{pipActive ? 'PiP' : `${layoutMode}-up`}</p>
                       </div>
                     </div>
                     <div className="als-stat">
@@ -1006,17 +1067,19 @@ export default function AdminLiveStreamsPage() {
                       </div>
                     </div>
                     <div className="als-stat">
-                      <div className="als-stat__icon"><Monitor className="h-4 w-4" /></div>
-                      <div>
-                        <p className="als-stat__label">Recording</p>
-                        <p className="als-stat__value">—</p>
-                      </div>
-                    </div>
-                    <div className="als-stat">
                       <div className="als-stat__icon"><Users className="h-4 w-4" /></div>
                       <div>
                         <p className="als-stat__label">Viewers</p>
-                        <p className="als-stat__value">—</p>
+                        <p className="als-stat__value">{selected.viewer_count ?? 0}</p>
+                      </div>
+                    </div>
+                    <div className="als-stat">
+                      <div className="als-stat__icon">
+                        {selected.audio_enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                      </div>
+                      <div>
+                        <p className="als-stat__label">Parent sound</p>
+                        <p className="als-stat__value">{selected.audio_enabled ? 'On' : 'Off'}</p>
                       </div>
                     </div>
                   </div>
@@ -1029,16 +1092,20 @@ export default function AdminLiveStreamsPage() {
                           <LayoutGrid className="h-4 w-4 text-sky-600" />
                           <span>Layout</span>
                         </div>
-                        <p className="text-xs text-slate-500">How many camera panes parents see (max {maxScreens})</p>
+                        <p className="text-xs text-slate-500">
+                          {pipActive
+                            ? 'Parents see main camera + mini PiP (max 2)'
+                            : 'Parents see this exact layout on /live'}
+                        </p>
                       </div>
                       <div className="als-layout-picker">
                         {[1, 2, 3, 4].map((n) => (
                           <button
                             key={n}
                             type="button"
-                            disabled={busy || n > maxScreens}
+                            disabled={busy}
                             onClick={() => setLayoutMode(n)}
-                            className={`als-layout-card ${layoutMode === n ? 'is-active' : ''}`}
+                            className={`als-layout-card ${!pipActive && layoutMode === n ? 'is-active' : ''}`}
                           >
                             <span className={`als-layout-preview als-layout-preview--${n}`}>
                               {Array.from({ length: n }).map((_, i) => (
@@ -1050,9 +1117,10 @@ export default function AdminLiveStreamsPage() {
                         ))}
                         <button
                           type="button"
-                          disabled
-                          title="Picture-in-Picture coming soon"
-                          className="als-layout-card is-disabled"
+                          disabled={busy || !canSelectPip}
+                          title={canSelectPip ? 'Picture-in-Picture (main + mini)' : 'Enable at least 2 cameras for PiP'}
+                          onClick={() => setLayoutMode(LAYOUT_PIP)}
+                          className={`als-layout-card ${pipActive ? 'is-active' : ''} ${!canSelectPip ? 'is-disabled' : ''}`}
                         >
                           <span className="als-layout-preview als-layout-preview--pip">
                             <span className="als-layout-preview__pip-main" />
@@ -1061,10 +1129,12 @@ export default function AdminLiveStreamsPage() {
                           <span className="als-layout-card__label">PiP</span>
                         </button>
                       </div>
-                      {maxScreens > 1 && (
+                      {paneSlots > 1 && (
                         <div className="als-layout-activate">
                           <p className="text-xs text-slate-500 mr-auto">
-                            Select up to {maxScreens} cameras (max 4), then activate for the live grid.
+                            {pipActive
+                              ? 'Select main + mini camera (max 2), then activate for PiP.'
+                              : `Select up to ${paneSlots} cameras for this layout, then Activate — parents see the same ${layoutMode}-up grid.`}
                           </p>
                           <AdminBtn
                             variant="primary"
@@ -1072,8 +1142,8 @@ export default function AdminLiveStreamsPage() {
                             disabled={busy || layoutDraftIds.length === 0}
                             onClick={applyLayoutCameras}
                           >
-                            Activate {Math.min(layoutDraftIds.length, maxScreens)} camera
-                            {Math.min(layoutDraftIds.length, maxScreens) === 1 ? '' : 's'}
+                            Activate {Math.min(layoutDraftIds.length, paneSlots)} camera
+                            {Math.min(layoutDraftIds.length, paneSlots) === 1 ? '' : 's'}
                           </AdminBtn>
                         </div>
                       )}
@@ -1095,7 +1165,7 @@ export default function AdminLiveStreamsPage() {
                       busy={busy}
                       switchingId={switchingId}
                       isBroadcasting={isBroadcasting}
-                      layoutMode={maxScreens}
+                      layoutMode={paneSlots}
                       layoutDraftIds={layoutDraftIds}
                       onToggleInclude={toggleLayoutDraft}
                       onSwitch={isBroadcasting ? switchCamera : goLiveWithCamera}
@@ -1156,7 +1226,7 @@ export default function AdminLiveStreamsPage() {
                                 {camera.is_primary ? 'Selected' : 'In layout'}
                               </AdminBadge>
                             )}
-                            {maxScreens > 1 && camera.is_enabled && (
+                            {paneSlots > 1 && camera.is_enabled && (
                               <label className="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
                                 <input
                                   type="checkbox"
@@ -1188,7 +1258,7 @@ export default function AdminLiveStreamsPage() {
                             <AdminBtn
                               variant={camera.audio_muted ? 'secondary' : 'primary'}
                               className="!px-2 !py-1.5"
-                              disabled={busy || !camera.is_enabled}
+                              disabled={mutingId === camera.id || !camera.is_enabled}
                               title={camera.audio_muted ? 'या कॅमेऱ्याचा आवाज चालू करा' : 'या कॅमेऱ्याचा आवाज बंद करा'}
                               onClick={() => muteCameraAudio(camera, !camera.audio_muted)}
                             >
@@ -1235,6 +1305,7 @@ export default function AdminLiveStreamsPage() {
                                 isActive={Boolean(camera.is_primary || camera.is_active)}
                                 isBroadcasting={isBroadcasting}
                                 streamPaused={selected.status === 'paused'}
+                                remoteAudioMuted={Boolean(camera.audio_muted)}
                               />
                             </div>
                           )}
@@ -1258,7 +1329,7 @@ export default function AdminLiveStreamsPage() {
                         {selected.display_status === 'upcoming' ? 'Upcoming' : selected.status_label}
                       </AdminBadge>
                       <p className="text-sm text-slate-600 mt-2">
-                        {enabledCameraCount} camera{enabledCameraCount === 1 ? '' : 's'} · {layoutMode}-up layout
+                        {enabledCameraCount} camera{enabledCameraCount === 1 ? '' : 's'} · {pipActive ? 'PiP' : `${layoutMode}-up`} layout
                       </p>
                       {selected.active_camera && (
                         <p className="text-xs text-slate-500 mt-1">
@@ -1267,6 +1338,14 @@ export default function AdminLiveStreamsPage() {
                       )}
                     </div>
                     <div className="als-quick-panel__actions">
+                      <AdminBtn
+                        variant={selected.audio_enabled ? 'primary' : 'secondary'}
+                        disabled={busy}
+                        onClick={() => void toggleMasterAudio()}
+                      >
+                        {selected.audio_enabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                        {selected.audio_enabled ? 'Sound On' : 'Sound Off'}
+                      </AdminBtn>
                       {selected.status === 'live' && (
                         <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.pause(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Paused')}>
                           <Pause className="h-4 w-4" /> Pause

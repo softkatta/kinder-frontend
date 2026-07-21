@@ -202,7 +202,7 @@ export function AdminLiveCameraPanel({
                   )}
                 </AdminBtn>
                 <AdminBtn
-                  variant="secondary"
+                  variant={camera.audio_muted ? 'secondary' : 'primary'}
                   className="!px-2 !py-1.5 text-xs"
                   disabled={busy}
                   onClick={() => onMute(camera, !camera.audio_muted)}

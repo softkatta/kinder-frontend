@@ -47,6 +47,8 @@ interface BuiltinCameraStudioProps {
   isActive: boolean
   isBroadcasting: boolean
   streamPaused: boolean
+  /** When admin mutes this camera for parents, also cut the publisher mic. */
+  remoteAudioMuted?: boolean
 }
 
 type StudioPhase = 'idle' | 'preview' | 'live'
@@ -58,6 +60,7 @@ export function BuiltinCameraStudio({
   isActive,
   isBroadcasting,
   streamPaused,
+  remoteAudioMuted = false,
 }: BuiltinCameraStudioProps) {
   const previewRef = useRef<HTMLVideoElement>(null)
   const roomRef = useRef<Room | null>(null)
@@ -302,6 +305,10 @@ export function BuiltinCameraStudio({
   }, [cameraEnabled, phase])
 
   const toggleMic = useCallback(async () => {
+    if (remoteAudioMuted) {
+      toast.error('Admin muted this camera — unmute from the Volume button first')
+      return
+    }
     const room = roomRef.current
     const next = !micEnabled
     setMicEnabled(next)
@@ -310,7 +317,25 @@ export function BuiltinCameraStudio({
     } else if (previewStreamRef.current) {
       previewStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = next })
     }
-  }, [micEnabled, phase])
+  }, [micEnabled, phase, remoteAudioMuted])
+
+  useEffect(() => {
+    const room = roomRef.current
+    if (remoteAudioMuted) {
+      setMicEnabled(false)
+      if (room && phase === 'live') {
+        void room.localParticipant.setMicrophoneEnabled(false)
+      } else if (previewStreamRef.current) {
+        previewStreamRef.current.getAudioTracks().forEach((t) => { t.enabled = false })
+      }
+      return
+    }
+    // Admin unmuted — restore publisher mic when live.
+    if (room && phase === 'live') {
+      void room.localParticipant.setMicrophoneEnabled(true)
+      setMicEnabled(true)
+    }
+  }, [remoteAudioMuted, phase])
 
   const switchVideoDevice = useCallback(async (deviceId: string) => {
     setVideoDeviceId(deviceId)

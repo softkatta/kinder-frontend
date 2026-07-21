@@ -142,7 +142,7 @@ export default function PublicLivePage() {
                 cameraName={watch?.active_camera?.name}
                 cameraLocation={watch?.active_camera?.location ?? undefined}
                 status={active.status}
-                muted={!routeVisible}
+                muted={!routeVisible || active.audio_enabled === false}
                 webrtcAuth="public"
               />
             </div>

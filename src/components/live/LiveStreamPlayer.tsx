@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Maximize2, Minimize2, Radio, RotateCw } from 'lucide-react'
 import { LiveKitViewer, type WebrtcAuthMode } from '@/components/live/LiveKitViewer'
 import type { LivePlayback } from '@/types/liveStream'
+import { isPipLayout, layoutPaneCount } from '@/types/liveStream'
 import { readLiveSoundUnlocked, unlockLiveSound } from '@/utils/liveSoundUnlock'
 
 type PlayerOrientation = 'landscape' | 'portrait'
@@ -30,9 +31,10 @@ interface LiveStreamPlayerProps {
 
 interface FeedLayer {
   id: string
-  playback: LivePlayback
+  playback: LivePlayback | null
   cameraName?: string
   cameraLocation?: string
+  empty?: boolean
 }
 
 function layerId(cameraId: number | null | undefined, playback: LivePlayback): string {
@@ -118,13 +120,24 @@ function resolvePanes(
     ? playbacks
     : (playback ? [playback] : [])
 
-  const cap = Math.max(1, Math.min(4, layoutMode ?? list.length ?? 1))
-  return list.slice(0, cap).map((pb, index) => ({
+  const cap = layoutPaneCount(layoutMode ?? list.length ?? 1)
+  const filled: FeedLayer[] = list.slice(0, cap).map((pb, index) => ({
     id: layerId(pb.camera_id ?? cameraId, pb),
     playback: pb,
     cameraName: pb.camera_name ?? (index === 0 ? cameraName : undefined),
     cameraLocation: pb.camera_location ?? (index === 0 ? cameraLocation : undefined) ?? undefined,
   }))
+
+  // Pad to full layout so public grid matches admin selection (empty slots if fewer cameras).
+  while (filled.length < cap) {
+    const slot = filled.length
+    filled.push({
+      id: `empty-slot-${slot}`,
+      playback: null,
+      empty: true,
+    })
+  }
+  return filled
 }
 
 
@@ -136,7 +149,7 @@ function FeedEmbed({
   webrtcAuth,
   lockPlayback,
 }: {
-  layer: FeedLayer
+  layer: FeedLayer & { playback: LivePlayback }
   onReady?: () => void
   muted: boolean
   paused?: boolean
@@ -205,6 +218,13 @@ function FeedEmbed({
   const syncDesiredAudio = useCallback(() => {
     const iframe = iframeRef.current
     if (!iframe || paused) return
+    // Admin / non-locked players: honor muted prop immediately (no Tap-for-sound gate).
+    if (!lockPlayback) {
+      applyMuteState(iframe, muted, { play: true })
+      if (!muted) soundUnlockedRef.current = true
+      setGesturePrompt((p) => (p === 'sound' || p === 'play' ? null : p))
+      return
+    }
     if (muted) {
       applyMuteState(iframe, true, { play: true })
       setGesturePrompt((p) => (p === 'sound' ? null : p))
@@ -219,8 +239,8 @@ function FeedEmbed({
       setGesturePrompt((p) => (p === 'sound' ? null : p))
       return
     }
-    // Public/parent: never show Tap for sound — wait for ambient gesture / nav click.
-    if (!lockPlayback && playingRef.current) {
+    // Public/parent: wait for ambient gesture / nav click.
+    if (playingRef.current) {
       setGesturePrompt((p) => (p === 'play' ? p : 'sound'))
     }
   }, [muted, paused, lockPlayback, applyMuteState])
@@ -593,8 +613,10 @@ export function LiveStreamPlayer({
   const [orientation, setOrientation] = useState<PlayerOrientation>('landscape')
 
   const panes = resolvePanes(playback, playbacks, layoutMode, cameraId, cameraName, cameraLocation)
-  // Always use grid path (even for 1 pane) so activate/deactivate does not remount existing feeds.
-  const gridMode = Math.min(4, Math.max(1, panes.length || 1)) as 1 | 2 | 3 | 4
+  // Grid follows admin layout_mode (1–4 / PiP), not just how many feeds are currently live.
+  const pip = isPipLayout(layoutMode)
+  const slotCount = layoutPaneCount(layoutMode ?? Math.max(1, panes.filter((p) => p.playback).length || 1))
+  const gridMode = pip ? 'pip' : (Math.min(4, Math.max(1, slotCount)) as 1 | 2 | 3 | 4)
   const rotateEnabled = showRotate ?? immersive
   const playbackLocked = lockPlayback ?? immersive
   const isPortrait = orientation === 'portrait'
@@ -638,7 +660,7 @@ export function LiveStreamPlayer({
     }
   }, [])
 
-  if (panes.length === 0) {
+  if (!panes.some((p) => p.playback)) {
     return (
       <div className={`live-player live-player--empty ${className}`}>
         <p className="text-sm text-slate-500">Waiting for live feed…</p>
@@ -705,11 +727,18 @@ export function LiveStreamPlayer({
       <div className={`live-player-stage ${isPaused ? 'live-player-stage--paused' : ''}`}>
         <div className={`live-player-grid live-player-grid--${gridMode}`}>
           {panes.map((pane) => {
+            if (!pane.playback || pane.empty) {
+              return (
+                <div key={pane.id} className="live-player-pane live-player-pane--empty">
+                  <p>Waiting for camera…</p>
+                </div>
+              )
+            }
             const paneMuted = muted || Boolean(pane.playback.audio_muted)
             return (
               <div key={pane.id} className="live-player-pane">
                 <FeedEmbed
-                  layer={pane}
+                  layer={pane as FeedLayer & { playback: LivePlayback }}
                   muted={paneMuted}
                   paused={isPaused}
                   webrtcAuth={webrtcAuth}

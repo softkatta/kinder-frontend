@@ -163,7 +163,7 @@ export default function ParentLivePage() {
                   cameraName={watch?.active_camera?.name}
                   cameraLocation={watch?.active_camera?.location ?? undefined}
                   status={active.status}
-                  muted={!routeVisible}
+                  muted={!routeVisible || active.audio_enabled === false}
                 />
               </div>
               {!soundUnlocked && !broadcastPaused && (

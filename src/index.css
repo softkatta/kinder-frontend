@@ -4139,13 +4139,40 @@ h1, h2, h3, h4, h5, h6 {
   grid-template: 1fr / 1fr 1fr;
 }
 .live-player-grid--3 {
-  grid-template: 1fr 1fr / 1.4fr 1fr;
+  grid-template: 1.25fr 1fr / 1fr 1fr;
 }
 .live-player-grid--3 .live-player-pane:first-child {
-  grid-row: 1 / -1;
+  grid-column: 1 / -1;
 }
 .live-player-grid--4 {
   grid-template: 1fr 1fr / 1fr 1fr;
+}
+.live-player-pane--empty {
+  @apply flex items-center justify-center bg-slate-950 text-xs text-slate-500;
+}
+.live-player-grid--pip {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+.live-player-grid--pip .live-player-pane:first-child {
+  position: absolute;
+  inset: 0;
+}
+.live-player-grid--pip .live-player-pane:nth-child(2) {
+  position: absolute;
+  right: 2.5%;
+  bottom: 3%;
+  width: min(32%, 220px);
+  aspect-ratio: 16 / 9;
+  z-index: 4;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+}
+.live-player-grid--pip .live-player-pane:nth-child(n + 3) {
+  display: none;
 }
 .live-player-pane {
   @apply relative min-h-0 min-w-0 overflow-hidden bg-slate-950;
