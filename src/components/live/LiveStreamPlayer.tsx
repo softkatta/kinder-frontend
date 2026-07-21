@@ -126,6 +126,25 @@ function resolvePanes(
   }))
 }
 
+
+const LIVE_SOUND_UNLOCK_KEY = 'kinder-live-sound-unlocked'
+
+function readLiveSoundUnlocked(): boolean {
+  try {
+    return sessionStorage.getItem(LIVE_SOUND_UNLOCK_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeLiveSoundUnlocked() {
+  try {
+    sessionStorage.setItem(LIVE_SOUND_UNLOCK_KEY, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
 function FeedEmbed({
   layer,
   onReady,
@@ -146,7 +165,8 @@ function FeedEmbed({
   const readyRef = useRef(false)
   const timerRef = useRef<number | null>(null)
   const playingRef = useRef(false)
-  // Always mute in embed URL — unmuted autoplay is blocked and shows the YouTube play button.
+  // One viewer gesture unlocks sound for this tab — admin mute then applies without re-tap.
+  const soundUnlockedRef = useRef(readLiveSoundUnlocked())
   const [embedSrc] = useState(() => {
     if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
       return youtubeEmbedSrc(layer.playback.video_id, true, lockPlayback)
@@ -158,19 +178,10 @@ function FeedEmbed({
   })
   const [gesturePrompt, setGesturePrompt] = useState<'play' | 'sound' | null>(null)
 
-  const kickPlay = useCallback((iframe: HTMLIFrameElement | null) => {
-    if (!iframe) return
-    if (layer.playback.mode === 'youtube') {
-      postYoutubeCommand(iframe, 'mute')
-      postYoutubeCommand(iframe, 'playVideo')
-      return
-    }
-    if (layer.playback.mode === 'vimeo') {
-      postVimeoCommand(iframe, 'setVolume', 0)
-      postVimeoCommand(iframe, 'setMuted', 1)
-      postVimeoCommand(iframe, 'play')
-    }
-  }, [layer.playback.mode])
+  const markSoundUnlocked = useCallback(() => {
+    soundUnlockedRef.current = true
+    writeLiveSoundUnlocked()
+  }, [])
 
   const applyMuteState = useCallback((
     iframe: HTMLIFrameElement | null,
@@ -190,6 +201,41 @@ function FeedEmbed({
       if (wantPlay) postVimeoCommand(iframe, 'play')
     }
   }, [layer.playback.mode])
+
+  const kickPlay = useCallback((iframe: HTMLIFrameElement | null, forceMute = false) => {
+    if (!iframe) return
+    const stayMuted = forceMute || muted || !soundUnlockedRef.current
+    if (layer.playback.mode === 'youtube') {
+      if (stayMuted) postYoutubeCommand(iframe, 'mute')
+      postYoutubeCommand(iframe, 'playVideo')
+      return
+    }
+    if (layer.playback.mode === 'vimeo') {
+      if (stayMuted) {
+        postVimeoCommand(iframe, 'setVolume', 0)
+        postVimeoCommand(iframe, 'setMuted', 1)
+      }
+      postVimeoCommand(iframe, 'play')
+    }
+  }, [layer.playback.mode, muted])
+
+  const syncDesiredAudio = useCallback(() => {
+    const iframe = iframeRef.current
+    if (!iframe || paused) return
+    if (muted) {
+      applyMuteState(iframe, true, { play: true })
+      setGesturePrompt((p) => (p === 'sound' ? null : p))
+      return
+    }
+    if (soundUnlockedRef.current) {
+      applyMuteState(iframe, false, { play: true })
+      setGesturePrompt((p) => (p === 'sound' ? null : p))
+      return
+    }
+    if (lockPlayback && playingRef.current) {
+      setGesturePrompt((p) => (p === 'play' ? p : 'sound'))
+    }
+  }, [muted, paused, lockPlayback, applyMuteState])
 
   const markReady = useCallback(() => {
     if (!onReady || readyRef.current) return
@@ -235,15 +281,12 @@ function FeedEmbed({
             ? payload.info.playerState
             : undefined
         if (payload.event === 'onReady' || payload.event === 'initialDelivery') {
-          kickPlay(iframeRef.current)
+          kickPlay(iframeRef.current, true)
         }
         if (state === 1) {
           playingRef.current = true
-          setGesturePrompt((p) => {
-            if (p === 'play') return null
-            if (!muted && lockPlayback) return 'sound'
-            return p === 'sound' ? p : null
-          })
+          setGesturePrompt((p) => (p === 'play' ? null : p))
+          syncDesiredAudio()
         } else if ((state === 2 || state === -1 || state === 5) && !paused) {
           playingRef.current = false
           window.setTimeout(() => kickPlay(iframeRef.current), 350)
@@ -252,18 +295,16 @@ function FeedEmbed({
 
       if (layer.playback.mode === 'vimeo' && payload.event === 'play') {
         playingRef.current = true
-        setGesturePrompt((p) => {
-          if (p === 'play') return null
-          if (!muted && lockPlayback) return 'sound'
-          return p === 'sound' ? p : null
-        })
+        setGesturePrompt((p) => (p === 'play' ? null : p))
+        syncDesiredAudio()
       }
     }
 
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [layer.playback.mode, kickPlay, muted, lockPlayback, paused])
+  }, [layer.playback.mode, kickPlay, syncDesiredAudio, paused])
 
+  // Autoload muted play — do NOT depend on `muted` (admin toggles must not remute-kick).
   useEffect(() => {
     if (layer.playback.mode !== 'youtube' && layer.playback.mode !== 'vimeo') return
     if (paused) {
@@ -274,66 +315,45 @@ function FeedEmbed({
       return
     }
 
-    kickPlay(iframeRef.current)
+    kickPlay(iframeRef.current, true)
 
     const retries = [300, 800, 1600, 2800, 4500].map((ms) =>
       window.setTimeout(() => {
         if (playingRef.current || paused) return
-        kickPlay(iframeRef.current)
+        kickPlay(iframeRef.current, true)
         if (ms >= 2800) setGesturePrompt((p) => p ?? 'play')
       }, ms),
     )
 
-    let unmuteTimer: number | undefined
-    if (!lockPlayback && !muted) {
-      unmuteTimer = window.setTimeout(() => {
-        if (!playingRef.current) return
-        applyMuteState(iframeRef.current, false, { play: true })
-      }, 1500)
-    } else if (!muted && lockPlayback) {
-      unmuteTimer = window.setTimeout(() => {
-        if (playingRef.current) setGesturePrompt((p) => (p === 'play' ? p : 'sound'))
-      }, 1800)
-    }
+    return () => retries.forEach((id) => window.clearTimeout(id))
+  }, [paused, layer.id, layer.playback.mode, kickPlay, applyMuteState])
 
-    return () => {
-      retries.forEach((id) => window.clearTimeout(id))
-      if (unmuteTimer) window.clearTimeout(unmuteTimer)
-    }
-  }, [paused, layer.id, layer.playback.mode, kickPlay, applyMuteState, lockPlayback, muted])
-
+  // Admin / route mute changes — apply immediately once sound is unlocked.
   useEffect(() => {
     if (layer.playback.mode !== 'youtube' && layer.playback.mode !== 'vimeo') return
-    if (paused || !playingRef.current) return
-    if (muted) {
-      applyMuteState(iframeRef.current, true, { play: true })
-      setGesturePrompt((p) => (p === 'sound' ? null : p))
-      return
-    }
-    if (lockPlayback) {
-      setGesturePrompt((p) => (p === 'play' ? p : 'sound'))
-      return
-    }
-    applyMuteState(iframeRef.current, false, { play: true })
-  }, [muted, paused, layer.playback.mode, applyMuteState, lockPlayback])
+    if (!playingRef.current && !paused) return
+    syncDesiredAudio()
+  }, [muted, paused, layer.playback.mode, syncDesiredAudio])
 
   const onGestureTap = useCallback(() => {
     const iframe = iframeRef.current
     if (!iframe) return
     if (gesturePrompt === 'play' || !playingRef.current) {
-      kickPlay(iframe)
+      kickPlay(iframe, true)
       window.setTimeout(() => {
+        playingRef.current = true
         if (!muted) {
+          markSoundUnlocked()
           applyMuteState(iframe, false, { play: true })
         }
-        playingRef.current = true
         setGesturePrompt(null)
       }, 250)
       return
     }
+    markSoundUnlocked()
     applyMuteState(iframe, false, { play: true })
     setGesturePrompt(null)
-  }, [gesturePrompt, kickPlay, applyMuteState, muted])
+  }, [gesturePrompt, kickPlay, applyMuteState, muted, markSoundUnlocked])
 
   useEffect(() => {
     if (layer.playback.mode !== 'signed_redirect' || !layer.playback.src) return
@@ -356,15 +376,31 @@ function FeedEmbed({
       return
     }
 
+    if (muted) {
+      video.muted = true
+      void video.play().catch(() => {})
+      setGesturePrompt((p) => (p === 'sound' ? null : p))
+      return
+    }
+
+    if (soundUnlockedRef.current) {
+      video.muted = false
+      void video.play().then(() => {
+        playingRef.current = true
+        setGesturePrompt(null)
+      }).catch(() => {
+        video.muted = true
+        setGesturePrompt(lockPlayback ? 'sound' : null)
+      })
+      return
+    }
+
     video.muted = true
     void video.play()
       .then(() => {
         playingRef.current = true
-        if (!muted && lockPlayback) {
-          setGesturePrompt('sound')
-          return
-        }
-        if (!muted) {
+        if (lockPlayback) setGesturePrompt('sound')
+        else {
           video.muted = false
           void video.play().catch(() => {
             video.muted = true
@@ -394,7 +430,10 @@ function FeedEmbed({
               JSON.stringify({ event: 'listening', id: layer.id, channel: 'widget' }),
               '*',
             )
-            kickPlay(iframeRef.current)
+            kickPlay(iframeRef.current, true)
+            if (soundUnlockedRef.current && !muted) {
+              window.setTimeout(() => syncDesiredAudio(), 600)
+            }
           }}
         />
         {lockPlayback && !gesturePrompt && <div className="live-player-lock-overlay" aria-hidden />}
@@ -442,7 +481,10 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
-            kickPlay(iframeRef.current)
+            kickPlay(iframeRef.current, true)
+            if (soundUnlockedRef.current && !muted) {
+              window.setTimeout(() => syncDesiredAudio(), 600)
+            }
           }}
         />
         {lockPlayback && !gesturePrompt && <div className="live-player-lock-overlay" aria-hidden />}
@@ -480,12 +522,14 @@ function FeedEmbed({
               void video.play().then(() => {
                 playingRef.current = true
                 if (!muted) {
+                  markSoundUnlocked()
                   video.muted = false
                 }
                 setGesturePrompt(null)
               }).catch(() => {})
               return
             }
+            markSoundUnlocked()
             video.muted = false
             void video.play().then(() => setGesturePrompt(null)).catch(() => {
               video.muted = true
