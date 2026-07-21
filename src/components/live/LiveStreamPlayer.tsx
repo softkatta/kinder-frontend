@@ -141,17 +141,18 @@ function FeedEmbed({
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const readyRef = useRef(false)
   const timerRef = useRef<number | null>(null)
-  // Public/parent: always start muted so browsers allow autoplay; then unmute via API if admin enabled audio.
-  const startMutedRef = useRef(lockPlayback || muted)
+  // Public/parent: embed URL always muted so browsers allow autoplay.
   const [embedSrc] = useState(() => {
     if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
-      return youtubeEmbedSrc(layer.playback.video_id, startMutedRef.current, lockPlayback)
+      return youtubeEmbedSrc(layer.playback.video_id, true, lockPlayback)
     }
     if (layer.playback.mode === 'vimeo' && layer.playback.video_id) {
-      return vimeoEmbedSrc(layer.playback.video_id, startMutedRef.current, lockPlayback)
+      return vimeoEmbedSrc(layer.playback.video_id, true, lockPlayback)
     }
     return null
   })
+  // Locked viewers stay muted — unmuted autoplay is blocked and leaves the YouTube play button stuck.
+  const effectiveMuted = lockPlayback || muted
 
   const applyMuteState = useCallback((iframe: HTMLIFrameElement | null, nextMuted: boolean) => {
     if (!iframe) return
@@ -164,6 +165,7 @@ function FeedEmbed({
       postVimeoCommand(iframe, 'setVolume', nextMuted ? 0 : 1)
       postVimeoCommand(iframe, 'setMuted', nextMuted ? 1 : 0)
       if (!nextMuted) postVimeoCommand(iframe, 'play')
+      else postVimeoCommand(iframe, 'play')
     }
   }, [layer.playback.mode])
 
@@ -174,10 +176,9 @@ function FeedEmbed({
       if (readyRef.current) return
       readyRef.current = true
       onReady()
-      // After muted autoplay, apply admin audio preference (often allowed without a tap).
-      if (!paused) applyMuteState(iframeRef.current, muted)
+      if (!paused) applyMuteState(iframeRef.current, effectiveMuted)
     }, readyDelay(layer.playback.mode))
-  }, [layer.playback.mode, onReady, applyMuteState, muted, paused])
+  }, [layer.playback.mode, onReady, applyMuteState, effectiveMuted, paused])
 
   useEffect(() => {
     readyRef.current = false
@@ -187,7 +188,7 @@ function FeedEmbed({
     }
   }, [layer.id])
 
-  // HTML5 / HLS: always begin muted for autoplay, then honor admin mute
+  // HTML5 / HLS: always begin muted for autoplay, then honor mute (locked = always muted)
   useEffect(() => {
     if (layer.playback.mode !== 'signed_redirect' || !layer.playback.src) return
     const video = videoRef.current
@@ -203,7 +204,7 @@ function FeedEmbed({
       }
     }
 
-    const wantMuted = muted || paused
+    const wantMuted = effectiveMuted || paused
     video.muted = wantMuted
     if (paused) {
       video.pause()
@@ -211,15 +212,9 @@ function FeedEmbed({
       video.play().catch(() => {
         video.muted = true
         video.play().catch(() => {})
-        if (!wantMuted) {
-          window.setTimeout(() => {
-            video.muted = false
-            video.play().catch(() => {})
-          }, 400)
-        }
       })
     }
-  }, [layer.id, layer.playback.mode, layer.playback.src, muted, paused])
+  }, [layer.id, layer.playback.mode, layer.playback.src, effectiveMuted, paused])
 
   // YouTube / Vimeo: mute + pause via postMessage — do not remount iframe
   useEffect(() => {
@@ -238,17 +233,17 @@ function FeedEmbed({
       return
     }
 
-    applyMuteState(iframe, muted)
-    // Retry unmute a few times — YouTube IFrame API can ignore the first postMessage.
-    if (!muted && lockPlayback) {
-      const t1 = window.setTimeout(() => applyMuteState(iframe, false), 800)
-      const t2 = window.setTimeout(() => applyMuteState(iframe, false), 2000)
+    applyMuteState(iframe, effectiveMuted)
+    // Keep nudging muted play on locked public embeds (never unmute).
+    if (lockPlayback && effectiveMuted) {
+      const t1 = window.setTimeout(() => applyMuteState(iframe, true), 800)
+      const t2 = window.setTimeout(() => applyMuteState(iframe, true), 2000)
       return () => {
         window.clearTimeout(t1)
         window.clearTimeout(t2)
       }
     }
-  }, [muted, paused, layer.playback.mode, layer.id, applyMuteState, lockPlayback])
+  }, [effectiveMuted, paused, layer.playback.mode, layer.id, applyMuteState, lockPlayback])
 
   if (layer.playback.mode === 'youtube' && layer.playback.video_id && embedSrc) {
     return (
@@ -263,8 +258,8 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
+            applyMuteState(iframeRef.current, true)
             postYoutubeCommand(iframeRef.current, 'playVideo')
-            applyMuteState(iframeRef.current, muted || paused)
           }}
         />
         {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
@@ -282,7 +277,7 @@ function FeedEmbed({
         <LiveKitViewer
           streamId={layer.playback.stream_id}
           participantIdentity={layer.playback.participant_identity}
-          muted={muted || paused}
+          muted={effectiveMuted || paused}
           paused={paused}
           showUnmutePrompt={!lockPlayback}
           webrtcAuth={webrtcAuth}
@@ -307,7 +302,7 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
-            applyMuteState(iframeRef.current, muted || paused)
+            applyMuteState(iframeRef.current, true)
           }}
         />
         {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}

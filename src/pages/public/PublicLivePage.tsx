@@ -4,7 +4,6 @@ import { Radio, LogIn } from 'lucide-react'
 import { PublicPageHero } from '@/components/design/PublicPageHero'
 import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
-import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
 import { usePublicLiveStream } from '@/hooks/usePublicLiveStream'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
@@ -16,23 +15,28 @@ import { parseWallClockInTimeZone } from '@/utils/scheduleTime'
 export default function PublicLivePage() {
   const { t } = useT()
   const { profile } = useSchoolBranding()
-  const routeVisible = useLiveRouteVisible()
   const { active, watch, upcoming, cameraId, isLive, isPaused, isUpcoming, reload } = usePublicLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
   const broadcastPaused = isPaused || isLiveBroadcastPaused(active?.status, active?.display_status)
-  const showWaiting = Boolean(active && !active.is_watchable && !broadcastPaused)
+
+  const scheduleReady = useMemo(() => {
+    if (!active?.scheduled_start_at) return true
+    if (active.enable_countdown === false) return true
+    const at = parseWallClockInTimeZone(active.scheduled_start_at, timeZone)
+    return Number.isNaN(at) || at <= Date.now()
+  }, [active?.scheduled_start_at, active?.enable_countdown, timeZone])
+
   const canPlay = Boolean(
     !broadcastPaused
+    && active?.status === 'live'
     && active?.is_watchable
+    && scheduleReady
     && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)),
   )
+  const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
 
-  const startDue = useMemo(() => {
-    if (!active?.scheduled_start_at || active.status !== 'scheduled') return false
-    const at = parseWallClockInTimeZone(active.scheduled_start_at, timeZone)
-    return !Number.isNaN(at) && at <= Date.now()
-  }, [active?.scheduled_start_at, active?.status, timeZone])
+  const startDue = Boolean(active && scheduleReady && !canPlay && !broadcastPaused)
 
   const onCountdownComplete = useCallback(() => {
     reload()
@@ -62,7 +66,7 @@ export default function PublicLivePage() {
       />
 
       <section className="live-viewer-section overflow-x-hidden">
-        {isLive && (
+        {isLive && canPlay && (
           <div className="flex justify-center mb-3 px-4">
             <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-bold text-rose-600">
               <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
@@ -86,7 +90,7 @@ export default function PublicLivePage() {
               banner={active.banner}
               scheduledStartAt={active.scheduled_start_at}
               countdownSeconds={active.countdown_seconds}
-              enableCountdown={active.enable_countdown !== false && !startDue}
+              enableCountdown={active.enable_countdown !== false && !scheduleReady}
               timeZone={timeZone}
               onCountdownComplete={onCountdownComplete}
               badgeLabel={startDue ? 'STARTING…' : isUpcoming ? 'UPCOMING LIVE' : 'STARTING SOON'}
@@ -125,7 +129,7 @@ export default function PublicLivePage() {
                 cameraName={watch?.active_camera?.name}
                 cameraLocation={watch?.active_camera?.location ?? undefined}
                 status={active.status}
-                muted={!routeVisible || active.audio_enabled === false}
+                muted
                 webrtcAuth="public"
               />
             </div>
