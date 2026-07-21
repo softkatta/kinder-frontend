@@ -798,6 +798,12 @@ export default function AdminLiveStreamsPage() {
                     <p className="admin-live-studio__desc">
                       {selected.description || 'Manage cameras and go live for the public /live page.'}
                     </p>
+                    {isBroadcasting && (
+                      <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-rose-600">
+                        <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+                        On air · parents see this on /live
+                      </p>
+                    )}
                   </div>
                   <div className="admin-live-studio__toolbar">
                     <div className="admin-live-studio__toolbar-group">

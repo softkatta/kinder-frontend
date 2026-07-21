@@ -3983,6 +3983,31 @@ h1, h2, h3, h4, h5, h6 {
   pointer-events: auto;
   background: transparent;
 }
+.live-player-gesture-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 999px;
+  padding: 0.85rem 1.35rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.live-player-gesture-btn:hover {
+  transform: translate(-50%, -50%) scale(1.04);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.4);
+}
+.live-player-pane .live-player-gesture-btn {
+  position: absolute;
+}
 .live-player-caption {
   @apply absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 py-3 text-sm text-white;
 }
@@ -4474,6 +4499,17 @@ h1, h2, h3, h4, h5, h6 {
     linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
   box-shadow: 0 14px 48px rgba(15, 23, 42, 0.06);
   padding: 1.25rem 1.35rem 1.35rem;
+}
+.admin-live-studio__hero::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #0ea5e9, #14b8a6, #38bdf8);
+  opacity: 0.9;
+}
+.admin-live-studio__hero.is-live::before {
+  background: linear-gradient(90deg, #e11d48, #fb7185, #0ea5e9);
 }
 
 .admin-live-studio__hero.is-live {
