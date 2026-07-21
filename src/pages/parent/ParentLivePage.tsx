@@ -22,22 +22,23 @@ export default function ParentLivePage() {
     active?.is_scheduled || active?.status === 'scheduled' || active?.display_status === 'scheduled',
   )
 
-  const scheduleReady = useMemo(() => {
-    if (!active?.scheduled_start_at) return true
-    if (active.enable_countdown === false) return true
+  const countdownElapsed = useMemo(() => {
+    if (!active?.scheduled_start_at || active.enable_countdown === false) return true
+    if (typeof active.countdown_seconds === 'number' && active.countdown_seconds <= 0) return true
     const at = parseWallClockInTimeZone(active.scheduled_start_at, timeZone)
-    return Number.isNaN(at) || at <= Date.now()
-  }, [active?.scheduled_start_at, active?.enable_countdown, timeZone])
+    if (Number.isNaN(at)) return true
+    return at <= Date.now() + 1000
+  }, [active?.scheduled_start_at, active?.enable_countdown, active?.countdown_seconds, timeZone])
 
   const hasFeed = Boolean(watch?.playback || (watch?.playbacks && watch.playbacks.length > 0))
   const canPlay = Boolean(
-    scheduleReady
-    && hasFeed
+    hasFeed
     && (active?.status === 'live' || active?.status === 'paused')
+    && (active?.is_watchable || active?.status === 'paused')
   )
   const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
 
-  const startDue = Boolean(active && scheduleReady && !canPlay && !broadcastPaused)
+  const startDue = Boolean(active && countdownElapsed && !canPlay && !broadcastPaused)
 
   const onCountdownComplete = useCallback(() => {
     reload()
@@ -50,8 +51,8 @@ export default function ParentLivePage() {
     const timer = window.setInterval(() => {
       n += 1
       reload()
-      if (n >= 40) window.clearInterval(timer)
-    }, 1500)
+      if (n >= 60) window.clearInterval(timer)
+    }, 1200)
     return () => window.clearInterval(timer)
   }, [startDue, canPlay, broadcastPaused, reload])
 
@@ -116,7 +117,7 @@ export default function ParentLivePage() {
                 banner={active.banner}
                 scheduledStartAt={active.scheduled_start_at}
                 countdownSeconds={active.countdown_seconds}
-                enableCountdown={active.enable_countdown !== false && !scheduleReady}
+                enableCountdown={active.enable_countdown !== false && !countdownElapsed && !canPlay}
                 timeZone={timeZone}
                 onCountdownComplete={onCountdownComplete}
                 badgeLabel={
@@ -148,7 +149,7 @@ export default function ParentLivePage() {
                 cameraName={watch?.active_camera?.name}
                 cameraLocation={watch?.active_camera?.location ?? undefined}
                 status={active.status}
-                muted={!routeVisible || active.audio_enabled === false}
+                muted={!routeVisible}
               />
             </div>
           ) : broadcastPaused ? (

@@ -25,7 +25,8 @@ function secondsUntil(
     const tz = timeZone?.trim() || DEFAULT_SCHOOL_TIMEZONE
     const target = parseWallClockInTimeZone(targetIso, tz)
     if (!Number.isNaN(target)) {
-      return Math.max(0, Math.floor((target - Date.now()) / 1000))
+      // Include the current partial second so UI hits 00 when wall-clock start is reached.
+      return Math.max(0, Math.ceil((target - Date.now()) / 1000))
     }
   }
   if (initialSeconds != null) return Math.max(0, initialSeconds)

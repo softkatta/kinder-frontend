@@ -22,23 +22,25 @@ export default function PublicLivePage() {
 
   const broadcastPaused = isPaused || isLiveBroadcastPaused(active?.status, active?.display_status)
 
-  const scheduleReady = useMemo(() => {
-    if (!active?.scheduled_start_at) return true
-    if (active.enable_countdown === false) return true
+  // Prefer server countdown_seconds + wall clock; treat sub-second remainder as elapsed.
+  const countdownElapsed = useMemo(() => {
+    if (!active?.scheduled_start_at || active.enable_countdown === false) return true
+    if (typeof active.countdown_seconds === 'number' && active.countdown_seconds <= 0) return true
     const at = parseWallClockInTimeZone(active.scheduled_start_at, timeZone)
-    return Number.isNaN(at) || at <= Date.now()
-  }, [active?.scheduled_start_at, active?.enable_countdown, timeZone])
+    if (Number.isNaN(at)) return true
+    return at <= Date.now() + 1000
+  }, [active?.scheduled_start_at, active?.enable_countdown, active?.countdown_seconds, timeZone])
 
   const hasFeed = Boolean(watch?.playback || (watch?.playbacks && watch.playbacks.length > 0))
-  // Keep player mounted across pause/mute/admin updates so YouTube does not restart.
+  // Trust API is_watchable — do not re-block with client clock (was sticking at 00:00:00).
   const canPlay = Boolean(
-    scheduleReady
-    && hasFeed
+    hasFeed
     && (active?.status === 'live' || active?.status === 'paused')
+    && (active?.is_watchable || active?.status === 'paused')
   )
   const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
 
-  const startDue = Boolean(active && scheduleReady && !canPlay && !broadcastPaused)
+  const startDue = Boolean(active && countdownElapsed && !canPlay && !broadcastPaused)
 
   const onCountdownComplete = useCallback(() => {
     reload()
@@ -52,8 +54,8 @@ export default function PublicLivePage() {
     const timer = window.setInterval(() => {
       n += 1
       reload()
-      if (n >= 40) window.clearInterval(timer)
-    }, 1500)
+      if (n >= 60) window.clearInterval(timer)
+    }, 1200)
     return () => window.clearInterval(timer)
   }, [startDue, canPlay, broadcastPaused, reload])
 
@@ -92,7 +94,7 @@ export default function PublicLivePage() {
               banner={active.banner}
               scheduledStartAt={active.scheduled_start_at}
               countdownSeconds={active.countdown_seconds}
-              enableCountdown={active.enable_countdown !== false && !scheduleReady}
+              enableCountdown={active.enable_countdown !== false && !countdownElapsed && !canPlay}
               timeZone={timeZone}
               onCountdownComplete={onCountdownComplete}
               badgeLabel={startDue ? 'STARTING…' : isUpcoming ? 'UPCOMING LIVE' : 'STARTING SOON'}
@@ -127,7 +129,7 @@ export default function PublicLivePage() {
                 cameraName={watch?.active_camera?.name}
                 cameraLocation={watch?.active_camera?.location ?? undefined}
                 status={active.status}
-                muted={!routeVisible || active.audio_enabled === false}
+                muted={!routeVisible}
                 webrtcAuth="public"
               />
             </div>
