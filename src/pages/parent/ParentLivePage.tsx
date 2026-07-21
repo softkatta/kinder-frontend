@@ -29,12 +29,11 @@ export default function ParentLivePage() {
     return Number.isNaN(at) || at <= Date.now()
   }, [active?.scheduled_start_at, active?.enable_countdown, timeZone])
 
+  const hasFeed = Boolean(watch?.playback || (watch?.playbacks && watch.playbacks.length > 0))
   const canPlay = Boolean(
-    !broadcastPaused
-    && active?.status === 'live'
-    && active?.is_watchable
-    && scheduleReady
-    && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)),
+    scheduleReady
+    && hasFeed
+    && (active?.status === 'live' || active?.status === 'paused')
   )
   const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
 
@@ -136,11 +135,7 @@ export default function ParentLivePage() {
             </div>
           )}
 
-          {broadcastPaused ? (
-            <div className="live-viewer-screen">
-              <LiveBroadcastPausedPanel title={active.title} />
-            </div>
-          ) : canPlay ? (
+          {canPlay ? (
             <div className="live-viewer-screen">
               <LiveStreamPlayer
                 immersive
@@ -156,20 +151,24 @@ export default function ParentLivePage() {
                 muted={!routeVisible || active.audio_enabled === false}
               />
             </div>
+          ) : broadcastPaused ? (
+            <div className="live-viewer-screen">
+              <LiveBroadcastPausedPanel title={active.title} />
+            </div>
           ) : active?.status === 'stopped' ? (
             <div className="live-viewer-empty rounded-3xl border border-slate-100 bg-slate-50/80 p-12 text-center">
               <p className="font-semibold text-ink">Broadcast ended</p>
             </div>
           ) : null}
 
-          {canPlay && (watch?.active_cameras?.length ?? 0) > 1 ? (
+          {!broadcastPaused && canPlay && (watch?.active_cameras?.length ?? 0) > 1 ? (
             <p className="text-center text-sm text-slate-500">
               Now showing:{' '}
               <span className="font-semibold text-ink">
                 {watch!.active_cameras!.map((c) => c.name).join(' · ')}
               </span>
             </p>
-          ) : watch?.active_camera && canPlay ? (
+          ) : !broadcastPaused && watch?.active_camera && canPlay ? (
             <p className="text-center text-sm text-slate-500">
               Now showing: <span className="font-semibold text-ink">{watch.active_camera.name}</span>
               {watch.active_camera.location ? ` · ${watch.active_camera.location}` : ''}

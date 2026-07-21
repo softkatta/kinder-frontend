@@ -4073,6 +4073,15 @@ h1, h2, h3, h4, h5, h6 {
   transform-origin: center center;
   transition: transform 0.35s ease;
 }
+.live-player-stage--paused {
+  /* Keep iframes mounted (no remount on resume); overlay covers them. */
+  visibility: hidden;
+  pointer-events: none;
+}
+.live-player-iframe--paused,
+.live-player-video--paused {
+  pointer-events: none;
+}
 .live-player--landscape {
   aspect-ratio: 16 / 9;
   max-width: 100%;

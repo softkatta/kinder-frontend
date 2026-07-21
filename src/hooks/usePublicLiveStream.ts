@@ -10,15 +10,33 @@ const POLL_LIVE_FALLBACK_MS = 2500
 const POLL_UPCOMING_MS = 30000
 const BANNER_STATUS_MS = 30000
 
-function stripPlaybacksIfPaused(
-  watchData: LiveStreamWatch | null,
+function hasPlaybacks(watch: LiveStreamWatch | null | undefined): boolean {
+  return Boolean(watch?.playback || (watch?.playbacks && watch.playbacks.length > 0))
+}
+
+/** Keep last embeds while paused so public player does not remount on resume. */
+function mergeWatchPreservingPlaybacks(
+  incoming: LiveStreamWatch | null,
+  previous: LiveStreamWatch | null,
   viewer: LiveStreamViewer | null,
 ): LiveStreamWatch | null {
-  if (!watchData) return null
-  const status = viewer?.status ?? watchData.status
-  if (status !== 'paused') return watchData
-  const { playback: _p, playbacks: _ps, ...rest } = watchData
-  return { ...rest, playback: undefined, playbacks: [] } as LiveStreamWatch
+  if (!viewer && !incoming) return null
+  const status = viewer?.status ?? incoming?.status ?? previous?.status
+  const base = incoming ?? previous
+  if (!base) return null
+
+  if (status === 'paused') {
+    const keep = hasPlaybacks(incoming) ? incoming : previous
+    return {
+      ...base,
+      ...(viewer ?? {}),
+      status: 'paused',
+      playback: keep?.playback ?? previous?.playback,
+      playbacks: keep?.playbacks ?? previous?.playbacks ?? [],
+    } as LiveStreamWatch
+  }
+
+  return incoming ?? previous
 }
 
 export function usePublicLiveStream() {
@@ -29,16 +47,20 @@ export function usePublicLiveStream() {
   const [realtimeConnected, setRealtimeConnected] = useState(false)
   const cameraRef = useRef<number | null>(null)
   const syncGenRef = useRef(0)
+  const watchRef = useRef<LiveStreamWatch | null>(null)
+  watchRef.current = watch
 
   const applyWatch = useCallback((watchData: LiveStreamWatch | null, viewer: LiveStreamViewer | null) => {
-    const safeWatch = stripPlaybacksIfPaused(watchData, viewer)
     setActive(viewer)
-    setWatch(safeWatch)
-    const camId = safeWatch?.active_camera?.id ?? viewer?.active_camera?.id ?? null
-    if (camId !== cameraRef.current) {
-      cameraRef.current = camId
-      setCameraId(camId)
-    }
+    setWatch((prev) => {
+      const merged = mergeWatchPreservingPlaybacks(watchData, prev, viewer)
+      const camId = merged?.active_camera?.id ?? viewer?.active_camera?.id ?? null
+      if (camId !== cameraRef.current) {
+        cameraRef.current = camId
+        setCameraId(camId)
+      }
+      return merged
+    })
   }, [])
 
   const loadUpcoming = useCallback(async () => {
@@ -62,10 +84,10 @@ export function usePublicLiveStream() {
         return
       }
 
-      if (viewer.is_watchable) {
-        // Paused: still watchable for metadata, but do not fetch embeds (backend also omits them).
+      if (viewer.is_watchable || viewer.status === 'paused') {
+        // While paused, prefer keeping cached embeds; refresh watch only when live.
         if (viewer.status === 'paused') {
-          applyWatch(viewer as LiveStreamWatch, viewer)
+          applyWatch(watchRef.current ?? (viewer as LiveStreamWatch), viewer)
           return
         }
         const watchRes = await publicApi.liveWatch(viewer.id)
@@ -83,9 +105,9 @@ export function usePublicLiveStream() {
   const handleRealtime = useCallback((payload: LiveStreamRealtimePayload) => {
     // Invalidate in-flight polls so a stale "live" response cannot overwrite pause.
     syncGenRef.current += 1
-    if (payload.viewer.is_watchable && payload.viewer.id) {
+    if (payload.viewer.is_watchable || payload.viewer.status === 'paused') {
       if (payload.viewer.status === 'paused') {
-        applyWatch((payload.watch ?? payload.viewer) as LiveStreamWatch, payload.viewer)
+        applyWatch((payload.watch ?? watchRef.current ?? payload.viewer) as LiveStreamWatch, payload.viewer)
         return
       }
       if (payload.watch) {
@@ -97,7 +119,7 @@ export function usePublicLiveStream() {
           applyWatch(res.data.data as LiveStreamWatch, payload.viewer)
         }).catch(() => {
           if (gen !== syncGenRef.current) return
-          applyWatch(null, payload.viewer)
+          applyWatch(watchRef.current, payload.viewer)
         })
       }
     } else {

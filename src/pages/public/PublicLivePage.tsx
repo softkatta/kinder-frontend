@@ -29,12 +29,12 @@ export default function PublicLivePage() {
     return Number.isNaN(at) || at <= Date.now()
   }, [active?.scheduled_start_at, active?.enable_countdown, timeZone])
 
+  const hasFeed = Boolean(watch?.playback || (watch?.playbacks && watch.playbacks.length > 0))
+  // Keep player mounted across pause/mute/admin updates so YouTube does not restart.
   const canPlay = Boolean(
-    !broadcastPaused
-    && active?.status === 'live'
-    && active?.is_watchable
-    && scheduleReady
-    && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)),
+    scheduleReady
+    && hasFeed
+    && (active?.status === 'live' || active?.status === 'paused')
   )
   const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
 
@@ -68,7 +68,7 @@ export default function PublicLivePage() {
       />
 
       <section className="live-viewer-section overflow-x-hidden">
-        {isLive && canPlay && (
+        {isLive && canPlay && !broadcastPaused && (
           <div className="flex justify-center mb-3 px-4">
             <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-bold text-rose-600">
               <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
@@ -113,10 +113,6 @@ export default function PublicLivePage() {
               </div>
             </div>
           </FadeIn>
-        ) : broadcastPaused && active ? (
-          <div className="live-viewer-screen">
-            <LiveBroadcastPausedPanel title={active.title} />
-          </div>
         ) : canPlay && active ? (
           <>
             <div className="live-viewer-screen">
@@ -150,6 +146,10 @@ export default function PublicLivePage() {
               ) : null}
             </div>
           </>
+        ) : broadcastPaused && active ? (
+          <div className="live-viewer-screen">
+            <LiveBroadcastPausedPanel title={active.title} />
+          </div>
         ) : null}
       </section>
 

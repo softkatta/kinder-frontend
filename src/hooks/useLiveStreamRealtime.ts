@@ -10,10 +10,14 @@ const POLL_LIVE_FALLBACK_MS = 2000
 const POLL_ADMIN_CONNECTED_MS = 6000
 const POLL_ADMIN_FALLBACK_MS = 2500
 
+function hasPlaybacks(watch: LiveStreamWatch | null | undefined): boolean {
+  return Boolean(watch?.playback || (watch?.playbacks && watch.playbacks.length > 0))
+}
+
 function applyRealtimePayload(
   payload: LiveStreamRealtimePayload,
   setActive: (v: LiveStreamViewer) => void,
-  setWatch: (v: LiveStreamWatch | null) => void,
+  setWatch: (v: LiveStreamWatch | null | ((prev: LiveStreamWatch | null) => LiveStreamWatch | null)) => void,
   setCameraId: (v: number | null) => void,
   cameraRef: MutableRefObject<number | null>,
   syncGenRef?: MutableRefObject<number>,
@@ -22,10 +26,17 @@ function applyRealtimePayload(
   setActive(payload.viewer)
 
   if (payload.viewer.status === 'paused') {
-    const base = (payload.watch ?? payload.viewer) as LiveStreamWatch
-    const { playback: _p, playbacks: _ps, ...rest } = base
-    setWatch({ ...rest, playback: undefined, playbacks: [] } as LiveStreamWatch)
-    const camId = base.active_camera?.id ?? null
+    const incoming = (payload.watch ?? payload.viewer) as LiveStreamWatch
+    setWatch((prev) => {
+      const keep = hasPlaybacks(incoming) ? incoming : prev
+      return {
+        ...incoming,
+        status: 'paused',
+        playback: keep?.playback ?? prev?.playback,
+        playbacks: keep?.playbacks ?? prev?.playbacks ?? [],
+      } as LiveStreamWatch
+    })
+    const camId = incoming.active_camera?.id ?? null
     if (camId !== cameraRef.current) {
       cameraRef.current = camId
       setCameraId(camId)
@@ -53,7 +64,7 @@ function applyRealtimePayload(
         cameraRef.current = camId
         setCameraId(camId)
       }
-    }).catch(() => setWatch(null))
+    }).catch(() => { /* keep previous watch */ })
   } else {
     setWatch(null)
     cameraRef.current = null
@@ -218,7 +229,7 @@ export function useActiveLiveStream() {
 
       setActive(data)
 
-      if (!data.is_watchable) {
+      if (!data.is_watchable && data.status !== 'paused') {
         setWatch(null)
         cameraRef.current = null
         setCameraId(null)
@@ -226,7 +237,13 @@ export function useActiveLiveStream() {
       }
 
       if (data.status === 'paused') {
-        setWatch({ ...data, playback: undefined, playbacks: [] } as LiveStreamWatch)
+        setWatch((prev) => ({
+          ...(prev ?? (data as LiveStreamWatch)),
+          ...data,
+          status: 'paused',
+          playback: prev?.playback,
+          playbacks: prev?.playbacks ?? [],
+        }) as LiveStreamWatch)
         return
       }
 
