@@ -4,6 +4,7 @@ import { Radio, LogIn } from 'lucide-react'
 import { PublicPageHero } from '@/components/design/PublicPageHero'
 import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
+import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
 import { usePublicLiveStream } from '@/hooks/usePublicLiveStream'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
@@ -15,6 +16,7 @@ import { parseWallClockInTimeZone } from '@/utils/scheduleTime'
 export default function PublicLivePage() {
   const { t } = useT()
   const { profile } = useSchoolBranding()
+  const routeVisible = useLiveRouteVisible()
   const { active, watch, upcoming, cameraId, isLive, isPaused, isUpcoming, reload } = usePublicLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
@@ -129,7 +131,7 @@ export default function PublicLivePage() {
                 cameraName={watch?.active_camera?.name}
                 cameraLocation={watch?.active_camera?.location ?? undefined}
                 status={active.status}
-                muted
+                muted={!routeVisible || active.audio_enabled === false}
                 webrtcAuth="public"
               />
             </div>

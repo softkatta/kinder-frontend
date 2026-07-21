@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { Radio, Wifi, WifiOff, Calendar } from 'lucide-react'
 import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
+import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
 import { useActiveLiveStream } from '@/hooks/useLiveStreamRealtime'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
@@ -10,6 +11,7 @@ import { parseWallClockInTimeZone } from '@/utils/scheduleTime'
 
 export default function ParentLivePage() {
   const { profile } = useSchoolBranding()
+  const routeVisible = useLiveRouteVisible()
   const { active, watch, cameraId, connected, reload } = useActiveLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
 
@@ -151,7 +153,7 @@ export default function ParentLivePage() {
                 cameraName={watch?.active_camera?.name}
                 cameraLocation={watch?.active_camera?.location ?? undefined}
                 status={active.status}
-                muted
+                muted={!routeVisible || active.audio_enabled === false}
               />
             </div>
           ) : active?.status === 'stopped' ? (

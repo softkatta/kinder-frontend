@@ -141,18 +141,17 @@ function FeedEmbed({
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const readyRef = useRef(false)
   const timerRef = useRef<number | null>(null)
-  // Public/parent: embed URL always muted so browsers allow autoplay.
+  // Locked embeds: URL starts muted for autoplay; runtime mute follows admin/camera (muted prop).
   const [embedSrc] = useState(() => {
+    const startMuted = lockPlayback || muted
     if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
-      return youtubeEmbedSrc(layer.playback.video_id, true, lockPlayback)
+      return youtubeEmbedSrc(layer.playback.video_id, startMuted || lockPlayback, lockPlayback)
     }
     if (layer.playback.mode === 'vimeo' && layer.playback.video_id) {
-      return vimeoEmbedSrc(layer.playback.video_id, true, lockPlayback)
+      return vimeoEmbedSrc(layer.playback.video_id, startMuted || lockPlayback, lockPlayback)
     }
     return null
   })
-  // Locked viewers stay muted — unmuted autoplay is blocked and leaves the YouTube play button stuck.
-  const effectiveMuted = lockPlayback || muted
 
   const applyMuteState = useCallback((iframe: HTMLIFrameElement | null, nextMuted: boolean) => {
     if (!iframe) return
@@ -164,8 +163,7 @@ function FeedEmbed({
     if (layer.playback.mode === 'vimeo') {
       postVimeoCommand(iframe, 'setVolume', nextMuted ? 0 : 1)
       postVimeoCommand(iframe, 'setMuted', nextMuted ? 1 : 0)
-      if (!nextMuted) postVimeoCommand(iframe, 'play')
-      else postVimeoCommand(iframe, 'play')
+      postVimeoCommand(iframe, 'play')
     }
   }, [layer.playback.mode])
 
@@ -176,9 +174,10 @@ function FeedEmbed({
       if (readyRef.current) return
       readyRef.current = true
       onReady()
-      if (!paused) applyMuteState(iframeRef.current, effectiveMuted)
+      // After muted autoplay is established, apply admin audio preference.
+      if (!paused) applyMuteState(iframeRef.current, muted)
     }, readyDelay(layer.playback.mode))
-  }, [layer.playback.mode, onReady, applyMuteState, effectiveMuted, paused])
+  }, [layer.playback.mode, onReady, applyMuteState, muted, paused])
 
   useEffect(() => {
     readyRef.current = false
@@ -188,7 +187,7 @@ function FeedEmbed({
     }
   }, [layer.id])
 
-  // HTML5 / HLS: always begin muted for autoplay, then honor mute (locked = always muted)
+  // HTML5 / HLS: begin muted for autoplay, then honor admin mute
   useEffect(() => {
     if (layer.playback.mode !== 'signed_redirect' || !layer.playback.src) return
     const video = videoRef.current
@@ -204,17 +203,35 @@ function FeedEmbed({
       }
     }
 
-    const wantMuted = effectiveMuted || paused
-    video.muted = wantMuted
+    const wantMuted = muted || paused
     if (paused) {
+      video.muted = true
       video.pause()
-    } else {
-      video.play().catch(() => {
+      return
+    }
+
+    video.play()
+      .then(() => {
+        video.muted = wantMuted
+        if (!wantMuted) video.play().catch(() => {
+          video.muted = true
+          video.play().catch(() => {})
+        })
+      })
+      .catch(() => {
         video.muted = true
         video.play().catch(() => {})
+        if (!wantMuted) {
+          window.setTimeout(() => {
+            video.muted = false
+            video.play().catch(() => {
+              video.muted = true
+              video.play().catch(() => {})
+            })
+          }, 500)
+        }
       })
-    }
-  }, [layer.id, layer.playback.mode, layer.playback.src, effectiveMuted, paused])
+  }, [layer.id, layer.playback.mode, layer.playback.src, muted, paused])
 
   // YouTube / Vimeo: mute + pause via postMessage — do not remount iframe
   useEffect(() => {
@@ -233,17 +250,25 @@ function FeedEmbed({
       return
     }
 
-    applyMuteState(iframe, effectiveMuted)
-    // Keep nudging muted play on locked public embeds (never unmute).
-    if (lockPlayback && effectiveMuted) {
-      const t1 = window.setTimeout(() => applyMuteState(iframe, true), 800)
-      const t2 = window.setTimeout(() => applyMuteState(iframe, true), 2000)
-      return () => {
-        window.clearTimeout(t1)
-        window.clearTimeout(t2)
+    // Locked: ensure muted play first, then unmute when admin enabled audio.
+    if (lockPlayback) {
+      applyMuteState(iframe, true)
+      if (!muted) {
+        const t1 = window.setTimeout(() => applyMuteState(iframe, false), 600)
+        const t2 = window.setTimeout(() => applyMuteState(iframe, false), 1600)
+        const t3 = window.setTimeout(() => applyMuteState(iframe, false), 3200)
+        return () => {
+          window.clearTimeout(t1)
+          window.clearTimeout(t2)
+          window.clearTimeout(t3)
+        }
       }
+      const keep = window.setTimeout(() => applyMuteState(iframe, true), 1200)
+      return () => window.clearTimeout(keep)
     }
-  }, [effectiveMuted, paused, layer.playback.mode, layer.id, applyMuteState, lockPlayback])
+
+    applyMuteState(iframe, muted)
+  }, [muted, paused, layer.playback.mode, layer.id, applyMuteState, lockPlayback])
 
   if (layer.playback.mode === 'youtube' && layer.playback.video_id && embedSrc) {
     return (
@@ -258,8 +283,11 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
+            // Always kick muted autoplay first.
             applyMuteState(iframeRef.current, true)
-            postYoutubeCommand(iframeRef.current, 'playVideo')
+            if (!paused && !muted) {
+              window.setTimeout(() => applyMuteState(iframeRef.current, false), 700)
+            }
           }}
         />
         {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
@@ -277,7 +305,7 @@ function FeedEmbed({
         <LiveKitViewer
           streamId={layer.playback.stream_id}
           participantIdentity={layer.playback.participant_identity}
-          muted={effectiveMuted || paused}
+          muted={muted || paused}
           paused={paused}
           showUnmutePrompt={!lockPlayback}
           webrtcAuth={webrtcAuth}
@@ -303,6 +331,9 @@ function FeedEmbed({
           onLoad={() => {
             markReady()
             applyMuteState(iframeRef.current, true)
+            if (!paused && !muted) {
+              window.setTimeout(() => applyMuteState(iframeRef.current, false), 700)
+            }
           }}
         />
         {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
