@@ -827,7 +827,7 @@ export default function AdminLiveStreamsPage() {
                         </AdminBtn>
                         <AdminBtn variant="secondary" disabled={busy} onClick={cancelEvent}>Cancel Event</AdminBtn>
                       </>
-                    ) : selected.status !== 'cancelled' ? (
+                    ) : (
                       <>
                         <AdminBtn
                           variant="primary"
@@ -846,7 +846,7 @@ export default function AdminLiveStreamsPage() {
                           <Radio className="h-4 w-4" /> Start Live
                         </AdminBtn>
                       </>
-                    ) : null}
+                    )}
                     <AdminBtn
                       variant="secondary"
                       className="!text-rose-600 hover:!bg-rose-50"
@@ -865,7 +865,7 @@ export default function AdminLiveStreamsPage() {
                       Starts: {formatScheduleDisplay(selected.scheduled_start_at)}
                     </span>
                   )}
-                  {selected.status === 'draft' && selected.scheduled_start_at && (
+                  {(selected.status === 'draft' || selected.status === 'stopped' || selected.status === 'cancelled') && selected.scheduled_start_at && (
                     <span className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
                       Start time saved — click <strong>Schedule Event</strong> to publish countdown
                     </span>
