@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Radio, Plus, Play, Pause, Square, ChevronUp, ChevronDown, Eye, Pencil, Trash2,
-  Video, BookOpen, Volume2, VolumeX,
+  Video, BookOpen, Volume2, VolumeX, Calendar,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -75,6 +75,7 @@ const emptyEditForm = {
   visibility: 'public' as 'public' | 'parents_only',
   auto_start: true,
   auto_end: true,
+  publish_status: 'draft' as 'draft' | 'scheduled',
 }
 
 export default function AdminLiveStreamsPage() {
@@ -364,6 +365,7 @@ export default function AdminLiveStreamsPage() {
     const streamId = selected.id
     const wasScheduled = selected.status === 'scheduled'
     const isLive = ['live', 'paused'].includes(selected.status)
+    const wantScheduled = editForm.publish_status === 'scheduled'
     setBusy(true)
     try {
       let updated: LiveStreamStaff
@@ -376,28 +378,15 @@ export default function AdminLiveStreamsPage() {
           banner: editForm.banner || null,
         })
         updated = res.data.data as LiveStreamStaff
-      } else if (editForm.scheduled_start_at) {
-        const mins = editForm.notify_before_minutes
-          .split(',')
-          .map((s) => parseInt(s.trim(), 10))
-          .filter((n) => !Number.isNaN(n))
-        const res = await liveStreamApi.schedule(streamId, {
-          title: editForm.title.trim(),
-          description: editForm.description || null,
-          banner: editForm.banner || null,
-          event_date: editForm.event_date || null,
-          scheduled_start_at: editForm.scheduled_start_at,
-          scheduled_end_at: editForm.scheduled_end_at || null,
-          stream_source: editForm.stream_source,
-          enable_countdown: editForm.enable_countdown,
-          enable_reminder: editForm.enable_reminder,
-          notify_before_minutes: mins.length ? mins : [60, 30],
-          visibility: editForm.visibility,
-          auto_start: editForm.auto_start,
-          auto_end: editForm.auto_end,
-        })
+      } else if (wantScheduled) {
+        if (!editForm.scheduled_start_at) {
+          toast.error('Start Date & Time is required to schedule')
+          setBusy(false)
+          return
+        }
+        const res = await liveStreamApi.schedule(streamId, buildSchedulePayload(selected))
         updated = res.data.data as LiveStreamStaff
-        successMsg = wasScheduled ? 'Stream and CMS event updated' : 'Live event scheduled'
+        successMsg = wasScheduled ? 'Schedule updated' : 'Live event scheduled'
       } else {
         const mins = editForm.notify_before_minutes
           .split(',')
@@ -408,6 +397,8 @@ export default function AdminLiveStreamsPage() {
           description: editForm.description || null,
           banner: editForm.banner || null,
           event_date: editForm.event_date || null,
+          scheduled_start_at: editForm.scheduled_start_at || null,
+          scheduled_end_at: editForm.scheduled_end_at || null,
           stream_source: editForm.stream_source,
           enable_countdown: editForm.enable_countdown,
           enable_reminder: editForm.enable_reminder,
@@ -415,8 +406,10 @@ export default function AdminLiveStreamsPage() {
           visibility: editForm.visibility,
           auto_start: editForm.auto_start,
           auto_end: editForm.auto_end,
+          status: 'draft',
         })
         updated = res.data.data as LiveStreamStaff
+        successMsg = wasScheduled ? 'Moved back to draft' : 'Stream updated'
       }
 
       patchStream(updated)
@@ -549,8 +542,61 @@ export default function AdminLiveStreamsPage() {
       visibility: selected.visibility,
       auto_start: selected.auto_start,
       auto_end: selected.auto_end,
+      publish_status: selected.status === 'scheduled' ? 'scheduled' : 'draft',
     })
     setEditOpen(true)
+  }
+
+  const buildSchedulePayload = (stream: LiveStreamStaff, form = editForm) => {
+    const mins = form.notify_before_minutes
+      .split(',')
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((n) => !Number.isNaN(n))
+    return {
+      title: form.title.trim() || stream.title,
+      description: form.description || stream.description || null,
+      banner: form.banner || stream.banner || null,
+      event_date: form.event_date || stream.event_date || null,
+      scheduled_start_at: form.scheduled_start_at || toDatetimeLocal(stream.scheduled_start_at),
+      scheduled_end_at: form.scheduled_end_at || toDatetimeLocal(stream.scheduled_end_at) || null,
+      stream_source: form.stream_source || stream.stream_source,
+      enable_countdown: form.enable_countdown,
+      enable_reminder: form.enable_reminder,
+      notify_before_minutes: mins.length ? mins : (stream.notify_before_minutes ?? [60, 30]),
+      visibility: form.visibility || stream.visibility,
+      auto_start: form.auto_start,
+      auto_end: form.auto_end,
+    }
+  }
+
+  const scheduleEvent = async () => {
+    if (!selected) return
+    const startAt = toDatetimeLocal(selected.scheduled_start_at)
+    if (!startAt) {
+      openEdit()
+      toast.error('Set Start Date & Time, choose Status = Scheduled, then Save')
+      return
+    }
+    await runWithPatch(
+      () => liveStreamApi.schedule(selected.id, buildSchedulePayload(selected, {
+        ...editForm,
+        title: selected.title,
+        description: selected.description || '',
+        banner: selected.banner || '',
+        event_date: selected.event_date || '',
+        scheduled_start_at: startAt,
+        scheduled_end_at: toDatetimeLocal(selected.scheduled_end_at),
+        stream_source: selected.stream_source || 'youtube',
+        enable_countdown: selected.enable_countdown,
+        enable_reminder: selected.enable_reminder,
+        notify_before_minutes: (selected.notify_before_minutes ?? [60, 30]).join(', '),
+        visibility: selected.visibility,
+        auto_start: selected.auto_start,
+        auto_end: selected.auto_end,
+        publish_status: 'scheduled',
+      })) as Promise<{ data: { data: LiveStreamStaff } }>,
+      'Event scheduled — parents will see the countdown',
+    )
   }
 
   const saveCamera = async () => {
@@ -782,14 +828,24 @@ export default function AdminLiveStreamsPage() {
                         <AdminBtn variant="secondary" disabled={busy} onClick={cancelEvent}>Cancel Event</AdminBtn>
                       </>
                     ) : selected.status !== 'cancelled' ? (
-                      <AdminBtn
-                        variant="secondary"
-                        disabled={busy || !canStartLive}
-                        title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
-                        onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
-                      >
-                        <Radio className="h-4 w-4" /> Start Live
-                      </AdminBtn>
+                      <>
+                        <AdminBtn
+                          variant="primary"
+                          disabled={busy}
+                          onClick={() => void scheduleEvent()}
+                          title={selected.scheduled_start_at ? 'Publish as Scheduled (public countdown)' : 'Opens editor to set start time'}
+                        >
+                          <Calendar className="h-4 w-4" /> Schedule Event
+                        </AdminBtn>
+                        <AdminBtn
+                          variant="secondary"
+                          disabled={busy || !canStartLive}
+                          title={!canStartLive ? 'Connect a mobile camera or add a stream camera first' : undefined}
+                          onClick={() => runWithPatch(() => liveStreamApi.start(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Live started')}
+                        >
+                          <Radio className="h-4 w-4" /> Start Live
+                        </AdminBtn>
+                      </>
                     ) : null}
                     <AdminBtn
                       variant="secondary"
@@ -807,6 +863,11 @@ export default function AdminLiveStreamsPage() {
                   {selected.scheduled_start_at && (
                     <span className="text-xs text-slate-500">
                       Starts: {formatScheduleDisplay(selected.scheduled_start_at)}
+                    </span>
+                  )}
+                  {selected.status === 'draft' && selected.scheduled_start_at && (
+                    <span className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1">
+                      Start time saved — click <strong>Schedule Event</strong> to publish countdown
                     </span>
                   )}
                   {selected.active_camera && (
@@ -1182,6 +1243,17 @@ export default function AdminLiveStreamsPage() {
             </p>
           ) : (
             <>
+              <Select
+                label="Status"
+                value={editForm.publish_status}
+                onChange={(e) => setEditForm({
+                  ...editForm,
+                  publish_status: e.target.value as 'draft' | 'scheduled',
+                })}
+              >
+                <option value="draft">Draft — not shown as upcoming live</option>
+                <option value="scheduled">Scheduled — public countdown / reminders</option>
+              </Select>
               <FormGrid cols={2}>
                 <Input
                   label="Event Date"
@@ -1201,6 +1273,7 @@ export default function AdminLiveStreamsPage() {
                 <Input
                   label="Start Date & Time"
                   type="datetime-local"
+                  requiredMark={editForm.publish_status === 'scheduled'}
                   value={editForm.scheduled_start_at}
                   onChange={(e) => setEditForm({ ...editForm, scheduled_start_at: e.target.value })}
                 />
@@ -1212,7 +1285,7 @@ export default function AdminLiveStreamsPage() {
                 />
               </FormGrid>
               <p className="text-xs text-slate-500 -mt-2">
-                Add a start date & time in the school timezone (Admin → Settings → Branding → Timezone). This drives the public website countdown.
+                Status = Scheduled needs a start time. This drives the public website countdown (school timezone in Settings → Branding).
               </p>
               <Input
                 label="Notify Before (minutes, comma-separated)"
