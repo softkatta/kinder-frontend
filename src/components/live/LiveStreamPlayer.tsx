@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Maximize2, Minimize2, Radio, RotateCw } from 'lucide-react'
 import { LiveKitViewer, type WebrtcAuthMode } from '@/components/live/LiveKitViewer'
 import type { LivePlayback } from '@/types/liveStream'
+import { readLiveSoundUnlocked, unlockLiveSound } from '@/utils/liveSoundUnlock'
 
 type PlayerOrientation = 'landscape' | 'portrait'
 
@@ -127,24 +128,6 @@ function resolvePanes(
 }
 
 
-const LIVE_SOUND_UNLOCK_KEY = 'kinder-live-sound-unlocked'
-
-function readLiveSoundUnlocked(): boolean {
-  try {
-    return sessionStorage.getItem(LIVE_SOUND_UNLOCK_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function writeLiveSoundUnlocked() {
-  try {
-    sessionStorage.setItem(LIVE_SOUND_UNLOCK_KEY, '1')
-  } catch {
-    /* ignore */
-  }
-}
-
 function FeedEmbed({
   layer,
   onReady,
@@ -180,7 +163,7 @@ function FeedEmbed({
 
   const markSoundUnlocked = useCallback(() => {
     soundUnlockedRef.current = true
-    writeLiveSoundUnlocked()
+    unlockLiveSound()
   }, [])
 
   const applyMuteState = useCallback((
@@ -227,15 +210,50 @@ function FeedEmbed({
       setGesturePrompt((p) => (p === 'sound' ? null : p))
       return
     }
+    // Refresh unlock from session (Watch Live click may have set it before mount).
+    if (!soundUnlockedRef.current && readLiveSoundUnlocked()) {
+      soundUnlockedRef.current = true
+    }
     if (soundUnlockedRef.current) {
       applyMuteState(iframe, false, { play: true })
       setGesturePrompt((p) => (p === 'sound' ? null : p))
       return
     }
-    if (lockPlayback && playingRef.current) {
+    // Public/parent: never show Tap for sound — wait for ambient gesture / nav click.
+    if (!lockPlayback && playingRef.current) {
       setGesturePrompt((p) => (p === 'play' ? p : 'sound'))
     }
   }, [muted, paused, lockPlayback, applyMuteState])
+
+  // Ambient unlock: any tap/key on the page turns sound on (no button).
+  useEffect(() => {
+    if (!lockPlayback || muted || paused) return
+    if (soundUnlockedRef.current || readLiveSoundUnlocked()) {
+      soundUnlockedRef.current = true
+      syncDesiredAudio()
+      return
+    }
+
+    const onGesture = () => {
+      markSoundUnlocked()
+      syncDesiredAudio()
+    }
+    const onCustom = () => {
+      soundUnlockedRef.current = true
+      syncDesiredAudio()
+    }
+
+    window.addEventListener('pointerdown', onGesture, { capture: true })
+    window.addEventListener('keydown', onGesture, { capture: true })
+    window.addEventListener('touchstart', onGesture, { capture: true })
+    window.addEventListener('kinder-live-sound-unlock', onCustom)
+    return () => {
+      window.removeEventListener('pointerdown', onGesture, { capture: true })
+      window.removeEventListener('keydown', onGesture, { capture: true })
+      window.removeEventListener('touchstart', onGesture, { capture: true })
+      window.removeEventListener('kinder-live-sound-unlock', onCustom)
+    }
+  }, [lockPlayback, muted, paused, markSoundUnlocked, syncDesiredAudio])
 
   const markReady = useCallback(() => {
     if (!onReady || readyRef.current) return
@@ -390,7 +408,7 @@ function FeedEmbed({
         setGesturePrompt(null)
       }).catch(() => {
         video.muted = true
-        setGesturePrompt(lockPlayback ? 'sound' : null)
+        if (!lockPlayback) setGesturePrompt('sound')
       })
       return
     }
@@ -399,8 +417,7 @@ function FeedEmbed({
     void video.play()
       .then(() => {
         playingRef.current = true
-        if (lockPlayback) setGesturePrompt('sound')
-        else {
+        if (!lockPlayback) {
           video.muted = false
           void video.play().catch(() => {
             video.muted = true
@@ -412,6 +429,12 @@ function FeedEmbed({
         setGesturePrompt('play')
       })
   }, [layer.id, layer.playback.mode, layer.playback.src, muted, paused, lockPlayback])
+
+  const unlockOverlay = useCallback(() => {
+    if (muted || paused) return
+    markSoundUnlocked()
+    syncDesiredAudio()
+  }, [muted, paused, markSoundUnlocked, syncDesiredAudio])
 
   if (layer.playback.mode === 'youtube' && layer.playback.video_id && embedSrc) {
     return (
@@ -431,15 +454,22 @@ function FeedEmbed({
               '*',
             )
             kickPlay(iframeRef.current, true)
-            if (soundUnlockedRef.current && !muted) {
-              window.setTimeout(() => syncDesiredAudio(), 600)
+            if (readLiveSoundUnlocked() && !muted) {
+              soundUnlockedRef.current = true
+              window.setTimeout(() => syncDesiredAudio(), 500)
             }
           }}
         />
-        {lockPlayback && !gesturePrompt && <div className="live-player-lock-overlay" aria-hidden />}
-        {gesturePrompt && !paused && (
+        {lockPlayback && gesturePrompt !== 'play' && (
+          <div
+            className="live-player-lock-overlay"
+            aria-hidden
+            onPointerDown={unlockOverlay}
+          />
+        )}
+        {gesturePrompt === 'play' && !paused && (
           <button type="button" className="live-player-gesture-btn" onClick={onGestureTap}>
-            {gesturePrompt === 'play' ? 'Tap to play' : 'Tap for sound'}
+            Tap to play
           </button>
         )}
       </>
@@ -463,7 +493,9 @@ function FeedEmbed({
           onReady={markReady}
           className={`live-player-video ${lockPlayback ? 'live-player-video--locked' : ''}`}
         />
-        {lockPlayback && <div className="live-player-lock-overlay" aria-hidden />}
+        {lockPlayback && (
+          <div className="live-player-lock-overlay" aria-hidden onPointerDown={unlockOverlay} />
+        )}
       </>
     )
   }
@@ -482,15 +514,18 @@ function FeedEmbed({
           onLoad={() => {
             markReady()
             kickPlay(iframeRef.current, true)
-            if (soundUnlockedRef.current && !muted) {
-              window.setTimeout(() => syncDesiredAudio(), 600)
+            if (readLiveSoundUnlocked() && !muted) {
+              soundUnlockedRef.current = true
+              window.setTimeout(() => syncDesiredAudio(), 500)
             }
           }}
         />
-        {lockPlayback && !gesturePrompt && <div className="live-player-lock-overlay" aria-hidden />}
-        {gesturePrompt && !paused && (
+        {lockPlayback && gesturePrompt !== 'play' && (
+          <div className="live-player-lock-overlay" aria-hidden onPointerDown={unlockOverlay} />
+        )}
+        {gesturePrompt === 'play' && !paused && (
           <button type="button" className="live-player-gesture-btn" onClick={onGestureTap}>
-            {gesturePrompt === 'play' ? 'Tap to play' : 'Tap for sound'}
+            Tap to play
           </button>
         )}
       </>
@@ -509,34 +544,28 @@ function FeedEmbed({
         onLoadedData={markReady}
         onCanPlay={markReady}
       />
-      {lockPlayback && !gesturePrompt && <div className="live-player-lock-overlay" aria-hidden />}
-      {gesturePrompt && !paused && (
+      {lockPlayback && gesturePrompt !== 'play' && (
+        <div className="live-player-lock-overlay" aria-hidden onPointerDown={unlockOverlay} />
+      )}
+      {gesturePrompt === 'play' && !paused && (
         <button
           type="button"
           className="live-player-gesture-btn"
           onClick={() => {
             const video = videoRef.current
             if (!video) return
-            if (gesturePrompt === 'play') {
-              video.muted = true
-              void video.play().then(() => {
-                playingRef.current = true
-                if (!muted) {
-                  markSoundUnlocked()
-                  video.muted = false
-                }
-                setGesturePrompt(null)
-              }).catch(() => {})
-              return
-            }
-            markSoundUnlocked()
-            video.muted = false
-            void video.play().then(() => setGesturePrompt(null)).catch(() => {
-              video.muted = true
-            })
+            video.muted = true
+            void video.play().then(() => {
+              playingRef.current = true
+              if (!muted) {
+                markSoundUnlocked()
+                video.muted = false
+              }
+              setGesturePrompt(null)
+            }).catch(() => {})
           }}
         >
-          {gesturePrompt === 'play' ? 'Tap to play' : 'Tap for sound'}
+          Tap to play
         </button>
       )}
     </>

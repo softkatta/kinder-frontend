@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Radio, Calendar } from 'lucide-react'
 import { usePublicLiveStatus } from '@/hooks/usePublicLiveStream'
 import { useT } from '@/i18n/LanguageContext'
+import { unlockLiveSound } from '@/utils/liveSoundUnlock'
 
 export function PublicLiveBanner() {
   const status = usePublicLiveStatus()
@@ -15,6 +16,7 @@ export function PublicLiveBanner() {
   return (
     <Link
       to="/live"
+      onClick={() => unlockLiveSound()}
       className={`flex items-center justify-center gap-2 text-white text-sm font-bold py-2.5 px-4 transition-colors ${
         isLive
           ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-orange-500 hover:from-rose-700 hover:to-orange-600'

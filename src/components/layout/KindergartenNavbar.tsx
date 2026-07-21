@@ -2,6 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ChevronDown, GraduationCap, Menu, X } from 'lucide-react'
 import { mediaUrl } from '@/utils/mediaUrl'
+import { unlockLiveSound } from '@/utils/liveSoundUnlock'
+
+function handleLiveNavClick(to: string | undefined, onNavigate: () => void) {
+  if (to === '/live' || to === '/parent/live') unlockLiveSound()
+  onNavigate()
+}
 
 export interface NavChildLink {
   to: string
@@ -86,7 +92,7 @@ function NavDropdown({ item, onNavigate }: { item: NavLinkItem; onNavigate: () =
                 to={child.to}
                 role="menuitem"
                 className={`kg-navbar-dropdown-item ${isChildActive(pathname, child.to) ? 'kg-navbar-dropdown-item--active' : ''}`}
-                onClick={onNavigate}
+                onClick={() => handleLiveNavClick(child.to, onNavigate)}
               >
                 {child.label}
               </Link>
@@ -193,7 +199,7 @@ export function KindergartenNavbar({
                           key={child.to}
                           to={child.to}
                           className="kg-navbar-mobile-link"
-                          onClick={onNavigate}
+                          onClick={() => handleLiveNavClick(child.to, onNavigate)}
                         >
                           {child.label}
                         </Link>
@@ -205,7 +211,7 @@ export function KindergartenNavbar({
                     key={item.to}
                     to={item.to!}
                     className="kg-navbar-mobile-link block text-center"
-                    onClick={onNavigate}
+                    onClick={() => handleLiveNavClick(item.to, onNavigate)}
                   >
                     {item.label}
                   </Link>

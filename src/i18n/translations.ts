@@ -368,6 +368,7 @@ export const translations = {
         nowShowing: 'Now showing',
         bannerCta: 'Watch Live Event — Click Here',
         portalHint: 'Parents can also watch from the portal after login.',
+        soundNote: 'Tap or click once on this page to enable sound. Browsers block automatic sound for privacy.',
       },
       careers: {
         label: 'Careers',
@@ -1023,6 +1024,7 @@ export const translations = {
         nowShowing: 'आता दाखवत आहे',
         bannerCta: 'लाइव्ह कार्यक्रम पहा — येथे क्लिक करा',
         portalHint: 'पालक पोर्टल लॉगिन नंतरही पाहू शकतात.',
+        soundNote: 'आवाज सुरू करण्यासाठी या पृष्ठावर एकदा टॅप/क्लिक करा. ब्राउझर गोपनीयतेसाठी स्वयंचलित आवाज बंद ठेवतो.',
       },
       careers: {
         label: 'नोकऱ्या',

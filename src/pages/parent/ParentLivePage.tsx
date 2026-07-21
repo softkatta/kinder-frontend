@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo } from 'react'
-import { Radio, Wifi, WifiOff, Calendar } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Radio, Wifi, WifiOff, Calendar, Volume2 } from 'lucide-react'
 import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
 import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
@@ -8,12 +8,25 @@ import { useActiveLiveStream } from '@/hooks/useLiveStreamRealtime'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
 import { parseWallClockInTimeZone } from '@/utils/scheduleTime'
+import { readLiveSoundUnlocked } from '@/utils/liveSoundUnlock'
 
 export default function ParentLivePage() {
   const { profile } = useSchoolBranding()
   const routeVisible = useLiveRouteVisible()
   const { active, watch, cameraId, connected, reload } = useActiveLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
+  const [soundUnlocked, setSoundUnlocked] = useState(() => readLiveSoundUnlocked())
+
+  useEffect(() => {
+    const sync = () => setSoundUnlocked(readLiveSoundUnlocked())
+    sync()
+    window.addEventListener('kinder-live-sound-unlock', sync)
+    window.addEventListener('pointerdown', sync, { capture: true })
+    return () => {
+      window.removeEventListener('kinder-live-sound-unlock', sync)
+      window.removeEventListener('pointerdown', sync, { capture: true })
+    }
+  }, [])
 
   const broadcastPaused = isLiveBroadcastPaused(active?.status, active?.display_status)
   const isLive = active?.status === 'live'
@@ -137,21 +150,29 @@ export default function ParentLivePage() {
           )}
 
           {canPlay ? (
-            <div className="live-viewer-screen">
-              <LiveStreamPlayer
-                immersive
-                lockPlayback
-                cameraId={cameraId}
-                playback={watch?.playback}
-                playbacks={watch?.playbacks}
-                layoutMode={watch?.layout_mode ?? active.layout_mode}
-                title={active.title}
-                cameraName={watch?.active_camera?.name}
-                cameraLocation={watch?.active_camera?.location ?? undefined}
-                status={active.status}
-                muted={!routeVisible}
-              />
-            </div>
+            <>
+              <div className="live-viewer-screen">
+                <LiveStreamPlayer
+                  immersive
+                  lockPlayback
+                  cameraId={cameraId}
+                  playback={watch?.playback}
+                  playbacks={watch?.playbacks}
+                  layoutMode={watch?.layout_mode ?? active.layout_mode}
+                  title={active.title}
+                  cameraName={watch?.active_camera?.name}
+                  cameraLocation={watch?.active_camera?.location ?? undefined}
+                  status={active.status}
+                  muted={!routeVisible}
+                />
+              </div>
+              {!soundUnlocked && !broadcastPaused && (
+                <p className="text-center text-sm text-slate-600 bg-sky-50 border border-sky-100 rounded-xl px-4 py-3">
+                  <Volume2 className="inline-block h-4 w-4 mr-1.5 text-sky-600 align-text-bottom" />
+                  Tap or click once on this page to enable sound. Browsers block automatic sound for privacy.
+                </p>
+              )}
+            </>
           ) : broadcastPaused ? (
             <div className="live-viewer-screen">
               <LiveBroadcastPausedPanel title={active.title} />

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Radio, LogIn } from 'lucide-react'
+import { Radio, LogIn, Volume2 } from 'lucide-react'
 import { PublicPageHero } from '@/components/design/PublicPageHero'
 import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
@@ -12,6 +12,7 @@ import { useT } from '@/i18n/LanguageContext'
 import { FadeIn } from '@/components/ui/Motion'
 import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
 import { parseWallClockInTimeZone } from '@/utils/scheduleTime'
+import { readLiveSoundUnlocked } from '@/utils/liveSoundUnlock'
 
 export default function PublicLivePage() {
   const { t } = useT()
@@ -19,6 +20,18 @@ export default function PublicLivePage() {
   const routeVisible = useLiveRouteVisible()
   const { active, watch, upcoming, cameraId, isLive, isPaused, isUpcoming, reload } = usePublicLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
+  const [soundUnlocked, setSoundUnlocked] = useState(() => readLiveSoundUnlocked())
+
+  useEffect(() => {
+    const sync = () => setSoundUnlocked(readLiveSoundUnlocked())
+    sync()
+    window.addEventListener('kinder-live-sound-unlock', sync)
+    window.addEventListener('pointerdown', sync, { capture: true })
+    return () => {
+      window.removeEventListener('kinder-live-sound-unlock', sync)
+      window.removeEventListener('pointerdown', sync, { capture: true })
+    }
+  }, [])
 
   const broadcastPaused = isPaused || isLiveBroadcastPaused(active?.status, active?.display_status)
 
@@ -146,6 +159,12 @@ export default function PublicLivePage() {
                   {watch.active_camera.location ? ` · ${watch.active_camera.location}` : ''}
                 </p>
               ) : null}
+              {!soundUnlocked && !broadcastPaused && (
+                <p className="live-viewer-sound-note mt-3 mx-auto max-w-xl text-center text-sm text-slate-600 bg-sky-50 border border-sky-100 rounded-xl px-4 py-3">
+                  <Volume2 className="inline-block h-4 w-4 mr-1.5 text-sky-600 align-text-bottom" />
+                  {t.pages.live.soundNote}
+                </p>
+              )}
             </div>
           </>
         ) : broadcastPaused && active ? (
