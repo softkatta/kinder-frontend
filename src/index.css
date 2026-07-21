@@ -4175,6 +4175,20 @@ h1, h2, h3, h4, h5, h6 {
 .live-player-pane--empty {
   @apply flex items-center justify-center bg-slate-950 text-xs text-slate-500;
 }
+.live-player-pane-loading {
+  @apply absolute inset-0 flex items-center justify-center bg-slate-950;
+}
+.live-player-pane-loading__dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  border-top-color: rgba(56, 189, 248, 0.95);
+  animation: live-pane-spin 0.8s linear infinite;
+}
+@keyframes live-pane-spin {
+  to { transform: rotate(360deg); }
+}
 .live-player-grid--pip {
   display: block;
   position: absolute;

@@ -96,10 +96,11 @@ function postYoutubeCommand(
   iframe: HTMLIFrameElement | null,
   func: string,
   args: unknown[] = [],
+  widgetId?: number,
 ) {
   try {
     iframe?.contentWindow?.postMessage(
-      JSON.stringify({ event: 'command', func, args }),
+      JSON.stringify({ event: 'command', func, args, id: widgetId ?? 1 }),
       '*',
     )
   } catch {
@@ -108,15 +109,42 @@ function postYoutubeCommand(
 }
 
 /** Tell the embed we listen for API events — required before reliable commands. */
-function postYoutubeListening(iframe: HTMLIFrameElement | null) {
+function postYoutubeListening(iframe: HTMLIFrameElement | null, widgetId: number) {
   try {
     iframe?.contentWindow?.postMessage(
-      JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
+      JSON.stringify({ event: 'listening', id: widgetId, channel: 'widget' }),
       '*',
     )
   } catch {
     /* ignore */
   }
+}
+
+/** Stable numeric id for YouTube postMessage routing (must differ per pane). */
+function youtubeWidgetId(layerKey: string): number {
+  let hash = 0
+  for (let i = 0; i < layerKey.length; i += 1) {
+    hash = ((hash << 5) - hash) + layerKey.charCodeAt(i)
+    hash |= 0
+  }
+  return (Math.abs(hash) % 900000) + 1000
+}
+
+/** True if message came from this iframe or a nested frame inside it. */
+function isMessageFromIframe(event: MessageEvent, iframe: HTMLIFrameElement | null): boolean {
+  if (!iframe?.contentWindow || !event.source) return false
+  if (event.source === iframe.contentWindow) return true
+  try {
+    let win: Window | null = event.source as Window
+    for (let i = 0; i < 6 && win; i += 1) {
+      if (win === iframe.contentWindow) return true
+      if (win === win.parent) break
+      win = win.parent
+    }
+  } catch {
+    /* cross-origin parent walk can throw — fall through */
+  }
+  return false
 }
 
 function postVimeoCommand(iframe: HTMLIFrameElement | null, method: string, value?: number | string) {
@@ -170,6 +198,7 @@ function FeedEmbed({
   paused = false,
   webrtcAuth,
   lockPlayback,
+  paneIndex = 0,
 }: {
   layer: FeedLayer & { playback: LivePlayback }
   onReady?: () => void
@@ -179,6 +208,8 @@ function FeedEmbed({
   paused?: boolean
   webrtcAuth: WebrtcAuthMode
   lockPlayback: boolean
+  /** Grid slot index — secondary panes load slightly later to avoid side-spinner races. */
+  paneIndex?: number
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -190,10 +221,13 @@ function FeedEmbed({
   /** True after YouTube/Vimeo reported playing at least once — avoids load-time kick loops. */
   const everPlayedRef = useRef(false)
   const autoKickCountRef = useRef(0)
+  const ytWidgetIdRef = useRef(youtubeWidgetId(layer.id))
   // One viewer gesture unlocks sound + play for this tab — layout changes must not re-ask.
   const soundUnlockedRef = useRef(readLiveSoundUnlocked())
   const playUnlockedRef = useRef(readLivePlaybackUnlocked())
-  const [embedSrc] = useState(() => {
+  const [embedSrc, setEmbedSrc] = useState<string | null>(() => {
+    // Primary pane mounts immediately; side panes stagger so YouTube does not thrash.
+    if (paneIndex > 0) return null
     if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
       return youtubeEmbedSrc(layer.playback.video_id, true, lockPlayback)
     }
@@ -203,6 +237,36 @@ function FeedEmbed({
     return null
   })
   const [gesturePrompt, setGesturePrompt] = useState<'play' | 'sound' | null>(null)
+
+  useEffect(() => {
+    ytWidgetIdRef.current = youtubeWidgetId(layer.id)
+  }, [layer.id])
+
+  // Stagger secondary/side camera iframes — prevents endless side-pane loading.
+  useEffect(() => {
+    if (layer.playback.mode !== 'youtube' && layer.playback.mode !== 'vimeo') return
+    if (!layer.playback.video_id) return
+
+    if (paneIndex <= 0) {
+      if (layer.playback.mode === 'youtube') {
+        setEmbedSrc(youtubeEmbedSrc(layer.playback.video_id, true, lockPlayback))
+      } else {
+        setEmbedSrc(vimeoEmbedSrc(layer.playback.video_id, true, lockPlayback))
+      }
+      return
+    }
+
+    setEmbedSrc(null)
+    const delay = 450 + paneIndex * 550
+    const timer = window.setTimeout(() => {
+      if (layer.playback.mode === 'youtube') {
+        setEmbedSrc(youtubeEmbedSrc(layer.playback.video_id!, true, lockPlayback))
+      } else {
+        setEmbedSrc(vimeoEmbedSrc(layer.playback.video_id!, true, lockPlayback))
+      }
+    }, delay)
+    return () => window.clearTimeout(timer)
+  }, [paneIndex, layer.id, layer.playback.mode, layer.playback.video_id, lockPlayback])
 
   const markSoundUnlocked = useCallback(() => {
     soundUnlockedRef.current = true
@@ -235,15 +299,16 @@ function FeedEmbed({
     if (layer.playback.mode === 'youtube') {
       // Avoid YouTube widget crash (isExternalMethodAvailable) before API ready.
       if (!ytApiReadyRef.current) return
+      const wid = ytWidgetIdRef.current
       if (silent) {
-        postYoutubeCommand(iframe, 'mute')
-        postYoutubeCommand(iframe, 'setVolume', [0])
+        postYoutubeCommand(iframe, 'mute', [], wid)
+        postYoutubeCommand(iframe, 'setVolume', [0], wid)
       } else {
-        postYoutubeCommand(iframe, 'unMute')
-        postYoutubeCommand(iframe, 'setVolume', [level])
+        postYoutubeCommand(iframe, 'unMute', [], wid)
+        postYoutubeCommand(iframe, 'setVolume', [level], wid)
       }
       // Re-calling playVideo while already playing restarts the buffer spinner loop.
-      if (wantPlay && !playingRef.current) postYoutubeCommand(iframe, 'playVideo')
+      if (wantPlay && !playingRef.current) postYoutubeCommand(iframe, 'playVideo', [], wid)
       return
     }
     if (layer.playback.mode === 'vimeo') {
@@ -258,16 +323,17 @@ function FeedEmbed({
     const stayMuted = forceMute || muted || !soundUnlockedRef.current || volume === 0
     if (layer.playback.mode === 'youtube') {
       if (!ytApiReadyRef.current) {
-        postYoutubeListening(iframe)
+        postYoutubeListening(iframe, ytWidgetIdRef.current)
         return
       }
+      const wid = ytWidgetIdRef.current
       if (stayMuted) {
-        postYoutubeCommand(iframe, 'mute')
+        postYoutubeCommand(iframe, 'mute', [], wid)
       } else {
-        postYoutubeCommand(iframe, 'unMute')
-        postYoutubeCommand(iframe, 'setVolume', [Math.max(0, Math.min(100, volume))])
+        postYoutubeCommand(iframe, 'unMute', [], wid)
+        postYoutubeCommand(iframe, 'setVolume', [Math.max(0, Math.min(100, volume))], wid)
       }
-      postYoutubeCommand(iframe, 'playVideo')
+      postYoutubeCommand(iframe, 'playVideo', [], wid)
       return
     }
     if (layer.playback.mode === 'vimeo') {
@@ -397,8 +463,7 @@ function FeedEmbed({
 
     const onMessage = (event: MessageEvent) => {
       const iframe = iframeRef.current
-      // Ignore other panes' players — multi-cam postMessage crosstalk caused false kicks.
-      if (!iframe?.contentWindow || event.source !== iframe.contentWindow) return
+      if (!iframe) return
 
       if (typeof event.origin === 'string'
         && !event.origin.includes('youtube.com')
@@ -411,9 +476,18 @@ function FeedEmbed({
         try { data = JSON.parse(data) } catch { return }
       }
       if (!data || typeof data !== 'object') return
-      const payload = data as { event?: string; info?: number | { playerState?: number } }
+      const payload = data as { event?: string; id?: number | string; info?: number | { playerState?: number } }
 
       if (layer.playback.mode === 'youtube') {
+        const wid = ytWidgetIdRef.current
+        const msgId = payload.id !== undefined ? Number(payload.id) : NaN
+        const idMatches = Number.isFinite(msgId) && msgId === wid
+        const fromThisFrame = isMessageFromIframe(event, iframe)
+        // Prefer widget id (unique per pane). Source check alone fails on nested YouTube frames
+        // and caused side cameras to spin forever.
+        if (!idMatches && !fromThisFrame) return
+        if (Number.isFinite(msgId) && msgId !== wid) return
+
         const state = typeof payload.info === 'number'
           ? payload.info
           : payload.info && typeof payload.info === 'object'
@@ -421,7 +495,6 @@ function FeedEmbed({
             : undefined
         if (payload.event === 'onReady' || payload.event === 'initialDelivery') {
           ytApiReadyRef.current = true
-          // One muted kick after API ready — embed already has autoplay=1&mute=1.
           autoKickPlayRef.current(iframe, true)
         }
         if (state === 1) {
@@ -433,21 +506,18 @@ function FeedEmbed({
           setGesturePrompt((p) => (p === 'play' ? null : p))
           syncDesiredAudio()
         } else if (state === 3) {
-          // Buffering — keep everPlayed; do NOT clear playing in a way that re-triggers playVideo.
-          // Mark as "in progress" so mute sync won't restart the clip.
           if (everPlayedRef.current) playingRef.current = true
         } else if (state === 2 && !paused && everPlayedRef.current) {
-          // Only recover unexpected pause after we already played (not during first load).
           playingRef.current = false
           if (recoverTimerRef.current) window.clearTimeout(recoverTimerRef.current)
           recoverTimerRef.current = window.setTimeout(() => {
             autoKickPlayRef.current(iframeRef.current, true)
           }, 500)
         }
-        // Ignore -1 (unstarted) and 5 (cued): autoplay URL + onReady kick handle first start.
       }
 
       if (layer.playback.mode === 'vimeo') {
+        if (!isMessageFromIframe(event, iframe)) return
         if (payload.event === 'play' || payload.event === 'playing') {
           playingRef.current = true
           everPlayedRef.current = true
@@ -465,12 +535,13 @@ function FeedEmbed({
   // Autoload muted play — do NOT depend on `muted` / kickPlay identity (avoids restart loops).
   useEffect(() => {
     if (layer.playback.mode !== 'youtube' && layer.playback.mode !== 'vimeo') return
+    if (!embedSrc) return
     if (paused) {
       const iframe = iframeRef.current
       if (layer.playback.mode === 'youtube') {
         if (ytApiReadyRef.current) {
           applyMuteStateRef.current(iframe, true, { play: false })
-          postYoutubeCommand(iframe, 'pauseVideo')
+          postYoutubeCommand(iframe, 'pauseVideo', [], ytWidgetIdRef.current)
         }
       } else {
         applyMuteStateRef.current(iframe, true, { play: false })
@@ -481,21 +552,23 @@ function FeedEmbed({
 
     if (readLivePlaybackUnlocked()) playUnlockedRef.current = true
     if (layer.playback.mode === 'youtube') {
-      postYoutubeListening(iframeRef.current)
+      postYoutubeListening(iframeRef.current, ytWidgetIdRef.current)
     }
     autoKickPlayRef.current(iframeRef.current, true)
 
     const retries = [1200, 2800, 5000].map((ms) =>
       window.setTimeout(() => {
         if (playingRef.current || paused || everPlayedRef.current) return
-        if (layer.playback.mode === 'youtube') postYoutubeListening(iframeRef.current)
+        if (layer.playback.mode === 'youtube') {
+          postYoutubeListening(iframeRef.current, ytWidgetIdRef.current)
+        }
         autoKickPlayRef.current(iframeRef.current, true)
         if (ms >= 2800) showPlayPrompt()
       }, ms),
     )
 
     return () => retries.forEach((id) => window.clearTimeout(id))
-  }, [paused, layer.id, layer.playback.mode, showPlayPrompt])
+  }, [paused, layer.id, layer.playback.mode, showPlayPrompt, embedSrc])
 
   // Admin / route mute changes — apply immediately once sound is unlocked.
   useEffect(() => {
@@ -610,6 +683,18 @@ function FeedEmbed({
     syncDesiredAudio()
   }, [muted, paused, markSoundUnlocked, markPlayUnlocked, syncDesiredAudio])
 
+  if (
+    (layer.playback.mode === 'youtube' || layer.playback.mode === 'vimeo')
+    && layer.playback.video_id
+    && !embedSrc
+  ) {
+    return (
+      <div className="live-player-pane-loading" aria-busy="true">
+        <span className="live-player-pane-loading__dot" />
+      </div>
+    )
+  }
+
   if (layer.playback.mode === 'youtube' && layer.playback.video_id && embedSrc) {
     return (
       <>
@@ -623,7 +708,7 @@ function FeedEmbed({
           tabIndex={lockPlayback ? -1 : undefined}
           onLoad={() => {
             markReady()
-            postYoutubeListening(iframeRef.current)
+            postYoutubeListening(iframeRef.current, ytWidgetIdRef.current)
             // Prefer embed autoplay; only nudge once via bounded kick (not unlimited playVideo).
             autoKickPlayRef.current(iframeRef.current, true)
             if (readLiveSoundUnlocked() && !muted) {
@@ -881,7 +966,7 @@ export function LiveStreamPlayer({
       {/* Keep embeds mounted while paused so resume does not restart YouTube. */}
       <div className={`live-player-stage ${isPaused ? 'live-player-stage--paused' : ''}`}>
         <div className={`live-player-grid live-player-grid--${gridMode}`}>
-          {panes.map((pane) => {
+          {panes.map((pane, paneIndex) => {
             if (!pane.playback || pane.empty) {
               return (
                 <div key={pane.id} className="live-player-pane live-player-pane--empty">
@@ -900,6 +985,7 @@ export function LiveStreamPlayer({
                   paused={isPaused}
                   webrtcAuth={webrtcAuth}
                   lockPlayback={playbackLocked}
+                  paneIndex={paneIndex}
                 />
                 {(pane.cameraName || pane.cameraLocation) && (
                   <div className="live-player-pane-caption">
