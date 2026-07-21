@@ -5,6 +5,7 @@ import { HeroRailButton } from '@/components/design/HeroRailButton'
 import { mediaUrl } from '@/utils/mediaUrl'
 import type { HeroSidebarCopy, HeroSlideCopy } from '@/config/siteContent'
 import { HeroNoticeStrip, type HeroNoticeItem } from '@/components/design/HeroNoticeStrip'
+import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
 
 interface HeroBanner {
   image?: string
@@ -80,8 +81,6 @@ export function HomeWelcomeBento({
       className="home-hero home-hero--fullscreen"
       aria-label={schoolShort}
     >
-      <HeroNoticeStrip notices={notices} fallback={admissionBanner} />
-
       <div className="home-hero-stage">
         <div className="home-hero-slides" aria-hidden>
           {heroSlides.map((slide, i) => (
@@ -150,6 +149,12 @@ export function HomeWelcomeBento({
         )}
 
         <div className="home-hero-blend" aria-hidden />
+      </div>
+
+      {/* Live CTA + notices sit under the hero (replaces old top-of-site live bar). */}
+      <div className="home-hero-bottom-notices">
+        <PublicLiveBanner variant="bar" />
+        <HeroNoticeStrip notices={notices} fallback={admissionBanner} />
       </div>
     </section>
   )

@@ -527,4 +527,6 @@ export const liveStreamApi = {
     api.post(`/live-streams/${streamId}/cameras/${cameraId}/disconnect`),
   muteCamera: (streamId: number, cameraId: number, muted: boolean) =>
     api.patch(`/live-streams/${streamId}/cameras/${cameraId}/mute`, { muted }),
+  setCameraVolume: (streamId: number, cameraId: number, volume: number) =>
+    api.patch(`/live-streams/${streamId}/cameras/${cameraId}/volume`, { volume }),
 }

@@ -63,6 +63,8 @@ export interface LiveStreamCameraStaff {
   battery_level?: number | null
   signal_strength?: number | null
   audio_muted?: boolean
+  /** 0–100 parent playback volume for this camera. */
+  audio_volume?: number
   joined_at?: string | null
   last_seen_at?: string | null
   is_mobile_publisher?: boolean
@@ -88,6 +90,7 @@ export interface PublisherCamera {
   connection_status_label: string
   device_name?: string | null
   audio_muted: boolean
+  audio_volume?: number
   joined_at?: string | null
 }
 
@@ -175,6 +178,7 @@ export interface LiveStreamViewer {
     location?: string | null
     stream_type: StreamType
     audio_muted?: boolean
+    audio_volume?: number
   }[]
 }
 
@@ -187,6 +191,7 @@ export interface LivePlayback {
   camera_name?: string
   camera_location?: string | null
   audio_muted?: boolean
+  audio_volume?: number
   room_name?: string
   participant_identity?: string
 }

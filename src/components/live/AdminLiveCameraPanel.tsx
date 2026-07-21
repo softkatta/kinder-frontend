@@ -18,6 +18,7 @@ interface AdminLiveCameraPanelProps {
   onPreview: (camera: LiveStreamCameraStaff) => void
   onDisconnect: (camera: LiveStreamCameraStaff) => void
   onMute: (camera: LiveStreamCameraStaff, muted: boolean) => void
+  onVolume?: (camera: LiveStreamCameraStaff, volume: number) => void
 }
 
 function statusTone(status?: string): 'success' | 'warning' | 'neutral' | 'danger' {
@@ -49,6 +50,7 @@ export function AdminLiveCameraPanel({
   onPreview,
   onDisconnect,
   onMute,
+  onVolume,
 }: AdminLiveCameraPanelProps) {
   const [previewId, setPreviewId] = useState<number | null>(null)
 
@@ -214,6 +216,20 @@ export function AdminLiveCameraPanel({
                     <Volume2 className="h-3.5 w-3.5" />
                   )}
                 </AdminBtn>
+                {onVolume && (
+                  <label className="als-camera-volume" title="Parent volume for this camera">
+                    <span>{camera.audio_muted ? 0 : Math.max(0, Math.min(100, camera.audio_volume ?? 100))}%</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      disabled={busy || !camera.is_enabled}
+                      value={camera.audio_muted ? 0 : Math.max(0, Math.min(100, camera.audio_volume ?? 100))}
+                      onChange={(e) => onVolume(camera, Number(e.target.value))}
+                    />
+                  </label>
+                )}
                 <AdminBtn
                   variant="secondary"
                   className="!px-2 !py-1.5 text-xs text-rose-600"

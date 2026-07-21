@@ -393,6 +393,40 @@ export default function AdminLiveStreamsPage() {
     }
   }
 
+  const volumeTimersRef = useRef<Record<number, number>>({})
+
+  const setCameraVolume = (camera: LiveStreamCameraStaff, volume: number) => {
+    if (!selected) return
+    const next = Math.max(0, Math.min(100, Math.round(volume)))
+    patchStream({
+      ...selected,
+      cameras: selected.cameras.map((c) => (
+        c.id === camera.id
+          ? { ...c, audio_volume: next, audio_muted: next === 0 }
+          : c
+      )),
+    })
+    if (previewCameraId === camera.id) {
+      setPreviewPlayback((prev) => (
+        prev ? { ...prev, audio_volume: next, audio_muted: next === 0 } : prev
+      ))
+    }
+    const existing = volumeTimersRef.current[camera.id]
+    if (existing) window.clearTimeout(existing)
+    volumeTimersRef.current[camera.id] = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await liveStreamApi.setCameraVolume(selected.id, camera.id, next)
+          patchStream(res.data.data as LiveStreamStaff)
+        } catch (err: unknown) {
+          const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+          toast.error(message || 'Could not update volume')
+          await load({ silent: true })
+        }
+      })()
+    }, 280)
+  }
+
   const toggleMasterAudio = async () => {
     if (!selected || busy) return
     const next = !selected.audio_enabled
@@ -700,6 +734,7 @@ export default function AdminLiveStreamsPage() {
       setPreviewPlayback({
         ...payload.preview,
         audio_muted: Boolean(camera.audio_muted || payload.preview.audio_muted),
+        audio_volume: Math.max(0, Math.min(100, camera.audio_volume ?? payload.preview.audio_volume ?? 100)),
       })
     } catch {
       toast.error('Preview failed')
@@ -1172,6 +1207,7 @@ export default function AdminLiveStreamsPage() {
                       onPreview={preview}
                       onDisconnect={disconnectMobileCamera}
                       onMute={muteCameraAudio}
+                      onVolume={setCameraVolume}
                     />
                   </section>
 
@@ -1268,6 +1304,18 @@ export default function AdminLiveStreamsPage() {
                                 <Volume2 className="h-3.5 w-3.5" />
                               )}
                             </AdminBtn>
+                            <label className="als-camera-volume" title="Parent volume for this camera">
+                              <span>{Math.max(0, Math.min(100, camera.audio_volume ?? 100))}%</span>
+                              <input
+                                type="range"
+                                min={0}
+                                max={100}
+                                step={5}
+                                disabled={!camera.is_enabled || mutingId === camera.id}
+                                value={camera.audio_muted ? 0 : Math.max(0, Math.min(100, camera.audio_volume ?? 100))}
+                                onChange={(e) => setCameraVolume(camera, Number(e.target.value))}
+                              />
+                            </label>
                             <AdminBtn
                               variant="secondary"
                               className="!px-2 !py-1.5"

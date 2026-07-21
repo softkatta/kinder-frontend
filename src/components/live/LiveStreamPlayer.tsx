@@ -3,7 +3,7 @@ import { Maximize2, Minimize2, Radio, RotateCw } from 'lucide-react'
 import { LiveKitViewer, type WebrtcAuthMode } from '@/components/live/LiveKitViewer'
 import type { LivePlayback } from '@/types/liveStream'
 import { isPipLayout, layoutPaneCount } from '@/types/liveStream'
-import { readLiveSoundUnlocked, unlockLiveSound } from '@/utils/liveSoundUnlock'
+import { readLivePlaybackUnlocked, readLiveSoundUnlocked, unlockLivePlayback, unlockLiveSound } from '@/utils/liveSoundUnlock'
 
 type PlayerOrientation = 'landscape' | 'portrait'
 
@@ -94,10 +94,11 @@ function vimeoEmbedSrc(videoId: string, startMuted: boolean, lockPlayback: boole
 
 function postYoutubeCommand(
   iframe: HTMLIFrameElement | null,
-  func: 'mute' | 'unMute' | 'playVideo' | 'pauseVideo',
+  func: string,
+  args: unknown[] = [],
 ) {
   iframe?.contentWindow?.postMessage(
-    JSON.stringify({ event: 'command', func, args: [] }),
+    JSON.stringify({ event: 'command', func, args }),
     '*',
   )
 }
@@ -145,6 +146,7 @@ function FeedEmbed({
   layer,
   onReady,
   muted,
+  volume = 100,
   paused = false,
   webrtcAuth,
   lockPlayback,
@@ -152,6 +154,8 @@ function FeedEmbed({
   layer: FeedLayer & { playback: LivePlayback }
   onReady?: () => void
   muted: boolean
+  /** 0–100 parent volume for this camera feed. */
+  volume?: number
   paused?: boolean
   webrtcAuth: WebrtcAuthMode
   lockPlayback: boolean
@@ -161,8 +165,9 @@ function FeedEmbed({
   const readyRef = useRef(false)
   const timerRef = useRef<number | null>(null)
   const playingRef = useRef(false)
-  // One viewer gesture unlocks sound for this tab — admin mute then applies without re-tap.
+  // One viewer gesture unlocks sound + play for this tab — layout changes must not re-ask.
   const soundUnlockedRef = useRef(readLiveSoundUnlocked())
+  const playUnlockedRef = useRef(readLivePlaybackUnlocked())
   const [embedSrc] = useState(() => {
     if (layer.playback.mode === 'youtube' && layer.playback.video_id) {
       return youtubeEmbedSrc(layer.playback.video_id, true, lockPlayback)
@@ -176,7 +181,21 @@ function FeedEmbed({
 
   const markSoundUnlocked = useCallback(() => {
     soundUnlockedRef.current = true
+    playUnlockedRef.current = true
     unlockLiveSound()
+  }, [])
+
+  const markPlayUnlocked = useCallback(() => {
+    playUnlockedRef.current = true
+    unlockLivePlayback()
+  }, [])
+
+  const showPlayPrompt = useCallback(() => {
+    if (playUnlockedRef.current || readLivePlaybackUnlocked()) {
+      playUnlockedRef.current = true
+      return
+    }
+    setGesturePrompt((p) => p ?? 'play')
   }, [])
 
   const applyMuteState = useCallback((
@@ -186,23 +205,31 @@ function FeedEmbed({
   ) => {
     if (!iframe) return
     const wantPlay = opts?.play ?? true
+    const level = Math.max(0, Math.min(100, volume))
+    const silent = nextMuted || level === 0
     if (layer.playback.mode === 'youtube') {
-      postYoutubeCommand(iframe, nextMuted ? 'mute' : 'unMute')
+      postYoutubeCommand(iframe, 'setVolume', [silent ? 0 : level])
+      postYoutubeCommand(iframe, silent ? 'mute' : 'unMute')
       if (wantPlay) postYoutubeCommand(iframe, 'playVideo')
       return
     }
     if (layer.playback.mode === 'vimeo') {
-      postVimeoCommand(iframe, 'setVolume', nextMuted ? 0 : 1)
-      postVimeoCommand(iframe, 'setMuted', nextMuted ? 1 : 0)
+      postVimeoCommand(iframe, 'setVolume', silent ? 0 : level / 100)
+      postVimeoCommand(iframe, 'setMuted', silent ? 1 : 0)
       if (wantPlay) postVimeoCommand(iframe, 'play')
     }
-  }, [layer.playback.mode])
+  }, [layer.playback.mode, volume])
 
   const kickPlay = useCallback((iframe: HTMLIFrameElement | null, forceMute = false) => {
     if (!iframe) return
-    const stayMuted = forceMute || muted || !soundUnlockedRef.current
+    const stayMuted = forceMute || muted || !soundUnlockedRef.current || volume === 0
     if (layer.playback.mode === 'youtube') {
-      if (stayMuted) postYoutubeCommand(iframe, 'mute')
+      if (stayMuted) {
+        postYoutubeCommand(iframe, 'mute')
+        postYoutubeCommand(iframe, 'setVolume', [0])
+      } else {
+        postYoutubeCommand(iframe, 'setVolume', [Math.max(0, Math.min(100, volume))])
+      }
       postYoutubeCommand(iframe, 'playVideo')
       return
     }
@@ -210,10 +237,12 @@ function FeedEmbed({
       if (stayMuted) {
         postVimeoCommand(iframe, 'setVolume', 0)
         postVimeoCommand(iframe, 'setMuted', 1)
+      } else {
+        postVimeoCommand(iframe, 'setVolume', Math.max(0, Math.min(100, volume)) / 100)
       }
       postVimeoCommand(iframe, 'play')
     }
-  }, [layer.playback.mode, muted])
+  }, [layer.playback.mode, muted, volume])
 
   const syncDesiredAudio = useCallback(() => {
     const iframe = iframeRef.current
@@ -250,16 +279,19 @@ function FeedEmbed({
     if (!lockPlayback || muted || paused) return
     if (soundUnlockedRef.current || readLiveSoundUnlocked()) {
       soundUnlockedRef.current = true
+      playUnlockedRef.current = true
       syncDesiredAudio()
       return
     }
 
     const onGesture = () => {
+      markPlayUnlocked()
       markSoundUnlocked()
       syncDesiredAudio()
     }
     const onCustom = () => {
       soundUnlockedRef.current = true
+      playUnlockedRef.current = true
       syncDesiredAudio()
     }
 
@@ -267,13 +299,15 @@ function FeedEmbed({
     window.addEventListener('keydown', onGesture, { capture: true })
     window.addEventListener('touchstart', onGesture, { capture: true })
     window.addEventListener('kinder-live-sound-unlock', onCustom)
+    window.addEventListener('kinder-live-play-unlock', onCustom)
     return () => {
       window.removeEventListener('pointerdown', onGesture, { capture: true })
       window.removeEventListener('keydown', onGesture, { capture: true })
       window.removeEventListener('touchstart', onGesture, { capture: true })
       window.removeEventListener('kinder-live-sound-unlock', onCustom)
+      window.removeEventListener('kinder-live-play-unlock', onCustom)
     }
-  }, [lockPlayback, muted, paused, markSoundUnlocked, syncDesiredAudio])
+  }, [lockPlayback, muted, paused, markSoundUnlocked, markPlayUnlocked, syncDesiredAudio])
 
   const markReady = useCallback(() => {
     if (!onReady || readyRef.current) return
@@ -288,6 +322,9 @@ function FeedEmbed({
   useEffect(() => {
     readyRef.current = false
     playingRef.current = false
+    // Keep session unlock across remounts (layout change adds new panes).
+    soundUnlockedRef.current = readLiveSoundUnlocked()
+    playUnlockedRef.current = readLivePlaybackUnlocked()
     setGesturePrompt(null)
     if (timerRef.current) window.clearTimeout(timerRef.current)
     return () => {
@@ -323,16 +360,18 @@ function FeedEmbed({
         }
         if (state === 1) {
           playingRef.current = true
+          markPlayUnlocked()
           setGesturePrompt((p) => (p === 'play' ? null : p))
           syncDesiredAudio()
         } else if ((state === 2 || state === -1 || state === 5) && !paused) {
           playingRef.current = false
-          window.setTimeout(() => kickPlay(iframeRef.current), 350)
+          window.setTimeout(() => kickPlay(iframeRef.current, true), 350)
         }
       }
 
       if (layer.playback.mode === 'vimeo' && payload.event === 'play') {
         playingRef.current = true
+        markPlayUnlocked()
         setGesturePrompt((p) => (p === 'play' ? null : p))
         syncDesiredAudio()
       }
@@ -340,7 +379,7 @@ function FeedEmbed({
 
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [layer.playback.mode, kickPlay, syncDesiredAudio, paused])
+  }, [layer.playback.mode, kickPlay, syncDesiredAudio, paused, markPlayUnlocked])
 
   // Autoload muted play — do NOT depend on `muted` (admin toggles must not remute-kick).
   useEffect(() => {
@@ -353,18 +392,20 @@ function FeedEmbed({
       return
     }
 
+    if (readLivePlaybackUnlocked()) playUnlockedRef.current = true
     kickPlay(iframeRef.current, true)
 
-    const retries = [300, 800, 1600, 2800, 4500].map((ms) =>
+    const retries = [300, 800, 1600, 2800, 4500, 7000].map((ms) =>
       window.setTimeout(() => {
         if (playingRef.current || paused) return
         kickPlay(iframeRef.current, true)
-        if (ms >= 2800) setGesturePrompt((p) => p ?? 'play')
+        // Only ask for Tap to play on first visit — never after a prior unlock / layout change.
+        if (ms >= 2800) showPlayPrompt()
       }, ms),
     )
 
     return () => retries.forEach((id) => window.clearTimeout(id))
-  }, [paused, layer.id, layer.playback.mode, kickPlay, applyMuteState])
+  }, [paused, layer.id, layer.playback.mode, kickPlay, applyMuteState, showPlayPrompt])
 
   // Admin / route mute changes — apply immediately once sound is unlocked.
   useEffect(() => {
@@ -376,22 +417,34 @@ function FeedEmbed({
   const onGestureTap = useCallback(() => {
     const iframe = iframeRef.current
     if (!iframe) return
-    if (gesturePrompt === 'play' || !playingRef.current) {
-      kickPlay(iframe, true)
-      window.setTimeout(() => {
-        playingRef.current = true
-        if (!muted) {
-          markSoundUnlocked()
-          applyMuteState(iframe, false, { play: true })
-        }
-        setGesturePrompt(null)
-      }, 250)
-      return
-    }
+    markPlayUnlocked()
     markSoundUnlocked()
-    applyMuteState(iframe, false, { play: true })
-    setGesturePrompt(null)
-  }, [gesturePrompt, kickPlay, applyMuteState, muted, markSoundUnlocked])
+    kickPlay(iframe, true)
+    window.setTimeout(() => {
+      playingRef.current = true
+      if (!muted) {
+        applyMuteState(iframe, false, { play: true })
+      }
+      setGesturePrompt(null)
+    }, 250)
+  }, [kickPlay, applyMuteState, muted, markSoundUnlocked, markPlayUnlocked])
+
+  // If another pane / Live CTA unlocked play, clear Tap to play and kick this feed.
+  useEffect(() => {
+    if (!lockPlayback) return
+    const onUnlock = () => {
+      playUnlockedRef.current = true
+      soundUnlockedRef.current = readLiveSoundUnlocked()
+      setGesturePrompt((p) => (p === 'play' ? null : p))
+      if (!paused) kickPlay(iframeRef.current, true)
+    }
+    window.addEventListener('kinder-live-play-unlock', onUnlock)
+    window.addEventListener('kinder-live-sound-unlock', onUnlock)
+    return () => {
+      window.removeEventListener('kinder-live-play-unlock', onUnlock)
+      window.removeEventListener('kinder-live-sound-unlock', onUnlock)
+    }
+  }, [lockPlayback, paused, kickPlay])
 
   useEffect(() => {
     if (layer.playback.mode !== 'signed_redirect' || !layer.playback.src) return
@@ -416,13 +469,17 @@ function FeedEmbed({
 
     if (muted) {
       video.muted = true
+      video.volume = 0
       void video.play().catch(() => {})
       setGesturePrompt((p) => (p === 'sound' ? null : p))
       return
     }
 
+    const level = Math.max(0, Math.min(100, volume)) / 100
+    video.volume = level
+
     if (soundUnlockedRef.current) {
-      video.muted = false
+      video.muted = level === 0
       void video.play().then(() => {
         playingRef.current = true
         setGesturePrompt(null)
@@ -438,7 +495,8 @@ function FeedEmbed({
       .then(() => {
         playingRef.current = true
         if (!lockPlayback) {
-          video.muted = false
+          video.muted = level === 0
+          video.volume = level
           void video.play().catch(() => {
             video.muted = true
             setGesturePrompt('sound')
@@ -446,15 +504,16 @@ function FeedEmbed({
         }
       })
       .catch(() => {
-        setGesturePrompt('play')
+        showPlayPrompt()
       })
-  }, [layer.id, layer.playback.mode, layer.playback.src, muted, paused, lockPlayback])
+  }, [layer.id, layer.playback.mode, layer.playback.src, muted, paused, lockPlayback, showPlayPrompt, volume])
 
   const unlockOverlay = useCallback(() => {
     if (muted || paused) return
+    markPlayUnlocked()
     markSoundUnlocked()
     syncDesiredAudio()
-  }, [muted, paused, markSoundUnlocked, syncDesiredAudio])
+  }, [muted, paused, markSoundUnlocked, markPlayUnlocked, syncDesiredAudio])
 
   if (layer.playback.mode === 'youtube' && layer.playback.video_id && embedSrc) {
     return (
@@ -506,7 +565,8 @@ function FeedEmbed({
         <LiveKitViewer
           streamId={layer.playback.stream_id}
           participantIdentity={layer.playback.participant_identity}
-          muted={muted || paused}
+          muted={muted || paused || volume === 0}
+          volume={volume}
           paused={paused}
           showUnmutePrompt={!lockPlayback}
           webrtcAuth={webrtcAuth}
@@ -567,27 +627,26 @@ function FeedEmbed({
       {lockPlayback && gesturePrompt !== 'play' && (
         <div className="live-player-lock-overlay" aria-hidden onPointerDown={unlockOverlay} />
       )}
-      {gesturePrompt === 'play' && !paused && (
-        <button
-          type="button"
-          className="live-player-gesture-btn"
-          onClick={() => {
-            const video = videoRef.current
-            if (!video) return
-            video.muted = true
-            void video.play().then(() => {
-              playingRef.current = true
-              if (!muted) {
-                markSoundUnlocked()
-                video.muted = false
-              }
-              setGesturePrompt(null)
-            }).catch(() => {})
-          }}
-        >
-          Tap to play
-        </button>
-      )}
+        {gesturePrompt === 'play' && !paused && (
+          <button
+            type="button"
+            className="live-player-gesture-btn"
+            onClick={() => {
+              const video = videoRef.current
+              if (!video) return
+              markPlayUnlocked()
+              markSoundUnlocked()
+              video.muted = true
+              void video.play().then(() => {
+                playingRef.current = true
+                if (!muted) video.muted = false
+                setGesturePrompt(null)
+              }).catch(() => {})
+            }}
+          >
+            Tap to play
+          </button>
+        )}
     </>
   )
 }
@@ -734,12 +793,14 @@ export function LiveStreamPlayer({
                 </div>
               )
             }
-            const paneMuted = muted || Boolean(pane.playback.audio_muted)
+            const paneVolume = Math.max(0, Math.min(100, Number(pane.playback.audio_volume ?? 100)))
+            const paneMuted = muted || Boolean(pane.playback.audio_muted) || paneVolume === 0
             return (
               <div key={pane.id} className="live-player-pane">
                 <FeedEmbed
                   layer={pane as FeedLayer & { playback: LivePlayback }}
                   muted={paneMuted}
+                  volume={paneVolume}
                   paused={isPaused}
                   webrtcAuth={webrtcAuth}
                   lockPlayback={playbackLocked}

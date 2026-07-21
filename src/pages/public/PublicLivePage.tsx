@@ -4,6 +4,7 @@ import { Radio, LogIn, Volume2 } from 'lucide-react'
 import { PublicPageHero } from '@/components/design/PublicPageHero'
 import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
+import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
 import { useLiveRouteVisible } from '@/components/live/LiveRouteKeepAlive'
 import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPanel'
 import { usePublicLiveStream } from '@/hooks/usePublicLiveStream'
@@ -18,7 +19,7 @@ export default function PublicLivePage() {
   const { t } = useT()
   const { profile } = useSchoolBranding()
   const routeVisible = useLiveRouteVisible()
-  const { active, watch, upcoming, cameraId, isLive, isPaused, isUpcoming, reload } = usePublicLiveStream()
+  const { active, watch, upcoming, cameraId, isPaused, isUpcoming, reload } = usePublicLiveStream()
   const timeZone = profile?.timezone || DEFAULT_SCHOOL_TIMEZONE
   const [soundUnlocked, setSoundUnlocked] = useState(() => readLiveSoundUnlocked())
 
@@ -83,21 +84,9 @@ export default function PublicLivePage() {
       />
 
       <section className="live-viewer-section overflow-x-hidden">
-        {isLive && canPlay && !broadcastPaused && (
-          <div className="flex justify-center mb-3 px-4">
-            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-bold text-rose-600">
-              <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
-              LIVE NOW
-            </span>
-          </div>
-        )}
-        {broadcastPaused && (
-          <div className="flex justify-center mb-3 px-4">
-            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700">
-              PAUSED
-            </span>
-          </div>
-        )}
+        <div className="public-live-inline-slot px-4 mb-3">
+          <PublicLiveBanner variant="inline" />
+        </div>
 
         {showWaiting && active && (
           <div className="live-viewer-screen">

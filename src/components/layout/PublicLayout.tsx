@@ -10,7 +10,6 @@ import { PublicMobileNav } from '@/components/layout/PublicMobileNav'
 import { KindergartenNavbar } from '@/components/layout/KindergartenNavbar'
 import { LanguageDropdown } from '@/components/layout/LanguageDropdown'
 import { PublicFooter } from '@/components/layout/PublicFooter'
-import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
 import { LiveRouteKeepAlive } from '@/components/live/LiveRouteKeepAlive'
 import { SchoolProfileProvider } from '@/contexts/SchoolProfileContext'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
@@ -84,7 +83,6 @@ function PublicLayoutInner() {
 
   return (
     <div className="min-h-screen flex flex-col bg-cream overflow-x-hidden">
-      <PublicLiveBanner />
       <div className="kidscholl-topbar">
         <div className="mx-auto max-w-7xl px-4 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2 md:gap-3 text-xs">
           <div className="hidden md:flex flex-wrap items-center gap-5">

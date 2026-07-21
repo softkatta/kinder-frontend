@@ -9,6 +9,8 @@ interface LiveKitViewerProps {
   streamId: number
   participantIdentity: string
   muted?: boolean
+  /** 0–100 remote audio level. */
+  volume?: number
   /** Freeze remote video/audio while broadcast is paused (no reconnect). */
   paused?: boolean
   /** Show “Tap to hear” — off for public/parent (admin controls audio). */
@@ -34,6 +36,7 @@ export function LiveKitViewer({
   streamId,
   participantIdentity,
   muted = false,
+  volume = 100,
   paused = false,
   showUnmutePrompt = true,
   className = '',
@@ -210,10 +213,12 @@ export function LiveKitViewer({
   useEffect(() => {
     const audioEl = audioRef.current
     if (!audioEl) return
-    audioEl.muted = muted || paused
-    if (!muted && !paused) void playRemoteAudio(audioEl)
+    const level = Math.max(0, Math.min(100, volume)) / 100
+    audioEl.volume = level
+    audioEl.muted = muted || paused || level === 0
+    if (!muted && !paused && level > 0) void playRemoteAudio(audioEl)
     else setAudioBlocked(false)
-  }, [muted, paused, playRemoteAudio])
+  }, [muted, paused, volume, playRemoteAudio])
 
   useEffect(() => {
     const container = containerRef.current
