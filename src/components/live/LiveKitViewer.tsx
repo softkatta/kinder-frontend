@@ -11,6 +11,8 @@ interface LiveKitViewerProps {
   muted?: boolean
   /** Freeze remote video/audio while broadcast is paused (no reconnect). */
   paused?: boolean
+  /** Show “Tap to hear” — off for public/parent (admin controls audio). */
+  showUnmutePrompt?: boolean
   className?: string
   onReady?: () => void
   webrtcAuth?: WebrtcAuthMode
@@ -33,6 +35,7 @@ export function LiveKitViewer({
   participantIdentity,
   muted = false,
   paused = false,
+  showUnmutePrompt = true,
   className = '',
   onReady,
   webrtcAuth = 'authenticated',
@@ -49,14 +52,24 @@ export function LiveKitViewer({
   const [audioBlocked, setAudioBlocked] = useState(false)
 
   const playRemoteAudio = useCallback(async (audioEl: HTMLAudioElement) => {
-    audioEl.muted = muted
+    // Always start muted so autoplay is allowed, then unmute if admin enabled audio.
+    audioEl.muted = true
     try {
       await audioEl.play()
-      setAudioBlocked(false)
+      if (!muted && !paused) {
+        audioEl.muted = false
+        await audioEl.play().catch(() => {
+          audioEl.muted = true
+          if (showUnmutePrompt) setAudioBlocked(true)
+        })
+      }
+      if (audioEl.muted === false || muted || paused || !showUnmutePrompt) {
+        setAudioBlocked(false)
+      }
     } catch {
-      if (!muted) setAudioBlocked(true)
+      if (!muted && showUnmutePrompt) setAudioBlocked(true)
     }
-  }, [muted])
+  }, [muted, paused, showUnmutePrompt])
 
   const attachRemoteAudio = useCallback(
     (track: Track) => {
@@ -244,7 +257,7 @@ export function LiveKitViewer({
           Connecting…
         </div>
       )}
-      {audioBlocked && !muted && !paused && status === 'connected' && (
+      {audioBlocked && showUnmutePrompt && !muted && !paused && status === 'connected' && (
         <button
           type="button"
           className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-ink shadow-lg"

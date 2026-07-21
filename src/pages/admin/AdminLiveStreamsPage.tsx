@@ -358,6 +358,22 @@ export default function AdminLiveStreamsPage() {
     }
   }
 
+  const toggleStreamAudio = async () => {
+    if (!selected || busy) return
+    const next = !selected.audio_enabled
+    setBusy(true)
+    try {
+      const res = await liveStreamApi.update(selected.id, { audio_enabled: next })
+      patchStream(res.data.data as LiveStreamStaff)
+      toast.success(next ? 'Public/parent audio on' : 'Public/parent audio muted')
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(message || 'Could not update stream audio')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const saveEdit = async () => {
     if (!selected) return
     if (!editForm.title.trim()) return toast.error('Title required')
@@ -800,6 +816,19 @@ export default function AdminLiveStreamsPage() {
                     </AdminBtn>
                     <AdminBtn variant="secondary" onClick={openEdit}>
                       <Pencil className="h-4 w-4" /> Edit Stream
+                    </AdminBtn>
+                    <AdminBtn
+                      variant={selected.audio_enabled ? 'primary' : 'secondary'}
+                      disabled={busy}
+                      title={selected.audio_enabled ? 'Public/parent वर आवाज बंद करा' : 'Public/parent वर आवाज चालू करा'}
+                      onClick={() => void toggleStreamAudio()}
+                    >
+                      {selected.audio_enabled ? (
+                        <Volume2 className="h-4 w-4" />
+                      ) : (
+                        <VolumeX className="h-4 w-4" />
+                      )}
+                      {selected.audio_enabled ? 'Audio On' : 'Audio Off'}
                     </AdminBtn>
                     {selected.status === 'live' && (
                       <AdminBtn variant="secondary" disabled={busy} onClick={() => runWithPatch(() => liveStreamApi.pause(selected.id) as Promise<{ data: { data: LiveStreamStaff } }>, 'Paused')}>
