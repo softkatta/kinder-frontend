@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Radio, LogIn } from 'lucide-react'
 import { PublicPageHero } from '@/components/design/PublicPageHero'
@@ -10,6 +11,7 @@ import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { useT } from '@/i18n/LanguageContext'
 import { FadeIn } from '@/components/ui/Motion'
 import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
+import { parseWallClockInTimeZone } from '@/utils/scheduleTime'
 
 export default function PublicLivePage() {
   const { t } = useT()
@@ -26,6 +28,29 @@ export default function PublicLivePage() {
     && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)),
   )
 
+  const startDue = useMemo(() => {
+    if (!active?.scheduled_start_at || active.status !== 'scheduled') return false
+    const at = parseWallClockInTimeZone(active.scheduled_start_at, timeZone)
+    return !Number.isNaN(at) && at <= Date.now()
+  }, [active?.scheduled_start_at, active?.status, timeZone])
+
+  const onCountdownComplete = useCallback(() => {
+    reload()
+  }, [reload])
+
+  // When countdown hits zero, keep asking the API to auto-start (backend runs processAutoStartEnd).
+  useEffect(() => {
+    if (!startDue || canPlay || broadcastPaused) return
+    reload()
+    let n = 0
+    const timer = window.setInterval(() => {
+      n += 1
+      reload()
+      if (n >= 40) window.clearInterval(timer)
+    }, 1500)
+    return () => window.clearInterval(timer)
+  }, [startDue, canPlay, broadcastPaused, reload])
+
   return (
     <div className="overflow-x-hidden">
       <PublicPageHero
@@ -37,86 +62,89 @@ export default function PublicLivePage() {
       />
 
       <section className="live-viewer-section overflow-x-hidden">
-          {isLive && (
-            <div className="flex justify-center mb-3 px-4">
-              <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-bold text-rose-600">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
-                LIVE NOW
-              </span>
-            </div>
-          )}
-          {broadcastPaused && (
-            <div className="flex justify-center mb-3 px-4">
-              <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700">
-                PAUSED
-              </span>
-            </div>
-          )}
+        {isLive && (
+          <div className="flex justify-center mb-3 px-4">
+            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-4 py-2 text-sm font-bold text-rose-600">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
+              LIVE NOW
+            </span>
+          </div>
+        )}
+        {broadcastPaused && (
+          <div className="flex justify-center mb-3 px-4">
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-sm font-bold text-amber-700">
+              PAUSED
+            </span>
+          </div>
+        )}
 
-          {showWaiting && active && (
+        {showWaiting && active && (
+          <div className="live-viewer-screen">
+            <LiveStreamUpcomingPanel
+              title={active.title}
+              description={active.description}
+              banner={active.banner}
+              scheduledStartAt={active.scheduled_start_at}
+              countdownSeconds={active.countdown_seconds}
+              enableCountdown={active.enable_countdown !== false && !startDue}
+              timeZone={timeZone}
+              onCountdownComplete={onCountdownComplete}
+              badgeLabel={startDue ? 'STARTING…' : isUpcoming ? 'UPCOMING LIVE' : 'STARTING SOON'}
+              footnote={startDue
+                ? 'Start time reached — waiting for auto-start. If this stays here, admin must connect a camera and click Start Now.'
+                : undefined}
+            />
+          </div>
+        )}
+
+        {!active && upcoming.length === 0 ? (
+          <FadeIn>
+            <div className="live-viewer-layout">
+              <div className="live-viewer-empty rounded-3xl border border-slate-100 bg-white p-12 text-center shadow-sm">
+                <Radio className="h-12 w-12 text-violet-400 mx-auto mb-4 animate-pulse" />
+                <p className="font-display font-bold text-xl text-ink">{t.pages.live.waitingTitle}</p>
+                <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">{t.pages.live.waitingDesc}</p>
+              </div>
+            </div>
+          </FadeIn>
+        ) : broadcastPaused && active ? (
+          <div className="live-viewer-screen">
+            <LiveBroadcastPausedPanel title={active.title} />
+          </div>
+        ) : canPlay && active ? (
+          <>
             <div className="live-viewer-screen">
-              <LiveStreamUpcomingPanel
+              <LiveStreamPlayer
+                immersive
+                lockPlayback
+                cameraId={cameraId}
+                playback={watch?.playback}
+                playbacks={watch?.playbacks}
+                layoutMode={watch?.layout_mode ?? active.layout_mode}
                 title={active.title}
-                description={active.description}
-                banner={active.banner}
-                scheduledStartAt={active.scheduled_start_at}
-                countdownSeconds={active.countdown_seconds}
-                enableCountdown={active.enable_countdown}
-                timeZone={timeZone}
-                onCountdownComplete={reload}
-                badgeLabel={isUpcoming ? 'UPCOMING LIVE' : 'STARTING SOON'}
+                cameraName={watch?.active_camera?.name}
+                cameraLocation={watch?.active_camera?.location ?? undefined}
+                status={active.status}
+                muted={!routeVisible || active.audio_enabled === false}
+                webrtcAuth="public"
               />
             </div>
-          )}
-
-          {!active && upcoming.length === 0 ? (
-            <FadeIn>
-              <div className="live-viewer-layout">
-                <div className="live-viewer-empty rounded-3xl border border-slate-100 bg-white p-12 text-center shadow-sm">
-                  <Radio className="h-12 w-12 text-violet-400 mx-auto mb-4 animate-pulse" />
-                  <p className="font-display font-bold text-xl text-ink">{t.pages.live.waitingTitle}</p>
-                  <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto">{t.pages.live.waitingDesc}</p>
-                </div>
-              </div>
-            </FadeIn>
-          ) : broadcastPaused && active ? (
-            <div className="live-viewer-screen">
-              <LiveBroadcastPausedPanel title={active.title} />
+            <div className="live-viewer-meta">
+              <h2 className="font-display text-xl font-bold text-ink text-center">{active.title}</h2>
+              {(watch?.active_cameras?.length ?? 0) > 1 ? (
+                <p className="text-center text-sm text-slate-600 mt-2">
+                  {t.pages.live.nowShowing}:{' '}
+                  <strong>{watch!.active_cameras!.map((c) => c.name).join(' · ')}</strong>
+                </p>
+              ) : watch?.active_camera ? (
+                <p className="text-center text-sm text-slate-600 mt-2">
+                  {t.pages.live.nowShowing}: <strong>{watch.active_camera.name}</strong>
+                  {watch.active_camera.location ? ` · ${watch.active_camera.location}` : ''}
+                </p>
+              ) : null}
             </div>
-          ) : canPlay && active ? (
-            <>
-              <div className="live-viewer-screen">
-                <LiveStreamPlayer
-                  immersive
-                  lockPlayback
-                  cameraId={cameraId}
-                  playback={watch?.playback}
-                  playbacks={watch?.playbacks}
-                  layoutMode={watch?.layout_mode ?? active.layout_mode}
-                  title={active.title}
-                  cameraName={watch?.active_camera?.name}
-                  cameraLocation={watch?.active_camera?.location ?? undefined}
-                  status={active.status}
-                  muted={!routeVisible || active.audio_enabled === false}
-                  webrtcAuth="public"
-                />
-              </div>
-              <div className="live-viewer-meta">
-                <h2 className="font-display text-xl font-bold text-ink text-center">{active.title}</h2>
-                {(watch?.active_cameras?.length ?? 0) > 1 ? (
-                  <p className="text-center text-sm text-slate-600 mt-2">
-                    {t.pages.live.nowShowing}:{' '}
-                    <strong>{watch!.active_cameras!.map((c) => c.name).join(' · ')}</strong>
-                  </p>
-                ) : watch?.active_camera ? (
-                  <p className="text-center text-sm text-slate-600 mt-2">
-                    {t.pages.live.nowShowing}: <strong>{watch.active_camera.name}</strong>
-                    {watch.active_camera.location ? ` · ${watch.active_camera.location}` : ''}
-                  </p>
-                ) : null}
-              </div>
-            </>
-          ) : null}
+          </>
+        ) : null}
       </section>
 
       {(upcoming.length > 1 || active) && (

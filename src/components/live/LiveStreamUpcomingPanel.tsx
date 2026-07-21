@@ -12,6 +12,7 @@ interface LiveStreamUpcomingPanelProps {
   timeZone?: string | null
   onCountdownComplete?: () => void
   badgeLabel?: string
+  footnote?: string
 }
 
 export function LiveStreamUpcomingPanel({
@@ -24,6 +25,7 @@ export function LiveStreamUpcomingPanel({
   timeZone,
   onCountdownComplete,
   badgeLabel = 'UPCOMING LIVE',
+  footnote,
 }: LiveStreamUpcomingPanelProps) {
   const bannerSrc = banner ? mediaUrl(banner) : ''
 
@@ -55,6 +57,10 @@ export function LiveStreamUpcomingPanel({
               timeZone={timeZone}
               onComplete={onCountdownComplete}
             />
+          )}
+
+          {footnote && (
+            <p className="mt-4 text-sm text-white/90 max-w-xl mx-auto text-center">{footnote}</p>
           )}
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo } from 'react'
 import { Radio, Wifi, WifiOff, Calendar } from 'lucide-react'
 import { LiveBroadcastPausedPanel, isLiveBroadcastPaused } from '@/components/live/LiveBroadcastPausedPanel'
 import { LiveStreamPlayer } from '@/components/live/LiveStreamPlayer'
@@ -6,6 +7,7 @@ import { LiveStreamUpcomingPanel } from '@/components/live/LiveStreamUpcomingPan
 import { useActiveLiveStream } from '@/hooks/useLiveStreamRealtime'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { DEFAULT_SCHOOL_TIMEZONE } from '@/config/timezones'
+import { parseWallClockInTimeZone } from '@/utils/scheduleTime'
 
 export default function ParentLivePage() {
   const { profile } = useSchoolBranding()
@@ -25,6 +27,28 @@ export default function ParentLivePage() {
     && (watch?.playback || (watch?.playbacks && watch.playbacks.length > 0)),
   )
   const showWaiting = Boolean(active && !canPlay && !broadcastPaused && active.status !== 'stopped')
+
+  const startDue = useMemo(() => {
+    if (!active?.scheduled_start_at || active.status !== 'scheduled') return false
+    const at = parseWallClockInTimeZone(active.scheduled_start_at, timeZone)
+    return !Number.isNaN(at) && at <= Date.now()
+  }, [active?.scheduled_start_at, active?.status, timeZone])
+
+  const onCountdownComplete = useCallback(() => {
+    reload()
+  }, [reload])
+
+  useEffect(() => {
+    if (!startDue || canPlay || broadcastPaused) return
+    reload()
+    let n = 0
+    const timer = window.setInterval(() => {
+      n += 1
+      reload()
+      if (n >= 40) window.clearInterval(timer)
+    }, 1500)
+    return () => window.clearInterval(timer)
+  }, [startDue, canPlay, broadcastPaused, reload])
 
   return (
     <div className="space-y-6">
@@ -87,12 +111,21 @@ export default function ParentLivePage() {
                 banner={active.banner}
                 scheduledStartAt={active.scheduled_start_at}
                 countdownSeconds={active.countdown_seconds}
-                enableCountdown={active.enable_countdown}
+                enableCountdown={active.enable_countdown !== false && !startDue}
                 timeZone={timeZone}
-                onCountdownComplete={reload}
+                onCountdownComplete={onCountdownComplete}
                 badgeLabel={
-                  isUpcoming ? 'UPCOMING LIVE' : isScheduled ? 'SCHEDULED' : 'STARTING SOON'
+                  startDue
+                    ? 'STARTING…'
+                    : isUpcoming
+                      ? 'UPCOMING LIVE'
+                      : isScheduled
+                        ? 'SCHEDULED'
+                        : 'STARTING SOON'
                 }
+                footnote={startDue
+                  ? 'Start time reached — waiting for auto-start. If this stays here, ask admin to connect a camera and click Start Now.'
+                  : undefined}
               />
             </div>
           )}
