@@ -17,7 +17,7 @@ const COPY: Record<string, { title: string; body: string }> = {
   },
   suspended: {
     title: 'Suspended License',
-    body: 'SoftKatta Admin has suspended this license. After Admin Activates again, enter the license key below to restore — or wait a moment for automatic recovery.',
+    body: 'SoftKatta Admin has suspended this license. After Admin Activates again, wait a moment — the site recovers automatically on the next license check. Use Restore below only if it stays blocked.',
   },
   'domain-not-authorized': {
     title: 'Domain Not Authorized',
@@ -144,11 +144,13 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
   const [done, setDone] = useState(false)
   const showReactivate = CAN_REACTIVATE.has(code)
   const showCompanyApi = CAN_CONFIGURE_COMPANY_API.has(code)
+  const companyApiRequired = code === 'company-api-unavailable'
 
   const [softkatta, setSoftkatta] = useState({
     company_api_url: 'https://api.softkatta.in/api/v1/company',
     public_api_key: '',
     api_secret: '',
+    api_secret_set: false,
     product_slug: 'nursery-school-management-software',
     product_version: '1.0.0',
     app_url: typeof window !== 'undefined' ? window.location.origin : '',
@@ -190,6 +192,8 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
           ...prev,
           company_api_url: s?.company_api?.company_api_url || prev.company_api_url,
           public_api_key: (s?.company_api?.public_api_key || '').trim(),
+          api_secret: '',
+          api_secret_set: Boolean(s?.company_api?.api_secret_set),
           product_slug: s?.company_api?.product_slug || s?.product_slug || prev.product_slug,
           product_version: s?.company_api?.product_version || s?.product_version || prev.product_version,
           app_url: s?.company_api?.app_url || prev.app_url,
@@ -318,10 +322,15 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
       )
       return
     }
-    if (secret.includes('@') || !/^sk_sec_[a-z0-9]+$/i.test(secret)) {
-      setError(
-        'API Secret must be sk_sec_... from SoftKatta Admin → Product Integrations → Reveal. Do not paste your SoftKatta password.',
-      )
+    if (secret !== '') {
+      if (secret.includes('@') || !/^sk_sec_[a-z0-9]+$/i.test(secret)) {
+        setError(
+          'API Secret must be sk_sec_... from SoftKatta Admin → Product Integrations → Reveal. Do not paste your SoftKatta password.',
+        )
+        return
+      }
+    } else if (!softkatta.api_secret_set) {
+      setError('API Secret is required (not saved in .env yet). Paste sk_sec_... from SoftKatta Reveal.')
       return
     }
     setBusy(true)
@@ -339,15 +348,14 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
 
       if (licenseKey.trim()) {
         await licenseApi.activate(licenseKey.trim())
+        await finishRestoreSuccess()
+        setDone(true)
+        window.setTimeout(() => {
+          navigate('/', { replace: true })
+        }, 800)
       } else {
-        await licenseApi.verify(true)
+        setError('SoftKatta keys saved. Enter your license key below and click Restore access.')
       }
-
-      await finishRestoreSuccess()
-      setDone(true)
-      window.setTimeout(() => {
-        navigate('/', { replace: true })
-      }, 800)
     } catch (err) {
       const ax = err as {
         response?: { data?: { message?: string; error_code?: string } }
@@ -355,13 +363,11 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
         error_code?: string
       }
       const errCode = ax.response?.data?.error_code ?? ax.error_code
+      const msg = ax.response?.data?.message ?? ax.message ?? 'SoftKatta connection failed.'
       if (errCode === 'INVALID_INSTALL_TOKEN' || errCode === 'INVALID_LICENSE') {
-        setError(
-          ax.response?.data?.message ??
-            'SoftKatta keys saved. Enter your license key below and save again to finish restore.',
-        )
+        setError('SoftKatta keys saved. Enter your license key in the form below and click Restore access.')
       } else {
-        setError(ax.response?.data?.message ?? ax.message ?? 'SoftKatta connection failed.')
+        setError(activationErrorMessage(errCode, typeof msg === 'string' ? msg : 'SoftKatta connection failed.'))
       }
     } finally {
       setBusy(false)
@@ -413,10 +419,19 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
                 className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-mono"
                 value={softkatta.api_secret}
                 onChange={(e) => setSoftkatta((s) => ({ ...s, api_secret: e.target.value }))}
-                placeholder="sk_sec_..."
-                required
+                placeholder={
+                  softkatta.api_secret_set
+                    ? 'Saved in .env — leave blank to keep, or paste new sk_sec_...'
+                    : 'Paste sk_sec_... from SoftKatta Reveal'
+                }
+                required={companyApiRequired && !softkatta.api_secret_set}
                 autoComplete="off"
               />
+              <span className="mt-1 block text-xs text-stone-500">
+                {softkatta.api_secret_set
+                  ? 'Secret is already in .env (not shown). Leave blank to keep it.'
+                  : 'Click Reveal on SoftKatta Product Integrations, then paste sk_sec_...'}
+              </span>
             </label>
             <label className="block text-sm text-stone-700">
               Product slug
@@ -440,7 +455,11 @@ export function LicenseErrorPage({ code }: { code: keyof typeof COPY }) {
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button
               type="submit"
-              disabled={busy || !softkatta.public_api_key.trim() || !softkatta.api_secret.trim()}
+              disabled={
+                busy ||
+                !softkatta.public_api_key.trim() ||
+                (!softkatta.api_secret.trim() && !softkatta.api_secret_set)
+              }
               className="w-full rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-50"
             >
               {busy ? 'Saving SoftKatta connection…' : 'Save SoftKatta connection'}
