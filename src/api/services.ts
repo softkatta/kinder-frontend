@@ -236,7 +236,10 @@ export interface SettingsIntegrations {
 export interface SettingsPayments {
   enable_razorpay?: boolean
   razorpay_key_id?: string | null
+  razorpay_key_secret?: string | null
+  razorpay_key_secret_set?: boolean
   razorpay_webhook_secret?: string | null
+  razorpay_webhook_secret_set?: boolean
   enable_online_payments?: boolean
   enable_cash?: boolean
   enable_upi_manual?: boolean

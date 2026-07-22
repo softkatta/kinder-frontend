@@ -131,6 +131,7 @@ const emptyProfile: SettingsProfile = {
 const emptyPayments: SettingsPayments = {
   enable_razorpay: false,
   razorpay_key_id: '',
+  razorpay_key_secret: '',
   razorpay_webhook_secret: '',
   enable_online_payments: false,
   enable_cash: true,
@@ -339,6 +340,7 @@ export default function AdminSettingsPage() {
             : {
                 payments: {
                   razorpay_key_id: payments.razorpay_key_id,
+                  razorpay_key_secret: payments.razorpay_key_secret || undefined,
                   razorpay_webhook_secret: payments.razorpay_webhook_secret || undefined,
                   enable_online_payments: payments.enable_online_payments,
                   enable_cash: payments.enable_cash,
@@ -1037,10 +1039,23 @@ export default function AdminSettingsPage() {
                   <p className="admin-settings-sync-note">
                     Payment methods sync with <Link to="/admin/payments">Payments → UPI / QR / Cash Setup</Link>. Bank & UPI QR details are managed on the Payments page.
                   </p>
-                  <AdminPanel title="Razorpay Integration" subtitle="Online fee collection via Razorpay gateway">
+                  <AdminPanel title="Razorpay Integration" subtitle="Key Secret signs checkout; Webhook Secret is only for Razorpay webhooks">
                     <FormGrid>
                       <Input label="Razorpay Key ID" placeholder="rzp_live_xxxxxxxx" className="font-mono text-sm" value={payments.razorpay_key_id || ''} onChange={(e) => setPayments((p) => ({ ...p, razorpay_key_id: e.target.value }))} />
-                      <Input label="Webhook Secret" type="password" placeholder="••••••••••••" value={payments.razorpay_webhook_secret || ''} onChange={(e) => setPayments((p) => ({ ...p, razorpay_webhook_secret: e.target.value }))} />
+                      <Input
+                        label={payments.razorpay_key_secret_set ? 'Key Secret (leave blank to keep)' : 'Razorpay Key Secret'}
+                        type="password"
+                        placeholder="••••••••••••"
+                        value={payments.razorpay_key_secret || ''}
+                        onChange={(e) => setPayments((p) => ({ ...p, razorpay_key_secret: e.target.value }))}
+                      />
+                      <Input
+                        label={payments.razorpay_webhook_secret_set ? 'Webhook Secret (leave blank to keep)' : 'Webhook Secret'}
+                        type="password"
+                        placeholder="••••••••••••"
+                        value={payments.razorpay_webhook_secret || ''}
+                        onChange={(e) => setPayments((p) => ({ ...p, razorpay_webhook_secret: e.target.value }))}
+                      />
                     </FormGrid>
                   </AdminPanel>
                   <AdminPanel title="Payment Methods" subtitle="Enable or disable payment channels for parents & admin">

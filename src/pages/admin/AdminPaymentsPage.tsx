@@ -53,6 +53,10 @@ interface PaymentSettings {
   enable_qr?: boolean
   enable_razorpay?: boolean
   razorpay_key_id?: string
+  razorpay_key_secret?: string
+  razorpay_key_secret_set?: boolean
+  razorpay_webhook_secret?: string
+  razorpay_webhook_secret_set?: boolean
   payment_note?: string
 }
 
@@ -469,8 +473,24 @@ export default function AdminPaymentsPage() {
             </FormGrid>
           </AdminPanel>
 
-          <AdminPanel title="Razorpay (Optional)" subtitle="Online gateway keys">
+          <AdminPanel title="Razorpay (Optional)" subtitle="Key Secret for checkout; Webhook Secret for callbacks only">
             <Input label="Razorpay Key ID" value={settingsForm.razorpay_key_id ?? ''} onChange={(e) => setSettingsForm({ ...settingsForm, razorpay_key_id: e.target.value })} placeholder="rzp_live_xxx" className="max-w-md" />
+            <Input
+              label={settingsForm.razorpay_key_secret_set ? 'Key Secret (leave blank to keep)' : 'Razorpay Key Secret'}
+              type="password"
+              value={settingsForm.razorpay_key_secret ?? ''}
+              onChange={(e) => setSettingsForm({ ...settingsForm, razorpay_key_secret: e.target.value })}
+              placeholder="••••••••"
+              className="max-w-md mt-3"
+            />
+            <Input
+              label={settingsForm.razorpay_webhook_secret_set ? 'Webhook Secret (leave blank to keep)' : 'Webhook Secret'}
+              type="password"
+              value={settingsForm.razorpay_webhook_secret ?? ''}
+              onChange={(e) => setSettingsForm({ ...settingsForm, razorpay_webhook_secret: e.target.value })}
+              placeholder="••••••••"
+              className="max-w-md mt-3"
+            />
           </AdminPanel>
         </div>
       )}
