@@ -1,4 +1,4 @@
-import api, { type ApiResponse } from './client'
+﻿import api, { type ApiResponse } from './client'
 import type { ProfileImageKey } from '@/config/pageImages'
 
 export interface LoginPayload { email: string; password: string }
@@ -244,7 +244,7 @@ export interface SettingsPayments {
   enable_qr?: boolean
 }
 
-// Prefer POST /desk/campus — Hostinger hcdn often 403s paths with settings/profile/tenant/erp.
+// Prefer POST /desk/campus â€” Hostinger hcdn often 403s paths with settings/profile/tenant/erp.
 const SETTINGS_PATH = '/desk/campus'
 
 /** Opaque envelope so hcdn/ModSecurity does not scan nested profile/password/HTML JSON. */
@@ -453,6 +453,7 @@ export const auditApi = {
 export const fileApi = {
   upload: (formData: FormData) => api.post('/files/upload', formData),
   uploadCms: (formData: FormData) => api.post('/files/cms', formData),
+  uploadCmsVideo: (formData: FormData) => api.post('/files/cms-video', formData),
   uploadGuest: (formData: FormData) => api.post('/files/guest', formData),
   uploadDocument: (formData: FormData) => api.post('/files/document', formData),
   uploadHomework: (formData: FormData) => api.post('/files/homework', formData),
@@ -514,3 +515,4 @@ export const liveStreamApi = {
   setCameraVolume: (streamId: number, cameraId: number, volume: number) =>
     api.patch(`/live-streams/${streamId}/cameras/${cameraId}/volume`, { volume }),
 }
+

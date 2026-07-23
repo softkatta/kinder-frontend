@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+﻿import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Globe, Eye, ClipboardList } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { FormGrid, FormStack } from '@/components/ui/Form'
 import { ImageUpload } from '@/components/ui/ImageUpload'
+import { VideoUpload } from '@/components/ui/VideoUpload'
 import api from '@/api/client'
 import type { AxiosError } from 'axios'
 import { useTableBulkDelete } from '@/hooks/useTableBulkDelete'
@@ -208,7 +209,7 @@ export default function AdminCmsPage() {
     <AdminPageShell>
       <AdminPageHeader
         title="Website CMS"
-        subtitle="Manage all public website content — programs, events, jobs, blog, and more."
+        subtitle="Manage all public website content â€” programs, events, jobs, blog, and more."
         breadcrumbs={[{ label: 'Admin', to: '/admin' }, { label: 'Website CMS' }]}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -245,7 +246,7 @@ export default function AdminCmsPage() {
         <div className="min-w-0">
           {type === 'banner' && (
             <p className="mb-4 rounded-xl border border-sky-100 bg-primary-50/50 px-4 py-3 text-sm text-slate-600">
-              Each slide below is one carousel image + heading. Use <strong>Sort Order</strong> 1, 2, 3 for sequence. Upload a wide photo (1920×1080 recommended).
+              Each slide below is one carousel image + heading. Use <strong>Sort Order</strong> 1, 2, 3 for sequence. Upload a wide photo (1920Ã—1080 recommended).
             </p>
           )}
           {loading ? (
@@ -280,7 +281,7 @@ export default function AdminCmsPage() {
                   cell: (r) => r.sort_order,
                 },
                 { key: 'title', header: 'Title', sortable: true, cell: (r) => <span className="font-semibold text-ink">{r.title}</span> },
-                { key: 'slug', header: 'Slug', sortable: true, className: 'font-mono text-xs text-slate-500', cell: (r) => r.slug ?? '—' },
+                { key: 'slug', header: 'Slug', sortable: true, className: 'font-mono text-xs text-slate-500', cell: (r) => r.slug ?? 'â€”' },
                 { key: 'status', header: 'Status', cell: (r) => <AdminBadge tone={r.status === 'published' ? 'success' : 'warning'}>{r.status}</AdminBadge> },
                 {
                   key: 'actions',
@@ -320,7 +321,7 @@ export default function AdminCmsPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <Input label={`${formLabels.title} (English)`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             <Input
-              label={`${formLabels.title} (मराठी)`}
+              label={`${formLabels.title} (à¤®à¤°à¤¾à¤ à¥€)`}
               value={String(formMeta.title_mr ?? '')}
               onChange={(e) => setFormMeta({ ...formMeta, title_mr: e.target.value })}
             />
@@ -331,7 +332,7 @@ export default function AdminCmsPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <Textarea label={`${formLabels.summary} (English)`} rows={3} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
                 <Textarea
-                  label={`${formLabels.summary} (मराठी)`}
+                  label={`${formLabels.summary} (à¤®à¤°à¤¾à¤ à¥€)`}
                   rows={3}
                   value={String(formMeta.summary_mr ?? '')}
                   onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })}
@@ -340,7 +341,7 @@ export default function AdminCmsPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <Textarea label={`${formLabels.body} (English)`} rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
                 <Textarea
-                  label={`${formLabels.body} (मराठी)`}
+                  label={`${formLabels.body} (à¤®à¤°à¤¾à¤ à¥€)`}
                   rows={4}
                   value={String(formMeta.body_mr ?? '')}
                   onChange={(e) => setFormMeta({ ...formMeta, body_mr: e.target.value })}
@@ -352,7 +353,7 @@ export default function AdminCmsPage() {
             <div className="grid gap-3 md:grid-cols-2">
               <Textarea label={`${formLabels.summary} (English)`} rows={2} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
               <Textarea
-                label={`${formLabels.summary} (मराठी)`}
+                label={`${formLabels.summary} (à¤®à¤°à¤¾à¤ à¥€)`}
                 rows={2}
                 value={String(formMeta.summary_mr ?? '')}
                 onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })}
@@ -364,6 +365,12 @@ export default function AdminCmsPage() {
               label={formLabels.image}
               value={form.image}
               onChange={(path) => setForm({ ...form, image: path })}
+            />
+          )}
+          {form.type === 'video' && (
+            <VideoUpload
+              value={String(formMeta.video_url ?? '')}
+              onChange={(path) => setFormMeta({ ...formMeta, video_url: path })}
             />
           )}
           <CmsMetaFields
@@ -381,7 +388,7 @@ export default function AdminCmsPage() {
               type="number"
               value={form.sort_order}
               onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
-              hint={form.type === 'banner' ? 'Homepage carousel sequence: 1, 2, 3…' : 'Lower numbers appear first'}
+              hint={form.type === 'banner' ? 'Homepage carousel sequence: 1, 2, 3â€¦' : 'Lower numbers appear first'}
             />
           </FormGrid>
         </FormStack>
@@ -389,3 +396,4 @@ export default function AdminCmsPage() {
     </AdminPageShell>
   )
 }
+

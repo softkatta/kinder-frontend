@@ -1,4 +1,4 @@
-/** CMS meta field definitions — manage from Admin → Website CMS */
+﻿/** CMS meta field definitions â€” manage from Admin â†’ Website CMS */
 
 export type CmsFieldType = 'text' | 'textarea' | 'date' | 'time' | 'select' | 'checkbox'
 
@@ -26,11 +26,11 @@ export const CMS_META_FIELDS: Record<string, CmsFieldDef[]> = {
       { value: 'lkg', label: 'LKG' },
       { value: 'ukg', label: 'UKG' },
     ]},
-    { key: 'ages', label: 'Age Group', type: 'text', placeholder: 'e.g. 2 – 3 yrs' },
-    { key: 'time', label: 'Timings', type: 'text', placeholder: 'e.g. 10 AM – 1 PM' },
-    { key: 'price', label: 'Monthly Fee', type: 'text', placeholder: 'e.g. ₹3,500/mo' },
-    { key: 'price_6month', label: '6-Month Fee', type: 'text', placeholder: 'e.g. ₹19,500/6 mo' },
-    { key: 'price_yearly', label: 'Yearly Fee', type: 'text', placeholder: 'e.g. ₹38,000/yr' },
+    { key: 'ages', label: 'Age Group', type: 'text', placeholder: 'e.g. 2 â€“ 3 yrs' },
+    { key: 'time', label: 'Timings', type: 'text', placeholder: 'e.g. 10 AM â€“ 1 PM' },
+    { key: 'price', label: 'Monthly Fee', type: 'text', placeholder: 'e.g. â‚¹3,500/mo' },
+    { key: 'price_6month', label: '6-Month Fee', type: 'text', placeholder: 'e.g. â‚¹19,500/6 mo' },
+    { key: 'price_yearly', label: 'Yearly Fee', type: 'text', placeholder: 'e.g. â‚¹38,000/yr' },
     highlightsField,
   ],
   facility: [
@@ -66,14 +66,13 @@ export const CMS_META_FIELDS: Record<string, CmsFieldDef[]> = {
     { key: 'location', label: 'Location', type: 'text', placeholder: 'e.g. Pune' },
     { key: 'application_deadline', label: 'Application Deadline', type: 'date' },
     { key: 'employment_type', label: 'Job Type', type: 'text', placeholder: 'e.g. Full-time' },
-    { key: 'salary_range', label: 'Salary Range', type: 'text', placeholder: 'e.g. ₹15,000 – ₹25,000' },
+    { key: 'salary_range', label: 'Salary Range', type: 'text', placeholder: 'e.g. â‚¹15,000 â€“ â‚¹25,000' },
     { key: 'requirements', label: 'Requirements', type: 'textarea', placeholder: 'One requirement per line', hint: 'Shown on job details page' },
   ],
   gallery: [
     { key: 'album', label: 'Album Name', type: 'text', placeholder: 'e.g. Daily Life' },
   ],
   video: [
-    { key: 'video_url', label: 'Video URL', type: 'text', placeholder: 'YouTube, Vimeo, or direct MP4 link', hint: 'Paste a public video link. YouTube and Vimeo are embedded; direct MP4 links play in the browser.' },
     { key: 'album', label: 'Category', type: 'text', placeholder: 'e.g. Annual Day' },
   ],
   faq: [],
@@ -81,7 +80,7 @@ export const CMS_META_FIELDS: Record<string, CmsFieldDef[]> = {
     { key: 'title_rest', label: 'Heading rest (second line)', type: 'text', placeholder: 'e.g. Your Children', hint: 'Appears after the coloured heading accent' },
   ],
   notice: [
-    { key: 'link_url', label: 'Link (optional)', type: 'text', placeholder: 'e.g. /events or https://...', hint: 'Internal path or full URL — notice text becomes clickable' },
+    { key: 'link_url', label: 'Link (optional)', type: 'text', placeholder: 'e.g. /events or https://...', hint: 'Internal path or full URL â€” notice text becomes clickable' },
     { key: 'expires_at', label: 'Hide after date (optional)', type: 'date', hint: 'Notice stops showing on the homepage after this date' },
   ],
   testimonial: [
@@ -102,3 +101,4 @@ export const CMS_META_FIELDS: Record<string, CmsFieldDef[]> = {
   ],
   page: [],
 }
+
