@@ -12,6 +12,8 @@ import { FadeIn } from '@/components/ui/Motion'
 import { mediaUrl } from '@/utils/mediaUrl'
 import { KidschollSection } from '@/components/design/KidschollSection'
 import { HomeWelcomeBento } from '@/components/design/HomeWelcomeBento'
+import { HeroNoticeStrip, type HeroNoticeItem } from '@/components/design/HeroNoticeStrip'
+import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
 import { HomeStatsStrip } from '@/components/home/HomeStatsStrip'
 import { HomeAboutSection } from '@/components/home/HomeAboutSection'
 import { HomeLearningElementsSection } from '@/components/home/HomeLearningElementsSection'
@@ -82,7 +84,6 @@ export default function HomePage() {
 
   const profile = data?.profile as SchoolProfile | undefined
   const banners = (data?.banners as Record<string, string>[]) || []
-  const notices = (data?.notices as { id?: number; title: string; link_url?: string; meta?: { link_url?: string } }[]) || []
   const programs = (data?.programs as Record<string, string>[]) || []
   const facilities = (data?.facilities as Record<string, string>[]) || []
   const testimonials = useMemo(
@@ -96,6 +97,7 @@ export default function HomePage() {
   const gallery = (data?.gallery as Record<string, unknown>[]) || []
   const teachers = (data?.teachers as Record<string, string>[]) || []
   const feePlans = (data?.fee_plans as Record<string, string | number>[]) || []
+  const notices = (data?.notices as HeroNoticeItem[]) || []
 
   const home = useMemo(
     () => homeContentFromProfile(profile, {
@@ -157,10 +159,12 @@ export default function HomePage() {
 
   return (
     <div className="home-page overflow-x-hidden">
+      <div className="home-hero-top-notices">
+        <PublicLiveBanner variant="bar" />
+        <HeroNoticeStrip notices={notices} fallback={h.admissionBanner} />
+      </div>
       <div className="home-hero-viewport">
         <HomeWelcomeBento
-          admissionBanner={heroContent.admissionBanner}
-          notices={notices}
           slides={heroContent.slides}
           sidebar={heroContent.sidebar}
           banners={banners}

@@ -4,8 +4,6 @@ import { HeroPlaneDoodle } from '@/components/design/HeroPlaneDoodle'
 import { HeroRailButton } from '@/components/design/HeroRailButton'
 import { mediaUrl } from '@/utils/mediaUrl'
 import type { HeroSidebarCopy, HeroSlideCopy } from '@/config/siteContent'
-import { HeroNoticeStrip, type HeroNoticeItem } from '@/components/design/HeroNoticeStrip'
-import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
 
 interface HeroBanner {
   image?: string
@@ -17,8 +15,6 @@ interface HeroBanner {
 }
 
 interface HomeWelcomeBentoProps {
-  admissionBanner: string
-  notices?: HeroNoticeItem[]
   slides: HeroSlideCopy[]
   sidebar: HeroSidebarCopy
   banners?: HeroBanner[]
@@ -38,8 +34,6 @@ function bannerImage(banner: HeroBanner | undefined, index: number): string {
 }
 
 export function HomeWelcomeBento({
-  admissionBanner,
-  notices = [],
   slides,
   sidebar,
   banners = [],
@@ -149,12 +143,6 @@ export function HomeWelcomeBento({
         )}
 
         <div className="home-hero-blend" aria-hidden />
-      </div>
-
-      {/* Live CTA + notices sit under the hero (replaces old top-of-site live bar). */}
-      <div className="home-hero-bottom-notices">
-        <PublicLiveBanner variant="bar" />
-        <HeroNoticeStrip notices={notices} fallback={admissionBanner} />
       </div>
     </section>
   )

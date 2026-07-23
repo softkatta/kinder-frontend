@@ -1553,10 +1553,16 @@ h1, h2, h3, h4, h5, h6 {
   @apply relative z-30 shrink-0 text-center text-xs sm:text-sm font-bold text-white py-2 px-4;
   background: linear-gradient(90deg, #FBBF24, #FDA4AF, #C4B5FD, #7DD3FC);
 }
+.home-hero-top-notices,
 .home-hero-bottom-notices {
   position: relative;
   z-index: 30;
   flex-shrink: 0;
+}
+.home-hero-top-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 .public-live-inline-slot {
   display: flex;
