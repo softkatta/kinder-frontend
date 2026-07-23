@@ -91,7 +91,8 @@ function marksheetHtml(doc: ExamDocumentView): string {
   const resultTone = doc.result_status === 'pass' ? 'good' : doc.result_status === 'fail' ? 'bad' : 'neutral'
 
   const schoolName = esc(doc.school?.name || 'School Name')
-  const schoolMeta = [doc.school?.address, doc.school?.phone, doc.school?.email]
+  const schoolAddress = doc.school?.address?.trim() || ''
+  const schoolContact = [doc.school?.phone, doc.school?.email]
     .filter(Boolean)
     .map((item) => esc(String(item)))
     .join(' • ')
@@ -118,9 +119,10 @@ function marksheetHtml(doc: ExamDocumentView): string {
     <header class="sheet-header">
       <div class="sheet-brand">
         ${logo}
-        <div>
+        <div class="school-details">
           <p class="school">${schoolName}</p>
-          ${schoolMeta ? `<p class="school-meta">${schoolMeta}</p>` : ''}
+          ${schoolAddress ? `<p class="school-meta">${esc(schoolAddress)}</p>` : ''}
+          ${schoolContact ? `<p class="school-meta school-meta-sub">${schoolContact}</p>` : ''}
         </div>
       </div>
       <div class="sheet-badges">
@@ -158,10 +160,8 @@ function marksheetHtml(doc: ExamDocumentView): string {
 
 function certificateHtml(doc: ExamDocumentView): string {
   const schoolName = esc(doc.school?.name || 'School Name')
-  const schoolMeta = [doc.school?.address, doc.school?.phone]
-    .filter(Boolean)
-    .map((item) => esc(String(item)))
-    .join(' • ')
+  const schoolAddress = doc.school?.address?.trim() || ''
+  const schoolPhone = doc.school?.phone?.trim() || ''
 
   const logo = logoHtml(doc.school)
 
@@ -179,9 +179,10 @@ function certificateHtml(doc: ExamDocumentView): string {
         <div class="cert-ribbon">Softkatt Little Stars Kindergarten</div>
         <header class="cert-header">
           ${logo}
-          <div>
+          <div class="school-details">
             <p class="school">${schoolName}</p>
-            ${schoolMeta ? `<p class="school-meta">${schoolMeta}</p>` : ''}
+            ${schoolAddress ? `<p class="school-meta">${esc(schoolAddress)}</p>` : ''}
+            ${schoolPhone ? `<p class="school-meta school-meta-sub">${esc(schoolPhone)}</p>` : ''}
           </div>
           <div class="medal">${esc(doc.result_status?.toUpperCase() || 'PASS')}</div>
         </header>
@@ -266,10 +267,12 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex: 1;
+  min-width: 0;
 }
 .logo-wrap {
-  width: 50px;
-  height: 50px;
+  width: 54px;
+  height: 54px;
   border-radius: 10px;
   border: 1px solid #cbd5e1;
   overflow: hidden;
@@ -278,9 +281,12 @@ body {
   background: #fff;
 }
 .logo-img {
-  width: 50px;
-  height: 50px;
-  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  padding: 3px;
+  background: #fff;
 }
 .logo-fallback {
   width: 100%;
@@ -306,11 +312,22 @@ body {
   font-size: 11px;
   color: var(--ink-soft);
   margin-top: 3px;
+  line-height: 1.3;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.school-meta-sub {
+  font-size: 10.5px;
+  opacity: 0.92;
+}
+.school-details {
+  min-width: 0;
 }
 .sheet-badges {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-shrink: 0;
 }
 .pill {
   border: 1px solid #cde0ff;
