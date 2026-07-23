@@ -1556,6 +1556,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .home-hero-top-notice-marquee .home-hero-admission {
   padding: 0;
+  font-size: 0.95rem;
 }
 .home-hero-top-notices,
 .home-hero-bottom-notices {
@@ -1564,28 +1565,34 @@ h1, h2, h3, h4, h5, h6 {
   flex-shrink: 0;
 }
 .home-hero-top-notices {
+  position: relative;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  margin: 0.75rem auto 0;
-  padding: 0.7rem 0.9rem;
-  max-width: 96%;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, rgba(251, 146, 161, 0.95), rgba(252, 211, 77, 0.95), rgba(168, 85, 247, 0.95));
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  gap: 1rem;
+  margin: 0.75rem 0 0;
+  padding: 1rem 0;
+  background: linear-gradient(90deg, rgba(251, 146, 161, 0.98), rgba(252, 211, 77, 0.98), rgba(168, 85, 247, 0.98));
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  clip-path: polygon(0 0, 100% 0, 100% 78%, calc(50% + 38px) 78%, 50% 100%, calc(50% - 38px) 78%, 0 78%);
 }
 .home-hero-top-notice-marquee {
   display: flex;
   justify-content: center;
+  align-items: center;
   min-width: 0;
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
 }
 @media (min-width: 768px) {
   .home-hero-top-notices {
-    padding: 0.85rem 1rem;
-    max-width: 1080px;
+    padding: 1rem 0;
   }
 }
 .home-hero-top-notices .home-hero-admission {
