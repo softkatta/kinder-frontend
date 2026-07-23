@@ -1588,18 +1588,18 @@ h1, h2, h3, h4, h5, h6 {
 .home-hero-top-notice-inner {
   width: min(100%, 1180px);
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(380px, 1fr) minmax(220px, 320px);
+  grid-template-columns: minmax(220px, 260px) minmax(520px, 1.2fr) minmax(180px, 300px);
   gap: 1rem;
   align-items: center;
 }
 .home-hero-top-notice-marquee {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex: 1 1 640px;
-  min-width: 280px;
+  justify-content: flex-start;
+  flex: 1 1 720px;
+  min-width: 420px;
   margin: 0;
-  padding: 0.95rem 1.5rem;
+  padding: 0.95rem 1.75rem;
   background: rgba(12, 24, 54, 0.96);
   border-radius: 999px;
   border: 1px solid rgba(96, 165, 250, 0.16);
