@@ -1587,19 +1587,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 .home-hero-top-notice-inner {
   width: min(100%, 1180px);
-  display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(520px, 1.2fr) minmax(180px, 300px);
-  gap: 1rem;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 .home-hero-top-notice-marquee {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  flex: 1 1 720px;
-  min-width: 420px;
+  flex: 1 1 760px;
+  min-width: 520px;
   margin: 0;
-  padding: 0.95rem 1.75rem;
+  padding: 0.95rem 1.5rem;
   background: rgba(12, 24, 54, 0.96);
   border-radius: 999px;
   border: 1px solid rgba(96, 165, 250, 0.16);
@@ -1613,9 +1613,10 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: flex-end;
   gap: 0.75rem;
   align-items: center;
+  flex: 0 0 auto;
 }
 .home-hero-top-cta-group .btn {
-  min-width: 11rem;
+  min-width: 10rem;
   font-size: 0.88rem;
 }
 .home-hero-top-cta-group .btn-secondary {
