@@ -138,6 +138,14 @@ function PublicLayoutInner() {
           <div className="home-hero-top-notice-marquee">
             <HeroNoticeStrip notices={homeNotices} fallback={t.home.admissionBanner} />
           </div>
+          <div className="home-hero-top-cta-group">
+            <Link to="/admission" className="btn btn-primary">
+              {t.nav.applyNow}
+            </Link>
+            <Link to="/book-tour" className="btn btn-secondary">
+              {t.nav.bookTour}
+            </Link>
+          </div>
         </div>
       ) : null}
 
