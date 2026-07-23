@@ -271,22 +271,37 @@ body {
   min-width: 0;
 }
 .logo-wrap {
-  width: 74px;
-  height: 74px;
+  width: 82px;
+  height: 82px;
   border-radius: 10px;
   border: 1px solid #cbd5e1;
   overflow: hidden;
   display: grid;
   place-items: center;
   background: #fff;
+  flex: 0 0 auto;
 }
 .logo-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   object-position: center;
-  padding: 1px;
+  padding: 0;
   background: #fff;
+}
+.marksheet .logo-wrap {
+  width: 90px;
+  height: 90px;
+}
+.marksheet .logo-img {
+  padding: 1px;
+}
+.certificate .logo-wrap {
+  width: 118px;
+  height: 118px;
+  border-width: 2px;
+  border-color: rgba(200, 155, 60, 0.55);
+  box-shadow: 0 6px 16px rgba(16, 63, 145, 0.14);
 }
 .logo-fallback {
   width: 100%;

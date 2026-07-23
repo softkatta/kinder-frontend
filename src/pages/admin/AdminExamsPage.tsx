@@ -8,7 +8,7 @@ import { AdminDataTable } from '@/components/admin/AdminDataTable'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { FormGrid } from '@/components/ui/Form'
-import { academicApi, examApi } from '@/api/services'
+import { academicApi, examApi, idCardApi } from '@/api/services'
 import { useTableBulkDelete } from '@/hooks/useTableBulkDelete'
 
 interface AcademicYear { id: number; name: string }
@@ -36,6 +36,12 @@ interface ExamResult {
   result_status: string
 }
 
+interface StudentOption {
+  id: number
+  full_name: string
+  meta?: Record<string, unknown>
+}
+
 const EXAM_TYPES = ['unit', 'midterm', 'term', 'final', 'annual']
 const EXAM_STATUSES = ['scheduled', 'ongoing', 'completed', 'published']
 const CLASS_OPTIONS = ['Nursery A', 'Nursery B', 'LKG A', 'LKG B', 'UKG A', 'UKG B']
@@ -53,6 +59,7 @@ const emptyExam = {
 }
 
 const emptyResult = {
+  student_id: '',
   student_name: '',
   roll_number: '',
   marks_obtained: '',
@@ -71,15 +78,28 @@ export default function AdminExamsPage() {
   const [results, setResults] = useState<ExamResult[]>([])
   const [examForm, setExamForm] = useState(emptyExam)
   const [resultForm, setResultForm] = useState(emptyResult)
+  const [students, setStudents] = useState<StudentOption[]>([])
   const [saving, setSaving] = useState(false)
+
+  const studentRollNumber = (student: StudentOption): string => {
+    const meta = student.meta ?? {}
+    const roll = meta.roll_number ?? meta.roll_no ?? meta.rollNumber ?? ''
+
+    return String(roll || '')
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [yRes, eRes] = await Promise.all([academicApi.years(), examApi.list()])
+      const [yRes, eRes, sRes] = await Promise.all([
+        academicApi.years(),
+        examApi.list(),
+        idCardApi.list({ type: 'student', status: 'active' }).catch(() => ({ data: { data: [] } })),
+      ])
       const yList = yRes.data.data ?? []
       setYears(yList)
       setExams(eRes.data.data ?? [])
+      setStudents((sRes.data.data ?? []) as StudentOption[])
     } catch {
       toast.error('Failed to load exams')
     } finally {
@@ -197,6 +217,28 @@ export default function AdminExamsPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const onStudentSelect = (studentIdValue: string) => {
+    if (!studentIdValue) {
+      setResultForm({ ...resultForm, student_id: '', student_name: '', roll_number: '' })
+
+      return
+    }
+
+    const selected = students.find((s) => String(s.id) === studentIdValue)
+    if (!selected) {
+      setResultForm({ ...resultForm, student_id: studentIdValue })
+
+      return
+    }
+
+    setResultForm({
+      ...resultForm,
+      student_id: studentIdValue,
+      student_name: selected.full_name,
+      roll_number: studentRollNumber(selected),
+    })
   }
 
   const removeResult = async (id: number) => {
@@ -358,7 +400,14 @@ export default function AdminExamsPage() {
       >
         <AdminPanel title="Add Student Result" noPadding className="mb-4">
           <FormGrid cols={3} className="p-5 items-end lg:grid-cols-5">
-            <Input label="Student Name" value={resultForm.student_name} onChange={(e) => setResultForm({ ...resultForm, student_name: e.target.value })} />
+            <Select label="Student" value={resultForm.student_id} onChange={(e) => onStudentSelect(e.target.value)}>
+              <option value="">Select student</option>
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name}{studentRollNumber(s) ? ` (Roll ${studentRollNumber(s)})` : ''}
+                </option>
+              ))}
+            </Select>
             <Input label="Roll No." value={resultForm.roll_number} onChange={(e) => setResultForm({ ...resultForm, roll_number: e.target.value })} />
             <Input label="Marks" type="number" value={resultForm.marks_obtained} onChange={(e) => setResultForm({ ...resultForm, marks_obtained: e.target.value })} />
             <Select label="Result" value={resultForm.result_status} onChange={(e) => setResultForm({ ...resultForm, result_status: e.target.value })}>

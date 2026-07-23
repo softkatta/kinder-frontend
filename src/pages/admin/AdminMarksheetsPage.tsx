@@ -14,6 +14,7 @@ interface ExamResultRow {
   marks_obtained: number
   grade?: string | null
   result_status: string
+  remarks?: string | null
   marksheet_printed_at?: string | null
   certificate_printed_at?: string | null
   exam?: {
@@ -44,13 +45,42 @@ export default function AdminMarksheetsPage() {
   useEffect(() => { load() }, [load])
 
   const printDoc = async (id: number, type: 'marksheet' | 'certificate') => {
+    const row = rows.find((r) => r.id === id)
+    if (!row) {
+      toast.error('Result not found')
+      return
+    }
+
+    const enteredRemark = window.prompt(
+      'Print remark (optional):',
+      row.remarks ?? '',
+    )
+
+    // User pressed cancel on prompt.
+    if (enteredRemark === null) {
+      return
+    }
+
+    const remarkForPrint = enteredRemark.trim()
+
     setPrinting(id)
     try {
+      // Save latest remark so subsequent prints/defaults stay consistent.
+      await examApi.updateResult(id, {
+        student_name: row.student_name,
+        roll_number: row.roll_number ?? null,
+        class_name: row.class_name,
+        marks_obtained: row.marks_obtained,
+        grade: row.grade ?? null,
+        result_status: row.result_status,
+        remarks: remarkForPrint || null,
+      })
+
       const res = type === 'marksheet'
         ? await examApi.marksheetView(id)
         : await examApi.certificateView(id)
       const doc = res.data.data as ExamDocumentView
-      printExamDocument({ ...doc, type })
+      printExamDocument({ ...doc, type, remarks: remarkForPrint || null })
       await examApi.markPrinted(id, type)
       toast.success(type === 'marksheet' ? 'Marksheet sent to printer' : 'Certificate sent to printer')
       load()
