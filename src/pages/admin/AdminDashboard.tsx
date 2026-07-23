@@ -1,206 +1,184 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Users, UserCog, ClipboardList, IndianRupee, ArrowUpRight,
-  FileCheck, Settings, TrendingUp, CalendarDays, Sparkles, Bell,
+  ClipboardList,
+  CreditCard,
+  GraduationCap,
+  LayoutDashboard,
+  Settings,
 } from 'lucide-react'
 import { dashboardApi } from '@/api/services'
 import {
-  AdminStatGrid, AdminMiniStatCard, AdminQuickAction,
-  AdminDashboardSection, AdminFeeTrendChart, AdminActivityTimeline,
+  AdminDashboardSection,
+  AdminFeeTrendChart,
+  AdminQuickAction,
+  AdminSummaryCard,
+  AdminSummaryGrid,
 } from '@/components/admin/AdminStats'
-import { AdminPageShell } from '@/components/admin/AdminUi'
+import { AdminPageHeader, AdminPageShell, AdminPanel } from '@/components/admin/AdminUi'
+import { StatGrid } from '@/components/portal/PortalWidgets'
 import { adminImages } from '@/config/adminCatalog'
+import { adminPortalConfig, portalBreadcrumbs } from '@/config/erpPortals'
 
-interface DashboardData {
+type StatItem = { label: string; value: string | number; change?: string }
+type SnapshotItem = { label: string; value: string; note?: string }
+type QuickActionItem = { title: string; meta?: string; link: string }
+type ActivityItem = { title: string; time: string }
+type FeeTrendItem = { period?: string; month: string; value: number }
+type PlanUsage = { limit: number | null; total: number; remaining: number | null }
+
+type DashboardData = {
   greeting?: string
-  academic_year?: string | null
-  stats?: { label: string; value: string | number; change?: string }[]
-  recent_activity?: { title: string; time: string }[]
-  hero?: {
-    collection_pct: number
-    attendance_pct: number
-    present_today: number
-    alerts: number
-    pending_admissions: number
-    pending_payments: number
+  academic_year?: string
+  stats?: StatItem[]
+  hero?: { alerts?: number }
+  plan_usage?: {
+    users: PlanUsage
+    students: PlanUsage
   }
-  fee_trend?: { period?: string; month: string; value: number }[]
-  today_snapshot?: { label: string; value: string; note: string }[]
-  quick_actions?: { title: string; meta: string; link: string }[]
+  fee_trend?: FeeTrendItem[]
+  today_snapshot?: SnapshotItem[]
+  quick_actions?: QuickActionItem[]
+  recent_activity?: ActivityItem[]
 }
 
-const statIcons = [Users, ClipboardList, UserCog, IndianRupee] as const
-const statImages = [adminImages.nursery, adminImages.classroom, adminImages.playground, adminImages.facilities[0]]
-const statTones = ['violet', 'sky', 'emerald', 'amber'] as const
-const snapshotImages = [adminImages.classroom, adminImages.nursery, adminImages.about, adminImages.event]
-const snapshotOverlays = ['emerald', 'sky', 'violet', 'amber'] as const
-const quickIcons = [FileCheck, IndianRupee, Users, Settings] as const
-const quickImages = [adminImages.nursery, adminImages.facilities[0], adminImages.playground, adminImages.event]
+function formatPlanValue(value: number | null): string {
+  return value === null ? 'Unlimited' : value.toLocaleString('en-IN')
+}
 
-function formatToday() {
-  return new Date().toLocaleDateString('en-IN', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+function PlanUsageCard({
+  title,
+  usage,
+  tone,
+  image,
+}: {
+  title: string
+  usage: PlanUsage
+  tone: 'sky' | 'emerald'
+  image: string
+}) {
+  return (
+    <AdminSummaryCard
+      label={title}
+      value={formatPlanValue(usage.limit)}
+      note={`Total ${usage.total.toLocaleString('en-IN')} | Remaining ${formatPlanValue(usage.remaining)}`}
+      tone={tone}
+      image={image}
+      overlay={tone}
+    />
+  )
+}
+
+function quickActionIcon(link: string) {
+  if (link.includes('/admissions')) return ClipboardList
+  if (link.includes('/payments')) return CreditCard
+  if (link.includes('/students')) return GraduationCap
+  if (link.includes('/settings')) return Settings
+  return LayoutDashboard
 }
 
 export default function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const today = useMemo(() => formatToday(), [])
 
   useEffect(() => {
     dashboardApi.admin()
       .then((res) => setData(res.data.data as DashboardData))
       .catch(() => setData(null))
-      .finally(() => setLoading(false))
   }, [])
 
-  const statsWithIcons = (data?.stats ?? []).map((s, i) => ({
-    ...s,
-    icon: statIcons[i % statIcons.length],
-    image: statImages[i % statImages.length],
-    tone: statTones[i % statTones.length],
-  }))
-
-  const hero = data?.hero
-  const feeTrend = data?.fee_trend ?? []
-  const feeHighlight = feeTrend.length
-    ? `Latest month: ${feeTrend[feeTrend.length - 1]?.value ?? 0}k verified (₹ thousands)`
-    : 'No verified payments yet'
+  const quickActions = useMemo(() => data?.quick_actions ?? [], [data])
+  const alerts = data?.hero?.alerts ?? 0
 
   return (
-    <AdminPageShell className="admin-dash space-y-6">
-      <div className="admin-dash-hero" style={{ backgroundImage: `url(${adminImages.campus})` }}>
-        <div className="admin-dash-hero-overlay" />
-        <div className="admin-dash-hero-mesh" aria-hidden />
-        <div className="relative z-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="admin-dash-pill">
-                <Sparkles className="h-3.5 w-3.5" />
-                Admin
-              </span>
-              {data?.academic_year && (
-                <span className="admin-dash-pill admin-dash-pill--muted">
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {data.academic_year}
-                </span>
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-medium text-violet-200/90">{today}</p>
-              <h2 className="font-display text-2xl font-bold sm:text-4xl mt-1 leading-tight">
-                {loading ? 'Loading...' : (data?.greeting ?? 'Dashboard')}
-              </h2>
-              <p className="text-violet-100/85 text-sm sm:text-base mt-2 max-w-lg">
-                Live counts from your database — students, staff, enquiries, and fees.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link to="/admin/admissions" className="admin-dash-cta admin-dash-cta--primary">
-                Review Enquiries <ArrowUpRight className="h-4 w-4" />
-              </Link>
-              <Link to="/admin/payments" className="admin-dash-cta admin-dash-cta--ghost">
-                Fee Collection
-              </Link>
-            </div>
-          </div>
+    <AdminPageShell>
+      <AdminPageHeader
+        title={data?.greeting ?? 'Dashboard'}
+        subtitle={data?.academic_year ? `Academic Year: ${data.academic_year}` : 'School overview and operations at a glance.'}
+        badge={alerts > 0 ? `${alerts} alerts` : 'All clear'}
+        image={adminImages.campus}
+        breadcrumbs={portalBreadcrumbs(adminPortalConfig.portalLabel, adminPortalConfig.homePath, 'Dashboard')}
+      />
 
-          {hero && (
-            <div className="admin-dash-hero-stats">
-              <div className="admin-dash-glass-stat">
-                <p className="text-xs font-bold uppercase tracking-wider text-white/70">Collection</p>
-                <p className="font-display text-2xl font-bold text-white mt-1">{hero.collection_pct}%</p>
-                <p className="text-xs text-emerald-200 font-semibold mt-1 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" /> Verified payments
-                </p>
+      {data?.stats && <StatGrid stats={data.stats} />}
+
+      {data?.plan_usage && (
+        <AdminDashboardSection
+          title="Plan Limits"
+          subtitle="Users and students entitlement from your SoftKatta plan."
+        >
+          <AdminSummaryGrid>
+            <PlanUsageCard title="Users" usage={data.plan_usage.users} tone="sky" image={adminImages.classroom} />
+            <PlanUsageCard title="Students" usage={data.plan_usage.students} tone="emerald" image={adminImages.nursery} />
+          </AdminSummaryGrid>
+        </AdminDashboardSection>
+      )}
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <AdminPanel title="Today Snapshot" className="xl:col-span-2">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(data?.today_snapshot ?? []).map((item) => (
+              <div key={item.label} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+                <p className="mt-1 text-2xl font-bold text-ink">{item.value}</p>
+                {item.note && <p className="mt-1 text-xs text-slate-500">{item.note}</p>}
               </div>
-              <div className="admin-dash-glass-stat">
-                <p className="text-xs font-bold uppercase tracking-wider text-white/70">Attendance</p>
-                <p className="font-display text-2xl font-bold text-white mt-1">{hero.attendance_pct}%</p>
-                <p className="text-xs text-white/75 mt-1">{hero.present_today} present today</p>
-              </div>
-              <div className="admin-dash-glass-stat admin-dash-glass-stat--alert">
-                <p className="text-xs font-bold uppercase tracking-wider text-white/70">Alerts</p>
-                <p className="font-display text-2xl font-bold text-white mt-1">{hero.alerts}</p>
-                <p className="text-xs text-amber-200 font-semibold mt-1 flex items-center gap-1">
-                  <Bell className="h-3 w-3" /> {hero.pending_admissions} enquiries · {hero.pending_payments} fees
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+            ))}
+            {(data?.today_snapshot ?? []).length === 0 && (
+              <p className="text-sm text-slate-400">No snapshot data available.</p>
+            )}
+          </div>
+        </AdminPanel>
+
+        <AdminPanel title="Recent Activity">
+          <ul className="space-y-2">
+            {(data?.recent_activity ?? []).map((item, index) => (
+              <li key={`${item.title}-${index}`} className="flex items-start justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm">
+                <span className="font-medium text-ink">{item.title}</span>
+                <span className="shrink-0 text-xs text-slate-500">{item.time}</span>
+              </li>
+            ))}
+            {(data?.recent_activity ?? []).length === 0 && (
+              <li className="text-sm text-slate-400">No activity recorded yet.</li>
+            )}
+          </ul>
+        </AdminPanel>
       </div>
 
-      {statsWithIcons.length > 0 && <AdminStatGrid stats={statsWithIcons} />}
+      <div className="grid gap-6 xl:grid-cols-3">
+        <AdminPanel title="Fee Trend" className="xl:col-span-2">
+          <AdminFeeTrendChart
+            data={data?.fee_trend ?? []}
+            highlight="Monthly verified fee collection trend"
+          />
+        </AdminPanel>
 
-      <div className="admin-dash-bento">
-        <div className="admin-dash-bento-main">
-          <AdminDashboardSection
-            title="Fee Collection Trend"
-            subtitle="Verified payments per month (₹ thousands)"
-            action={
-              <Link to="/admin/payments" className="text-xs font-bold text-violet-600 hover:text-violet-800 flex items-center gap-1">
-                View all <ArrowUpRight className="h-3.5 w-3.5" />
-              </Link>
-            }
-          >
-            <div className="admin-dash-panel">
-              {feeTrend.length > 0 ? (
-                <AdminFeeTrendChart data={feeTrend} highlight={feeHighlight} />
-              ) : (
-                <p className="px-5 py-8 text-sm text-slate-400 text-center">No payment data yet</p>
-              )}
-            </div>
-          </AdminDashboardSection>
+        <AdminPanel title="Quick Actions">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            {quickActions.map((action, index) => {
+              const Icon = quickActionIcon(action.link)
+              const cardImage = index % 2 === 0 ? adminImages.playground : adminImages.classroom
 
-          <AdminDashboardSection title="Recent Activity" subtitle="Latest records from the database">
-            <div className="admin-dash-panel admin-dash-panel--flush">
-              {(data?.recent_activity ?? []).length > 0 ? (
-                <AdminActivityTimeline items={data!.recent_activity!} />
-              ) : (
-                <p className="px-5 py-8 text-sm text-slate-400 text-center">No recent activity</p>
-              )}
-            </div>
-          </AdminDashboardSection>
-        </div>
-
-        <div className="admin-dash-bento-side space-y-6">
-          <AdminDashboardSection title="Today's Snapshot" subtitle="From attendance & CMS">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              {(data?.today_snapshot ?? []).map((item, i) => (
-                <AdminMiniStatCard
-                  key={item.label}
-                  {...item}
-                  image={snapshotImages[i % snapshotImages.length]}
-                  overlay={snapshotOverlays[i % snapshotOverlays.length]}
-                />
-              ))}
-              {!loading && !(data?.today_snapshot ?? []).length && (
-                <p className="text-sm text-slate-400">No snapshot data</p>
-              )}
-            </div>
-          </AdminDashboardSection>
-
-          <AdminDashboardSection title="Quick Actions" subtitle="Based on current counts">
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-              {(data?.quick_actions ?? []).map((action, i) => (
+              return (
                 <AdminQuickAction
-                  key={action.title}
-                  to={action.link}
+                  key={`${action.title}-${index}`}
                   title={action.title}
                   meta={action.meta}
-                  icon={quickIcons[i % quickIcons.length]}
-                  image={quickImages[i % quickImages.length]}
+                  icon={Icon}
+                  image={cardImage}
+                  to={action.link}
                 />
-              ))}
-            </div>
-          </AdminDashboardSection>
-        </div>
+              )
+            })}
+            {quickActions.length === 0 && (
+              <p className="text-sm text-slate-400">No quick actions available.</p>
+            )}
+          </div>
+          <div className="mt-4">
+            <Link to="/admin/settings" className="text-xs font-bold text-primary-600 hover:text-primary-700">
+              Open admin settings
+            </Link>
+          </div>
+        </AdminPanel>
       </div>
     </AdminPageShell>
   )
