@@ -1,207 +1,75 @@
-export interface ExamDocumentView {
-  type: 'marksheet' | 'certificate'
-  render_mode?: 'template' | 'legacy'
-  student_name: string
-  paper_size?: string
-  html?: string
-  css?: string
-  school?: { name: string; address?: string; phone?: string; email?: string; logo_path?: string | null; logo_url?: string | null }
-  roll_number?: string | null
-  class_name?: string
-  exam_name?: string
-  exam_type?: string
-  subject?: string | null
-  exam_date?: string | null
-  academic_year?: string | null
-  marks_obtained?: number
-  max_marks?: number
-  percentage?: number
-  grade?: string
-  result_status?: string
-  remarks?: string | null
-  issued_date?: string
-  certificate_title?: string
-}
-
-function esc(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-function apiOrigin(): string {
-  const configured = (import.meta.env.VITE_API_URL as string | undefined)?.trim()
-  if (!configured) return window.location.origin
-
-  try {
-    return new URL(configured).origin
-  } catch {
-    return window.location.origin
-  }
-}
-
-function resolveLogoCandidates(school?: ExamDocumentView['school']): { primary: string | null; fallback: string | null } {
-  const origin = apiOrigin()
-
-  const pathRaw = school?.logo_path?.trim() || ''
-  const urlRaw = school?.logo_url?.trim() || ''
-
-  const normalizePath = (value: string): string => {
-    if (!value) return ''
-    if (/^https?:\/\//i.test(value) || value.startsWith('data:')) return value
-    if (value.startsWith('/storage/')) return `${origin}${value}`
-    if (value.startsWith('storage/')) return `${origin}/${value}`
-    return `${origin}/storage/${value.replace(/^\/+/, '')}`
-  }
-
-  const normalizeUrl = (value: string): string => {
-    if (!value) return ''
-    if (/^https?:\/\//i.test(value) || value.startsWith('data:')) return value
-    return `${origin}/${value.replace(/^\/+/, '')}`
-  }
-
-  const fromPath = normalizePath(pathRaw)
-  const fromUrl = normalizeUrl(urlRaw)
-
-  if (fromPath && fromUrl && fromPath !== fromUrl) {
-    return { primary: fromPath, fallback: fromUrl }
-  }
-
-  if (fromPath) return { primary: fromPath, fallback: null }
-  if (fromUrl) return { primary: fromUrl, fallback: null }
-
-  return { primary: null, fallback: null }
-}
-
-function logoHtml(school?: ExamDocumentView['school']): string {
-  const rawSchoolName = school?.name?.trim() || 'School'
-  const schoolInitial = esc(rawSchoolName.slice(0, 1).toUpperCase())
-  const { primary, fallback } = resolveLogoCandidates(school)
-
-  if (!primary) {
-    return `<div class="logo-wrap logo-missing"><div class="logo-fallback">${schoolInitial}</div></div>`
-  }
-
-  const onError = "if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback='';return;}this.style.display='none';this.closest('.logo-wrap')?.classList.add('logo-missing');"
-  return `<div class="logo-wrap"><img src="${esc(primary)}" data-fallback="${esc(fallback ?? '')}" alt="School Logo" class="logo-img" onerror="${onError}" /><div class="logo-fallback">${schoolInitial}</div></div>`
-}
-
-function marksheetHtml(doc: ExamDocumentView): string {
-  const percent = typeof doc.percentage === 'number' ? `${doc.percentage.toFixed(1)}%` : '—'
-  const marks = typeof doc.marks_obtained === 'number' ? doc.marks_obtained.toFixed(1) : '—'
-  const maxMarks = typeof doc.max_marks === 'number' ? doc.max_marks : '—'
-  const resultTone = doc.result_status === 'pass' ? 'good' : doc.result_status === 'fail' ? 'bad' : 'neutral'
-
-  const schoolName = esc(doc.school?.name || 'School Name')
-  const schoolAddress = doc.school?.address?.trim() || ''
-  const schoolContact = [doc.school?.phone, doc.school?.email]
-    .filter(Boolean)
-    .map((item) => esc(String(item)))
-    .join(' • ')
-
-  const logo = logoHtml(doc.school)
-
-  const rows = [
-    ['Student Name', doc.student_name || '—'],
-    ['Roll Number', doc.roll_number || '—'],
-    ['Class', doc.class_name || '—'],
-    ['Exam', doc.exam_name || '—'],
-    ['Subject', doc.subject || 'All Subjects'],
-    ['Exam Date', doc.exam_date || '—'],
-    ['Academic Year', doc.academic_year || '—'],
-    ['Marks Obtained', `${marks} / ${maxMarks}`],
-    ['Percentage', percent],
-    ['Grade', doc.grade || '—'],
-    ['Result', (doc.result_status || '—').toUpperCase()],
-  ]
-
-  return `
+import{r as e}from"./rolldown-runtime-QTnfLwEv.js";import{n as t,r as n}from"./createLucideIcon-DHbN9kl6.js";import{r,t as i}from"./AdminDataTable-CaZObq7M.js";import{t as a}from"./award-BnZ-4mEY.js";import{t as o}from"./file-text-JiSDCsBb.js";import{Xt as s,vn as c}from"./index-DqJ125gd.js";import{i as l,l as u,n as d,t as f}from"./AdminUi-f8C4SNRh.js";var p=e(n(),1);function m(e){return e.replace(/&/g,`&amp;`).replace(/</g,`&lt;`).replace(/>/g,`&gt;`).replace(/"/g,`&quot;`)}function h(){try{return new URL(`https://kinder-api.softkatta.in`).origin}catch{return window.location.origin}}function g(e){let t=h(),n=e?.logo_path?.trim()||``,r=e?.logo_url?.trim()||``,i=e=>e?/^https?:\/\//i.test(e)||e.startsWith(`data:`)?e:e.startsWith(`/storage/`)?`${t}${e}`:e.startsWith(`storage/`)?`${t}/${e}`:`${t}/storage/${e.replace(/^\/+/,``)}`:``,a=e=>e?/^https?:\/\//i.test(e)||e.startsWith(`data:`)?e:`${t}/${e.replace(/^\/+/,``)}`:``,o=i(n),s=a(r);return o&&s&&o!==s?{primary:o,fallback:s}:o?{primary:o,fallback:null}:s?{primary:s,fallback:null}:{primary:null,fallback:null}}function _(e){let t=m((e?.name?.trim()||`School`).slice(0,1).toUpperCase()),{primary:n,fallback:r}=g(e);return n?`<div class="logo-wrap"><img src="${m(n)}" data-fallback="${m(r??``)}" alt="School Logo" class="logo-img" onerror="if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback='';return;}this.style.display='none';this.closest('.logo-wrap')?.classList.add('logo-missing');" /><div class="logo-fallback">${t}</div></div>`:`<div class="logo-wrap logo-missing"><div class="logo-fallback">${t}</div></div>`}function v(e){let t=typeof e.percentage==`number`?`${e.percentage.toFixed(1)}%`:`—`,n=typeof e.marks_obtained==`number`?e.marks_obtained.toFixed(1):`—`,r=typeof e.max_marks==`number`?e.max_marks:`—`,i=e.result_status===`pass`?`good`:e.result_status===`fail`?`bad`:`neutral`,a=m(e.school?.name||`School Name`),o=e.school?.address?.trim()||``,s=[e.school?.phone,e.school?.email].filter(Boolean).map(e=>m(String(e))).join(` • `),c=_(e.school),l=[[`Student Name`,e.student_name||`—`],[`Roll Number`,e.roll_number||`—`],[`Class`,e.class_name||`—`],[`Exam`,e.exam_name||`—`],[`Subject`,e.subject||`All Subjects`],[`Exam Date`,e.exam_date||`—`],[`Academic Year`,e.academic_year||`—`],[`Marks Obtained`,`${n} / ${r}`],[`Percentage`,t],[`Grade`,e.grade||`—`],[`Result`,(e.result_status||`—`).toUpperCase()]];return`
   <div class="doc marksheet">
     <div class="sheet-bg"></div>
     <div class="sheet-accent-strip"></div>
     <header class="sheet-header">
       <div class="sheet-brand">
-        ${logo}
+        ${c}
         <div class="school-details">
-          <p class="school">${schoolName}</p>
-          ${schoolAddress ? `<p class="school-meta">${esc(schoolAddress)}</p>` : ''}
-          ${schoolContact ? `<p class="school-meta school-meta-sub">${schoolContact}</p>` : ''}
+          <p class="school">${a}</p>
+          ${o?`<p class="school-meta">${m(o)}</p>`:``}
+          ${s?`<p class="school-meta school-meta-sub">${s}</p>`:``}
         </div>
       </div>
       <div class="sheet-badges">
-        <span class="pill">AY ${esc(doc.academic_year || '—')}</span>
-        <span class="pill tone-${resultTone}">RESULT: ${esc((doc.result_status || 'pending').toUpperCase())}</span>
+        <span class="pill">AY ${m(e.academic_year||`—`)}</span>
+        <span class="pill tone-${i}">RESULT: ${m((e.result_status||`pending`).toUpperCase())}</span>
       </div>
     </header>
 
     <div class="title-wrap glass-card">
       <h1>Academic Marksheet</h1>
-      <p>Official performance summary for ${esc(doc.exam_name || 'examination')}</p>
+      <p>Official performance summary for ${m(e.exam_name||`examination`)}</p>
     </div>
 
     <table class="grid">
-      ${rows.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(String(v))}</td></tr>`).join('')}
+      ${l.map(([e,t])=>`<tr><th>${m(e)}</th><td>${m(String(t))}</td></tr>`).join(``)}
     </table>
 
     <section class="summary-cards">
-      <article class="stat-card"><span>Total Marks</span><strong>${esc(String(maxMarks))}</strong></article>
-      <article class="stat-card"><span>Obtained</span><strong>${esc(String(marks))}</strong></article>
-      <article class="stat-card"><span>Percentage</span><strong>${esc(percent)}</strong></article>
-      <article class="stat-card"><span>Grade</span><strong>${esc(doc.grade || '—')}</strong></article>
+      <article class="stat-card"><span>Total Marks</span><strong>${m(String(r))}</strong></article>
+      <article class="stat-card"><span>Obtained</span><strong>${m(String(n))}</strong></article>
+      <article class="stat-card"><span>Percentage</span><strong>${m(t)}</strong></article>
+      <article class="stat-card"><span>Grade</span><strong>${m(e.grade||`—`)}</strong></article>
     </section>
 
-    ${doc.remarks ? `<p class="remarks"><strong>Remarks:</strong> ${esc(doc.remarks)}</p>` : '<p class="remarks muted">Remarks: Not provided.</p>'}
+    ${e.remarks?`<p class="remarks"><strong>Remarks:</strong> ${m(e.remarks)}</p>`:`<p class="remarks muted">Remarks: Not provided.</p>`}
 
     <footer class="footer">
       <div class="sign-block"><span>Class Teacher</span></div>
       <div class="sign-block"><span>Academic Coordinator</span></div>
       <div class="sign-block"><span>Principal</span></div>
     </footer>
-    <p class="issued">Issued on ${esc(doc.issued_date || '')}</p>
-  </div>`
-}
-
-function certificateHtml(doc: ExamDocumentView): string {
-  const schoolName = esc(doc.school?.name || 'School Name')
-  const schoolAddress = doc.school?.address?.trim() || ''
-  const schoolPhone = doc.school?.phone?.trim() || ''
-
-  const logo = logoHtml(doc.school)
-
-  const title = esc(doc.certificate_title || 'Certificate of Achievement')
-  const student = esc(doc.student_name || 'Student')
-  const examName = esc(doc.exam_name || 'Annual Examination')
-  const subjectText = doc.subject ? ` in ${esc(doc.subject)}` : ''
-  const grade = esc(doc.grade || '—')
-  const percent = typeof doc.percentage === 'number' ? `${doc.percentage.toFixed(1)}%` : '—'
-
-  return `
+    <p class="issued">Issued on ${m(e.issued_date||``)}</p>
+  </div>`}function y(e){let t=m(e.school?.name||`School Name`),n=e.school?.address?.trim()||``,r=e.school?.phone?.trim()||``,i=_(e.school),a=m(e.certificate_title||`Certificate of Achievement`),o=m(e.student_name||`Student`),s=m(e.exam_name||`Annual Examination`),c=e.subject?` in ${m(e.subject)}`:``,l=m(e.grade||`—`),u=typeof e.percentage==`number`?`${e.percentage.toFixed(1)}%`:`—`;return`
   <div class="doc certificate">
     <div class="cert-frame">
       <div class="cert-layer">
         <div class="cert-ribbon">Academic Excellence Award</div>
         <header class="cert-header">
-          ${logo}
+          ${i}
           <div class="school-details">
-            <p class="school">${schoolName}</p>
-            ${schoolAddress ? `<p class="school-meta">${esc(schoolAddress)}</p>` : ''}
-            ${schoolPhone ? `<p class="school-meta school-meta-sub">${esc(schoolPhone)}</p>` : ''}
+            <p class="school">${t}</p>
+            ${n?`<p class="school-meta">${m(n)}</p>`:``}
+            ${r?`<p class="school-meta school-meta-sub">${m(r)}</p>`:``}
           </div>
-          <div class="medal">${esc(doc.result_status?.toUpperCase() || 'PASS')}</div>
+          <div class="medal">${m(e.result_status?.toUpperCase()||`PASS`)}</div>
         </header>
 
-        <h1>${title}</h1>
+        <h1>${a}</h1>
         <p class="presented">This is proudly presented to</p>
-        <p class="name">${student}</p>
+        <p class="name">${o}</p>
 
         <p class="body">
-          for successfully completing <strong>${examName}</strong>${subjectText}
-          during the academic year <strong>${esc(doc.academic_year || '—')}</strong>,
-          with grade <strong>${grade}</strong> and score <strong>${esc(percent)}</strong>.
+          for successfully completing <strong>${s}</strong>${c}
+          during the academic year <strong>${m(e.academic_year||`—`)}</strong>,
+          with grade <strong>${l}</strong> and score <strong>${m(u)}</strong>.
         </p>
 
         <div class="facts">
-          <div><span>Roll Number</span><strong>${esc(doc.roll_number || '—')}</strong></div>
-          <div><span>Class</span><strong>${esc(doc.class_name || '—')}</strong></div>
-          <div><span>Issued Date</span><strong>${esc(doc.issued_date || '—')}</strong></div>
+          <div><span>Roll Number</span><strong>${m(e.roll_number||`—`)}</strong></div>
+          <div><span>Class</span><strong>${m(e.class_name||`—`)}</strong></div>
+          <div><span>Issued Date</span><strong>${m(e.issued_date||`—`)}</strong></div>
         </div>
 
         <footer class="footer">
@@ -210,10 +78,7 @@ function certificateHtml(doc: ExamDocumentView): string {
         </footer>
       </div>
     </div>
-  </div>`
-}
-
-const FALLBACK_CSS = `
+  </div>`}var b=`
 @page { size: A4 portrait; margin: 4mm; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -596,62 +461,4 @@ body {
 @media print {
   .certificate { break-before: avoid; }
 }
-`
-
-function cssForDoc(type: ExamDocumentView['type']): string {
-  if (type === 'certificate') {
-    return FALLBACK_CSS.replace('@page { size: A4 portrait; margin: 4mm; }', '@page { size: A4 landscape; margin: 4mm; }')
-  }
-
-  return FALLBACK_CSS
-}
-
-function openPrintWindow(html: string) {
-  const iframe = document.createElement('iframe')
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
-  document.body.appendChild(iframe)
-
-  const docWin = iframe.contentWindow
-  const docEl = iframe.contentDocument || docWin?.document
-  if (!docEl || !docWin) return
-
-  docEl.open()
-  docEl.write(html)
-  docEl.close()
-
-  const cleanup = () => {
-    setTimeout(() => iframe.remove(), 500)
-  }
-
-  const triggerPrint = () => {
-    setTimeout(() => {
-      docWin.focus()
-      docWin.print()
-      setTimeout(cleanup, 60000)
-    }, 150)
-  }
-
-  docWin.onafterprint = cleanup
-  iframe.onload = () => {
-    const imgs = Array.from(docEl.images)
-    if (imgs.length === 0) {
-      triggerPrint()
-      return
-    }
-    Promise.all(
-      imgs.map((img) => img.complete
-        ? Promise.resolve()
-        : new Promise<void>((resolve) => {
-            img.onload = () => resolve()
-            img.onerror = () => resolve()
-          })),
-    ).then(triggerPrint)
-  }
-}
-
-export function printExamDocument(doc: ExamDocumentView) {
-  const body = doc.type === 'certificate' ? certificateHtml(doc) : marksheetHtml(doc)
-  const css = cssForDoc(doc.type)
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(doc.student_name)}</title><style>${css}</style></head><body>${body}</body></html>`
-  openPrintWindow(html)
-}
+`;function x(e){return e===`certificate`?b.replace(`@page { size: A4 portrait; margin: 4mm; }`,`@page { size: A4 landscape; margin: 4mm; }`):b}function S(e){let t=document.createElement(`iframe`);t.style.cssText=`position:fixed;right:0;bottom:0;width:0;height:0;border:0`,document.body.appendChild(t);let n=t.contentWindow,r=t.contentDocument||n?.document;if(!r||!n)return;r.open(),r.write(e),r.close();let i=()=>{setTimeout(()=>t.remove(),500)},a=()=>{setTimeout(()=>{n.focus(),n.print(),setTimeout(i,6e4)},150)};n.onafterprint=i,t.onload=()=>{let e=Array.from(r.images);if(e.length===0){a();return}Promise.all(e.map(e=>e.complete?Promise.resolve():new Promise(t=>{e.onload=()=>t(),e.onerror=()=>t()}))).then(a)}}function C(e){let t=e.type===`certificate`?y(e):v(e),n=x(e.type);S(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${m(e.student_name)}</title><style>${n}</style></head><body>${t}</body></html>`)}var w=t();function T(){let[e,t]=(0,p.useState)([]),[n,m]=(0,p.useState)(!0),[h,g]=(0,p.useState)(null),_=(0,p.useCallback)(async()=>{m(!0);try{t((await s.allResults()).data.data??[])}catch{c.error(`Failed to load results`),t([])}finally{m(!1)}},[]);(0,p.useEffect)(()=>{_()},[_]);let v=async(t,n)=>{let r=e.find(e=>e.id===t);if(!r){c.error(`Result not found`);return}let i=window.prompt(`Print remark (optional):`,r.remarks??``);if(i===null)return;let a=i.trim();g(t);try{await s.updateResult(t,{student_name:r.student_name,roll_number:r.roll_number??null,class_name:r.class_name,marks_obtained:r.marks_obtained,grade:r.grade??null,result_status:r.result_status,remarks:a||null});let e=(n===`marksheet`?await s.marksheetView(t):await s.certificateView(t)).data.data;C({...e,type:n,remarks:a||null}),await s.markPrinted(t,n),c.success(n===`marksheet`?`Marksheet sent to printer`:`Certificate sent to printer`),_()}catch(e){let t=e?.response?.data?.message;c.error(t||`Print failed`)}finally{g(null)}};return(0,w.jsxs)(l,{children:[(0,w.jsx)(u,{title:`Marksheets & Certificates`,subtitle:`Print marksheets and certificates for exam results.`,breadcrumbs:[{label:`Admin`,to:`/admin`},{label:`Marksheets`}]}),n&&e.length===0&&(0,w.jsx)(`p`,{className:`text-sm text-slate-500 text-center py-8`,children:`Loading results...`}),(0,w.jsx)(i,{data:e,rowKey:e=>e.id,onRefresh:_,title:`Exam Results`,subtitle:`${e.length} student results`,searchPlaceholder:`Search student, roll, class...`,searchKeys:[`student_name`,`roll_number`,`class_name`],pageSize:10,filterSubtitle:`result status`,filters:[{key:`result`,label:`Result`,options:[{value:`all`,label:`All`},{value:`pass`,label:`Pass`},{value:`fail`,label:`Fail`},{value:`absent`,label:`Absent`}]}],filterConfigs:[{key:`result`,defaultValue:`all`,match:(e,t)=>t===`all`||e.result_status===t}],columns:[{key:`student_name`,header:`Student`,sortable:!0,cell:e=>(0,w.jsxs)(`div`,{children:[(0,w.jsx)(`p`,{className:`font-semibold text-ink`,children:e.student_name}),(0,w.jsxs)(`p`,{className:`text-xs text-slate-500`,children:[e.roll_number||`—`,` · `,e.class_name]})]})},{key:`exam`,header:`Exam`,cell:e=>(0,w.jsxs)(`div`,{children:[(0,w.jsx)(`p`,{className:`text-sm text-ink`,children:e.exam?.name??`—`}),(0,w.jsx)(`p`,{className:`text-xs text-slate-500`,children:e.exam?.academic_year?.name})]})},{key:`marks`,header:`Marks`,cell:e=>(0,w.jsxs)(`span`,{className:`font-mono text-sm`,children:[e.marks_obtained,`/`,e.exam?.max_marks??`—`,e.grade&&(0,w.jsx)(`span`,{className:`ml-2 text-violet-600 font-bold`,children:e.grade})]})},{key:`result_status`,header:`Result`,cell:e=>(0,w.jsx)(f,{tone:e.result_status===`pass`?`success`:e.result_status===`fail`?`danger`:`neutral`,children:e.result_status})},{key:`printed`,header:`Printed`,cell:e=>(0,w.jsxs)(`div`,{className:`text-xs text-slate-500 space-y-0.5`,children:[e.marksheet_printed_at&&(0,w.jsxs)(`p`,{children:[`MS: `,new Date(e.marksheet_printed_at).toLocaleDateString()]}),e.certificate_printed_at&&(0,w.jsxs)(`p`,{children:[`Cert: `,new Date(e.certificate_printed_at).toLocaleDateString()]}),!e.marksheet_printed_at&&!e.certificate_printed_at&&`—`]})},{key:`actions`,header:`Print`,className:`w-52`,cell:e=>(0,w.jsxs)(`div`,{className:`flex flex-wrap gap-2`,children:[(0,w.jsxs)(d,{variant:`secondary`,className:`!px-2.5 !py-1.5 text-xs`,disabled:h===e.id,onClick:()=>v(e.id,`marksheet`),children:[(0,w.jsx)(o,{className:`h-3.5 w-3.5`}),` Marksheet`]}),(0,w.jsxs)(d,{variant:`primary`,className:`!px-2.5 !py-1.5 text-xs`,disabled:h===e.id,onClick:()=>v(e.id,`certificate`),children:[(0,w.jsx)(a,{className:`h-3.5 w-3.5`}),` Certificate`]})]})}]}),(0,w.jsxs)(`div`,{className:`mt-4 rounded-xl border border-dashed border-violet-200 bg-violet-50/50 p-4 flex items-start gap-3 text-sm text-slate-600`,children:[(0,w.jsx)(r,{className:`h-5 w-5 text-violet-500 shrink-0 mt-0.5`}),(0,w.jsxs)(`div`,{children:[(0,w.jsx)(`p`,{children:`Print dialog उघडेल — PDF save नाही. Printer select करून direct print करा. Print झाल्यानंतर record automatically marked होते.`}),(0,w.jsxs)(`p`,{className:`mt-2 text-xs text-slate-500`,children:[`Certificate आणि Marksheet मध्ये system templates apply होतात (certificate: achivement-certificate, marksheet: default-marksheet). Verification: `,(0,w.jsx)(`code`,{className:`text-violet-600`,children:`/verify/CERT-YYYY-####`})]})]})]})]})}export{T as default};
