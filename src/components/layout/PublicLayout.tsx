@@ -82,7 +82,6 @@ function PublicLayoutInner() {
 
   const erpLabel = locale === 'mr' ? t.brand.erpLabelMr : t.brand.erpLabelEn
   const brandGradient = 'linear-gradient(135deg, #38BDF8, #6EE7B7)'
-  const banner = t.publicBanner
 
   return (
     <div className="min-h-screen flex flex-col bg-cream overflow-x-hidden">
@@ -123,32 +122,6 @@ function PublicLayoutInner() {
         brandGradient={brandGradient}
         logoUrl={logoUrl}
       />
-
-      <section className="bg-gradient-to-r from-slate-900 via-violet-700 to-fuchsia-600 text-white shadow-[0_16px_70px_rgba(79,70,229,0.18)]">
-        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div>
-              <p className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-white/80">
-                {banner.pill}
-              </p>
-              <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
-                {banner.title}
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/80 sm:text-base">
-                {banner.subtitle}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 justify-start lg:justify-end">
-              <Link to="/book-tour" className="inline-flex items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 shadow-lg shadow-white/10 transition hover:bg-slate-100">
-                {banner.ctaPrimary}
-              </Link>
-              <Link to="/contact" className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15">
-                {banner.ctaSecondary}
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <main className="flex-1 pb-20 xl:pb-0 overflow-x-hidden">
         <SchoolProfileProvider profile={profile as Record<string, string> | null}>
