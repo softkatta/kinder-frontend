@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState } from 'react'
-import { Link, Outlet } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Phone, Mail, MapPin, Clock } from 'lucide-react'
 import { useAppSelector } from '@/store/hooks'
 import { selectIsAuthenticated, selectRoles } from '@/store/slices/authSlice'
@@ -14,12 +14,18 @@ import { LiveRouteKeepAlive } from '@/components/live/LiveRouteKeepAlive'
 import { SchoolProfileProvider } from '@/contexts/SchoolProfileContext'
 import { useSchoolBranding } from '@/hooks/useSchoolBranding'
 import { mediaUrl } from '@/utils/mediaUrl'
+import { fetchLocalizedPublic } from '@/hooks/useCmsContent'
+import { publicApi } from '@/api/services'
+import { HeroNoticeStrip, type HeroNoticeItem } from '@/components/design/HeroNoticeStrip'
+import { PublicLiveBanner } from '@/components/live/PublicLiveBanner'
 
 const PublicLivePage = lazy(() => import('@/pages/public/PublicLivePage'))
 
 function PublicLayoutInner() {
   const { t, locale } = useT()
+  const location = useLocation()
   const [open, setOpen] = useState(false)
+  const [homeNotices, setHomeNotices] = useState<HeroNoticeItem[]>([])
   const { profile, logoUrl, schoolName, schoolFullName } = useSchoolBranding()
   const isAuth = useAppSelector(selectIsAuthenticated)
   const roles = useAppSelector(selectRoles)
@@ -82,6 +88,23 @@ function PublicLayoutInner() {
 
   const erpLabel = locale === 'mr' ? t.brand.erpLabelMr : t.brand.erpLabelEn
   const brandGradient = 'linear-gradient(135deg, #38BDF8, #6EE7B7)'
+  const isHomePage = location.pathname === '/'
+
+  useEffect(() => {
+    if (!isHomePage) {
+      setHomeNotices([])
+      return
+    }
+
+    fetchLocalizedPublic((loc) => publicApi.homepage(loc), locale)
+      .then((payload) => {
+        const page = payload as Record<string, unknown>
+        setHomeNotices((page?.notices as HeroNoticeItem[]) || [])
+      })
+      .catch(() => {
+        setHomeNotices([])
+      })
+  }, [isHomePage, locale])
 
   return (
     <div className="min-h-screen flex flex-col bg-cream overflow-x-hidden">
@@ -108,6 +131,15 @@ function PublicLayoutInner() {
           </div>
         </div>
       </div>
+
+      {isHomePage ? (
+        <div className="home-hero-top-notices public-home-top-notices">
+          <PublicLiveBanner variant="bar" />
+          <div className="home-hero-top-notice-marquee">
+            <HeroNoticeStrip notices={homeNotices} fallback={t.home.admissionBanner} />
+          </div>
+        </div>
+      ) : null}
 
       <KindergartenNavbar
         schoolName={schoolName}
