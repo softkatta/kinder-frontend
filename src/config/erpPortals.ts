@@ -35,7 +35,7 @@ export const adminPortalConfig: ErpPortalConfig = {
   compactTopbar: true,
   nav: [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/admin/students', label: 'Students', icon: Users },
+    { to: '/admin/students', label: 'Students', icon: Users, badgeKey: 'students' },
     { to: '/admin/admissions', label: 'Admissions', icon: ClipboardList, badgeKey: 'admissions' },
     { to: '/admin/payments', label: 'Payments', icon: CreditCard, badgeKey: 'payments' },
     { to: '/admin/student-fees', label: 'Student Fees', icon: CreditCard },

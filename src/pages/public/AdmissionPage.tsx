@@ -60,21 +60,23 @@ export default function AdmissionPage() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const res = await admissionApi.submit({
+      let photoPath: string | undefined
+      if (photoFile) {
+        const fd = new FormData()
+        fd.append('file', photoFile)
+        const uploadRes = await publicApi.uploadAdmissionPhoto(fd)
+        photoPath = uploadRes.data.data?.path || undefined
+      }
+
+      await admissionApi.submit({
         applicant_name: data.applicant_name,
         dob: data.dob,
         gender: data.gender,
         grade_level: data.grade_level,
         parent_info: { full_name: data.parent_name, phone: data.parent_phone, email: data.parent_email },
         address_info: { address: data.address },
+        photo_path: photoPath,
       })
-      const admissionId = (res.data.data as { id?: number })?.id
-      if (photoFile && admissionId) {
-        const fd = new FormData()
-        fd.append('file', photoFile)
-        fd.append('admission_id', String(admissionId))
-        await publicApi.uploadAdmissionPhoto(fd)
-      }
       reset()
       setPhotoFile(null)
       setSuccessOpen(true)

@@ -29,5 +29,24 @@ export function useAdminSidebarData(enabled = true): AdminSidebarData {
     void load()
   }, [load, location.pathname])
 
+  useEffect(() => {
+    if (!enabled) return
+
+    const timer = window.setInterval(() => {
+      void load()
+    }, 20000)
+
+    const onFocus = () => {
+      void load()
+    }
+
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [enabled, load])
+
   return { badges, yearCard }
 }

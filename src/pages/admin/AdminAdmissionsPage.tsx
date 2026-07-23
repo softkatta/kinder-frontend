@@ -4,10 +4,13 @@ import toast from 'react-hot-toast'
 import { AdminPageHeader, AdminPageShell, AdminBadge, AdminBtn, AdminTableActions, AdminModal, AdminRecordFields } from '@/components/admin/AdminUi'
 import { AdminAvatar, AdminSummaryCard, AdminSummaryGrid } from '@/components/admin/AdminStats'
 import { AdminDataTable } from '@/components/admin/AdminDataTable'
+import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
+import { CameraCapture } from '@/components/ui/CameraCapture'
 import { FormStack } from '@/components/ui/Form'
 import { adminImages } from '@/config/adminCatalog'
-import { admissionApi, contactInquiryApi } from '@/api/services'
+import { admissionApi, contactInquiryApi, publicApi } from '@/api/services'
 import { useTableBulkDelete } from '@/hooks/useTableBulkDelete'
 
 type SectionTab = 'enquiries' | 'applications'
@@ -45,6 +48,28 @@ interface ApplicationRow {
   date: string
 }
 
+interface CreateAdmissionForm {
+  applicant_name: string
+  dob: string
+  gender: '' | 'male' | 'female' | 'other'
+  grade_level: '' | 'nursery' | 'lkg' | 'ukg'
+  parent_name: string
+  parent_phone: string
+  parent_email: string
+  address: string
+}
+
+const emptyCreateForm: CreateAdmissionForm = {
+  applicant_name: '',
+  dob: '',
+  gender: '',
+  grade_level: '',
+  parent_name: '',
+  parent_phone: '',
+  parent_email: '',
+  address: '',
+}
+
 const statusTone: Record<InquiryStatus, 'warning' | 'info' | 'success' | 'danger'> = {
   Pending: 'warning',
   'Under Review': 'info',
@@ -76,6 +101,10 @@ export default function AdminAdmissionsPage() {
   const [rejectApp, setRejectApp] = useState<ApplicationRow | null>(null)
   const [rejectRemarks, setRejectRemarks] = useState('')
   const [reviewNotes, setReviewNotes] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState<CreateAdmissionForm>(emptyCreateForm)
+  const [createPhoto, setCreatePhoto] = useState<File | null>(null)
+  const [createSaving, setCreateSaving] = useState(false)
 
   const loadEnquiries = useCallback(async () => {
     setLoading(true)
@@ -164,6 +193,61 @@ export default function AdminAdmissionsPage() {
     }
   }
 
+  const submitNewAdmission = async () => {
+    if (!createForm.applicant_name.trim()) {
+      toast.error('Child name is required')
+      return
+    }
+    if (!createForm.parent_name.trim()) {
+      toast.error('Parent name is required')
+      return
+    }
+    if (!createForm.parent_phone.trim()) {
+      toast.error('Parent phone is required')
+      return
+    }
+
+    setCreateSaving(true)
+    try {
+      let photoPath: string | undefined
+      if (createPhoto) {
+        const fd = new FormData()
+        fd.append('file', createPhoto)
+        const uploadRes = await publicApi.uploadAdmissionPhoto(fd)
+        photoPath = uploadRes.data.data?.path || undefined
+      }
+
+      await admissionApi.submit({
+        applicant_name: createForm.applicant_name.trim(),
+        dob: createForm.dob || undefined,
+        gender: createForm.gender || undefined,
+        grade_level: createForm.grade_level || undefined,
+        parent_info: {
+          full_name: createForm.parent_name.trim(),
+          phone: createForm.parent_phone.trim(),
+          email: createForm.parent_email.trim() || undefined,
+        },
+        address_info: {
+          address: createForm.address.trim() || undefined,
+        },
+        photo_path: photoPath,
+      })
+
+      toast.success('Admission created successfully')
+      setCreateOpen(false)
+      setCreateForm(emptyCreateForm)
+      setCreatePhoto(null)
+      if (section !== 'applications') {
+        setSection('applications')
+      }
+      await loadApplications()
+    } catch {
+      toast.error('Failed to create admission')
+    } finally {
+      setCreateSaving(false)
+    }
+  }
+
   const pending = inquiries.filter((a) => a.status === 'Pending').length
   const review = inquiries.filter((a) => a.status === 'Under Review').length
   const approved = inquiries.filter((a) => a.status === 'Approved').length
@@ -178,6 +262,11 @@ export default function AdminAdmissionsPage() {
         title="Admissions"
         subtitle="Contact enquiries आणि online admission applications manage करा."
         breadcrumbs={[{ label: 'Admin', to: '/admin' }, { label: 'Admissions' }]}
+        actions={
+          <AdminBtn variant="primary" onClick={() => setCreateOpen(true)}>
+            New Admission
+          </AdminBtn>
+        }
       />
 
       <div className="admin-page-tabs mb-4">
@@ -448,6 +537,95 @@ export default function AdminAdmissionsPage() {
             <Textarea label="Rejection remarks (optional)" rows={3} placeholder="Reason for rejection..." value={rejectRemarks} onChange={(e) => setRejectRemarks(e.target.value)} />
           </FormStack>
         )}
+      </AdminModal>
+
+      <AdminModal
+        open={createOpen}
+        onClose={() => {
+          if (createSaving) return
+          setCreateOpen(false)
+        }}
+        title="New Admission"
+        footer={
+          <>
+            <AdminBtn
+              variant="secondary"
+              onClick={() => {
+                if (createSaving) return
+                setCreateOpen(false)
+              }}
+            >
+              Cancel
+            </AdminBtn>
+            <AdminBtn variant="primary" onClick={() => void submitNewAdmission()}>
+              {createSaving ? 'Saving...' : 'Create Admission'}
+            </AdminBtn>
+          </>
+        }
+      >
+        <FormStack>
+          <Input
+            label="Child Name"
+            requiredMark
+            value={createForm.applicant_name}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, applicant_name: e.target.value }))}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input
+              label="Date of Birth"
+              type="date"
+              value={createForm.dob}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, dob: e.target.value }))}
+            />
+            <Select
+              label="Gender"
+              value={createForm.gender}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, gender: e.target.value as CreateAdmissionForm['gender'] }))}
+            >
+              <option value="">Select</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </Select>
+          </div>
+          <Select
+            label="Grade"
+            value={createForm.grade_level}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, grade_level: e.target.value as CreateAdmissionForm['grade_level'] }))}
+          >
+            <option value="">Select</option>
+            <option value="nursery">Nursery</option>
+            <option value="lkg">LKG</option>
+            <option value="ukg">UKG</option>
+          </Select>
+          <Input
+            label="Parent Name"
+            requiredMark
+            value={createForm.parent_name}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, parent_name: e.target.value }))}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input
+              label="Parent Phone"
+              requiredMark
+              value={createForm.parent_phone}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, parent_phone: e.target.value }))}
+            />
+            <Input
+              label="Parent Email"
+              type="email"
+              value={createForm.parent_email}
+              onChange={(e) => setCreateForm((prev) => ({ ...prev, parent_email: e.target.value }))}
+            />
+          </div>
+          <Textarea
+            label="Address"
+            rows={3}
+            value={createForm.address}
+            onChange={(e) => setCreateForm((prev) => ({ ...prev, address: e.target.value }))}
+          />
+          <CameraCapture label="Student Photo (optional)" onChange={setCreatePhoto} />
+        </FormStack>
       </AdminModal>
     </AdminPageShell>
   )
