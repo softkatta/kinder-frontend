@@ -27,6 +27,63 @@ function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+function apiOrigin(): string {
+  const configured = (import.meta.env.VITE_API_URL as string | undefined)?.trim()
+  if (!configured) return window.location.origin
+
+  try {
+    return new URL(configured).origin
+  } catch {
+    return window.location.origin
+  }
+}
+
+function resolveLogoCandidates(school?: ExamDocumentView['school']): { primary: string | null; fallback: string | null } {
+  const origin = apiOrigin()
+
+  const pathRaw = school?.logo_path?.trim() || ''
+  const urlRaw = school?.logo_url?.trim() || ''
+
+  const normalizePath = (value: string): string => {
+    if (!value) return ''
+    if (/^https?:\/\//i.test(value) || value.startsWith('data:')) return value
+    if (value.startsWith('/storage/')) return `${origin}${value}`
+    if (value.startsWith('storage/')) return `${origin}/${value}`
+    return `${origin}/storage/${value.replace(/^\/+/, '')}`
+  }
+
+  const normalizeUrl = (value: string): string => {
+    if (!value) return ''
+    if (/^https?:\/\//i.test(value) || value.startsWith('data:')) return value
+    return `${origin}/${value.replace(/^\/+/, '')}`
+  }
+
+  const fromPath = normalizePath(pathRaw)
+  const fromUrl = normalizeUrl(urlRaw)
+
+  if (fromPath && fromUrl && fromPath !== fromUrl) {
+    return { primary: fromPath, fallback: fromUrl }
+  }
+
+  if (fromPath) return { primary: fromPath, fallback: null }
+  if (fromUrl) return { primary: fromUrl, fallback: null }
+
+  return { primary: null, fallback: null }
+}
+
+function logoHtml(school?: ExamDocumentView['school']): string {
+  const rawSchoolName = school?.name?.trim() || 'School'
+  const schoolInitial = esc(rawSchoolName.slice(0, 1).toUpperCase())
+  const { primary, fallback } = resolveLogoCandidates(school)
+
+  if (!primary) {
+    return `<div class="logo-wrap logo-missing"><div class="logo-fallback">${schoolInitial}</div></div>`
+  }
+
+  const onError = "if(this.dataset.fallback){this.src=this.dataset.fallback;this.dataset.fallback='';return;}this.style.display='none';this.closest('.logo-wrap')?.classList.add('logo-missing');"
+  return `<div class="logo-wrap"><img src="${esc(primary)}" data-fallback="${esc(fallback ?? '')}" alt="School Logo" class="logo-img" onerror="${onError}" /><div class="logo-fallback">${schoolInitial}</div></div>`
+}
+
 function marksheetHtml(doc: ExamDocumentView): string {
   const percent = typeof doc.percentage === 'number' ? `${doc.percentage.toFixed(1)}%` : '—'
   const marks = typeof doc.marks_obtained === 'number' ? doc.marks_obtained.toFixed(1) : '—'
@@ -39,9 +96,7 @@ function marksheetHtml(doc: ExamDocumentView): string {
     .map((item) => esc(String(item)))
     .join(' • ')
 
-  const logo = doc.school?.logo_url
-    ? `<img src="${esc(doc.school.logo_url)}" alt="School Logo" class="logo-img" />`
-    : `<div class="logo-fallback">${schoolName.slice(0, 1)}</div>`
+  const logo = logoHtml(doc.school)
 
   const rows = [
     ['Student Name', doc.student_name || '—'],
@@ -69,8 +124,8 @@ function marksheetHtml(doc: ExamDocumentView): string {
         </div>
       </div>
       <div class="sheet-badges">
-        <span class="pill">${esc(doc.academic_year || 'Academic Year')}</span>
-        <span class="pill tone-${resultTone}">${esc((doc.result_status || 'pending').toUpperCase())}</span>
+        <span class="pill">AY ${esc(doc.academic_year || '—')}</span>
+        <span class="pill tone-${resultTone}">RESULT: ${esc((doc.result_status || 'pending').toUpperCase())}</span>
       </div>
     </header>
 
@@ -108,9 +163,7 @@ function certificateHtml(doc: ExamDocumentView): string {
     .map((item) => esc(String(item)))
     .join(' • ')
 
-  const logo = doc.school?.logo_url
-    ? `<img src="${esc(doc.school.logo_url)}" alt="School Logo" class="logo-img" />`
-    : `<div class="logo-fallback">${schoolName.slice(0, 1)}</div>`
+  const logo = logoHtml(doc.school)
 
   const title = esc(doc.certificate_title || 'Certificate of Achievement')
   const student = esc(doc.student_name || 'Student')
@@ -123,6 +176,7 @@ function certificateHtml(doc: ExamDocumentView): string {
   <div class="doc certificate">
     <div class="cert-frame">
       <div class="cert-layer">
+        <div class="cert-ribbon">Softkatt Little Stars Kindergarten</div>
         <header class="cert-header">
           ${logo}
           <div>
@@ -161,16 +215,24 @@ function certificateHtml(doc: ExamDocumentView): string {
 const FALLBACK_CSS = `
 @page { size: A4 portrait; margin: 10mm; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --brand-navy: #103f91;
+  --brand-royal: #1d4ed8;
+  --brand-cyan: #0f9ca8;
+  --brand-mint: #15b79e;
+  --brand-gold: #c89b3c;
+  --brand-gold-soft: #f7e7bf;
+  --ink-strong: #0f172a;
+  --ink-soft: #475569;
+}
 body {
   font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--ink-strong);
+  background: #eff5ff;
 }
 .doc {
-  width: 190mm;
-  min-height: 270mm;
   margin: 0 auto;
   background: #ffffff;
   border: 1px solid #dbe7f3;
@@ -178,12 +240,17 @@ body {
   position: relative;
   overflow: hidden;
 }
+.marksheet {
+  width: 190mm;
+  min-height: 270mm;
+}
 .sheet-bg {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 100% 0%, rgba(30, 64, 175, 0.08), transparent 30%),
-    radial-gradient(circle at 0% 100%, rgba(22, 163, 74, 0.07), transparent 32%);
+    radial-gradient(circle at 100% 0%, rgba(16, 63, 145, 0.12), transparent 32%),
+    radial-gradient(circle at 0% 100%, rgba(15, 156, 168, 0.1), transparent 34%),
+    linear-gradient(160deg, rgba(16, 63, 145, 0.03), rgba(15, 156, 168, 0.04));
   pointer-events: none;
 }
 .sheet-header, .cert-header {
@@ -200,48 +267,62 @@ body {
   align-items: center;
   gap: 12px;
 }
+.logo-wrap {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #fff;
+}
 .logo-img {
   width: 50px;
   height: 50px;
   object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid #cbd5e1;
 }
 .logo-fallback {
-  width: 50px;
-  height: 50px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #0f766e, #1d4ed8);
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--brand-cyan), var(--brand-royal));
   color: #fff;
   display: grid;
   place-items: center;
   font-weight: 700;
   font-size: 20px;
+  display: none;
+}
+.logo-wrap.logo-missing .logo-fallback {
+  display: grid;
 }
 .school {
   font-size: 20px;
   font-weight: 700;
   line-height: 1.2;
+  color: var(--brand-navy);
 }
 .school-meta {
   font-size: 11px;
-  color: #475569;
+  color: var(--ink-soft);
   margin-top: 3px;
 }
 .sheet-badges {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 .pill {
-  border: 1px solid #bfdbfe;
+  border: 1px solid #cde0ff;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: #f1f7ff;
+  color: var(--brand-royal);
   font-weight: 600;
   font-size: 11px;
   padding: 5px 10px;
+  white-space: nowrap;
 }
-.pill.tone-good { background: #ecfdf3; border-color: #bbf7d0; color: #166534; }
+.pill.tone-good { background: #e9fcf7; border-color: #b8f0e4; color: #0f766e; }
 .pill.tone-bad { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
 .pill.tone-neutral { background: #f8fafc; border-color: #e2e8f0; color: #334155; }
 .title-wrap {
@@ -251,7 +332,8 @@ body {
   padding: 10px 18px 0;
 }
 .title-wrap h1 { font-size: 28px; letter-spacing: 0.4px; }
-.title-wrap p { margin-top: 4px; color: #475569; font-size: 12px; }
+.title-wrap h1 { color: var(--brand-navy); }
+.title-wrap p { margin-top: 4px; color: var(--ink-soft); font-size: 12px; }
 .grid {
   position: relative;
   z-index: 1;
@@ -286,10 +368,10 @@ body {
   border: 1px solid #dbe7f3;
   border-radius: 10px;
   padding: 10px;
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  background: linear-gradient(180deg, #ffffff, #f2f9ff);
 }
 .summary-cards span { display: block; color: #64748b; font-size: 10px; margin-bottom: 4px; }
-.summary-cards strong { font-size: 15px; }
+.summary-cards strong { font-size: 15px; color: var(--brand-navy); }
 .remarks {
   position: relative;
   z-index: 1;
@@ -328,66 +410,91 @@ body {
 }
 
 .certificate {
-  background: linear-gradient(155deg, #fffef7 0%, #ffffff 50%, #f8fbff 100%);
+  width: 279mm;
+  min-height: 190mm;
+  background: linear-gradient(155deg, #fffdf4 0%, #ffffff 45%, #edf5ff 100%);
 }
 .cert-frame {
   margin: 8px;
-  min-height: calc(270mm - 16px);
-  border: 2px solid #c8a54b;
+  min-height: calc(190mm - 16px);
+  border: 2px solid var(--brand-gold);
   border-radius: 14px;
   padding: 5px;
   background:
-    linear-gradient(135deg, rgba(239, 246, 255, 0.6), rgba(255, 255, 255, 0.8)),
-    repeating-linear-gradient(45deg, rgba(200, 165, 75, 0.06), rgba(200, 165, 75, 0.06) 8px, transparent 8px, transparent 16px);
+    radial-gradient(circle at 8% 10%, rgba(16, 63, 145, 0.06), transparent 28%),
+    radial-gradient(circle at 92% 88%, rgba(15, 156, 168, 0.08), transparent 35%),
+    repeating-linear-gradient(45deg, rgba(200, 155, 60, 0.05), rgba(200, 155, 60, 0.05) 8px, transparent 8px, transparent 16px);
 }
 .cert-layer {
-  min-height: calc(270mm - 30px);
-  border: 1px solid rgba(200, 165, 75, 0.7);
+  min-height: calc(190mm - 30px);
+  border: 1px solid rgba(200, 155, 60, 0.7);
   border-radius: 10px;
-  padding: 14px;
+  padding: 12px 18px;
   display: flex;
   flex-direction: column;
   text-align: center;
+  position: relative;
+}
+.cert-layer::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px dashed rgba(29, 78, 216, 0.22);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.cert-ribbon {
+  align-self: center;
+  background: linear-gradient(90deg, var(--brand-navy), var(--brand-cyan));
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  box-shadow: 0 4px 10px rgba(16, 63, 145, 0.2);
 }
 .kicker {
   margin-top: 8px;
   text-transform: uppercase;
   letter-spacing: 3px;
   font-size: 11px;
-  color: #475569;
+  color: var(--ink-soft);
 }
 .certificate h1 {
-  margin-top: 6px;
+  margin-top: 4px;
   font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: 34px;
-  color: #9a6c07;
+  font-size: 46px;
+  color: #9a6f17;
 }
-.presented { margin-top: 12px; font-size: 13px; color: #475569; }
+.presented { margin-top: 8px; font-size: 14px; color: var(--ink-soft); }
 .name {
-  margin-top: 8px;
-  font-size: 38px;
+  margin-top: 6px;
+  font-size: 56px;
   font-family: 'Georgia', 'Times New Roman', serif;
-  color: #0f172a;
+  color: #0b2f66;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 .body {
-  margin: 16px auto 0;
-  max-width: 150mm;
-  line-height: 1.75;
-  font-size: 14px;
-  color: #1e293b;
+  margin: 10px auto 0;
+  max-width: 235mm;
+  line-height: 1.7;
+  font-size: 18px;
+  color: #1e2f4c;
 }
 .facts {
-  margin: 18px auto 0;
+  margin: 14px auto 0;
   width: 100%;
-  max-width: 160mm;
+  max-width: 235mm;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 .facts > div {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.85);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(244, 249, 255, 0.85));
   padding: 9px;
 }
 .facts span {
@@ -400,14 +507,28 @@ body {
 .medal {
   min-width: 68px;
   border-radius: 999px;
-  border: 1px solid #d9b55d;
-  background: #fff8dd;
+  border: 1px solid var(--brand-gold);
+  background: var(--brand-gold-soft);
   color: #7a5a0d;
   font-size: 11px;
   font-weight: 700;
   padding: 8px 10px;
 }
+
+@media print {
+  .certificate {
+    break-before: always;
+  }
+}
 `
+
+function cssForDoc(type: ExamDocumentView['type']): string {
+  if (type === 'certificate') {
+    return FALLBACK_CSS.replace('@page { size: A4 portrait; margin: 10mm; }', '@page { size: A4 landscape; margin: 9mm; }')
+  }
+
+  return FALLBACK_CSS
+}
 
 function openPrintWindow(html: string) {
   const iframe = document.createElement('iframe')
@@ -454,7 +575,7 @@ function openPrintWindow(html: string) {
 
 export function printExamDocument(doc: ExamDocumentView) {
   const body = doc.type === 'certificate' ? certificateHtml(doc) : marksheetHtml(doc)
-  const css = FALLBACK_CSS
+  const css = cssForDoc(doc.type)
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${esc(doc.student_name)}</title><style>${css}</style></head><body>${body}</body></html>`
   openPrintWindow(html)
 }
