@@ -114,7 +114,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Input
                   type="text"
-                  placeholder="Email or guest code"
+                  placeholder={p.emailOrGuestCode}
                   required
                   autoComplete="username"
                   leadingIcon={<Mail className="h-4 w-4" />}

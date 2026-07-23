@@ -245,7 +245,7 @@ const rawTranslations = {
         title: 'Memories & Moments',
         subtitle: 'Photos from classrooms, festivals, and celebrations.',
       },
-      videos: { label: 'Video Gallery', title: 'Watch Our Little Stars Shine', subtitle: 'Moments from learning, play, celebrations, and school life.', empty: 'Videos will be added here soon.' },
+      videos: { label: 'Video Gallery', title: 'Watch Our Little Stars Shine', subtitle: 'Moments from learning, play, celebrations, and school life.', empty: 'Videos will be added here soon.', allVideos: 'All videos' },
       events: {
         label: 'Events',
         title: 'Upcoming Events',
@@ -461,10 +461,12 @@ const rawTranslations = {
         title: 'Welcome back',
         subtitle: 'Sign in to the parent or staff portal',
         email: 'Email address',
+        emailOrGuestCode: 'Email or guest code',
         password: 'Password',
         remember: 'Remember me',
         forgot: 'Forgot password?',
         signIn: 'Sign in',
+
         signingIn: 'Signing in...',
         success: 'Welcome back!',
         error: 'Invalid credentials',
@@ -903,7 +905,7 @@ const rawTranslations = {
         title: 'Ã Â¤â€ Ã Â¤Â Ã Â¤ÂµÃ Â¤Â£Ã Â¥â‚¬ Ã Â¤â€ Ã Â¤Â£Ã Â¤Â¿ Ã Â¤â€¢Ã Â¥ÂÃ Â¤Â·Ã Â¤Â£',
         subtitle: 'Ã Â¤ÂµÃ Â¤Â°Ã Â¥ÂÃ Â¤â€”, Ã Â¤Â¸Ã Â¤Â£ Ã Â¤â€ Ã Â¤Â£Ã Â¤Â¿ Ã Â¤â€°Ã Â¤Â¤Ã Â¥ÂÃ Â¤Â¸Ã Â¤ÂµÃ Â¤Â¾Ã Â¤Â¤Ã Â¥â‚¬Ã Â¤Â² Ã Â¤â€ºÃ Â¤Â¾Ã Â¤Â¯Ã Â¤Â¾Ã Â¤Å¡Ã Â¤Â¿Ã Â¤Â¤Ã Â¥ÂÃ Â¤Â°Ã Â¥â€¡.',
       },
-      videos: { label: 'Video Gallery', title: 'Watch Our Little Stars Shine', subtitle: 'Moments from learning, play, celebrations, and school life.', empty: 'Videos will be added here soon.' },
+      videos: { label: 'Video Gallery', title: 'Watch Our Little Stars Shine', subtitle: 'Moments from learning, play, celebrations, and school life.', empty: 'Videos will be added here soon.', allVideos: 'All videos' },
       events: {
         label: 'Ã Â¤â€¢Ã Â¤Â¾Ã Â¤Â°Ã Â¥ÂÃ Â¤Â¯Ã Â¤â€¢Ã Â¥ÂÃ Â¤Â°Ã Â¤Â®',
         title: 'Ã Â¤â€ Ã Â¤â€”Ã Â¤Â¾Ã Â¤Â®Ã Â¥â‚¬ Ã Â¤â€¢Ã Â¤Â¾Ã Â¤Â°Ã Â¥ÂÃ Â¤Â¯Ã Â¤â€¢Ã Â¥ÂÃ Â¤Â°Ã Â¤Â®',
@@ -1119,6 +1121,7 @@ const rawTranslations = {
         title: 'Ã Â¤ÂªÃ Â¥ÂÃ Â¤Â¨Ã Â¥ÂÃ Â¤Â¹Ã Â¤Â¾ Ã Â¤Â¸Ã Â¥ÂÃ Â¤ÂµÃ Â¤Â¾Ã Â¤â€”Ã Â¤Â¤',
         subtitle: 'Ã Â¤ÂªÃ Â¤Â¾Ã Â¤Â²Ã Â¤â€¢ Ã Â¤â€¢Ã Â¤Â¿Ã Â¤â€šÃ Â¤ÂµÃ Â¤Â¾ Ã Â¤â€¢Ã Â¤Â°Ã Â¥ÂÃ Â¤Â®Ã Â¤Å¡Ã Â¤Â¾Ã Â¤Â°Ã Â¥â‚¬ Ã Â¤ÂªÃ Â¥â€¹Ã Â¤Â°Ã Â¥ÂÃ Â¤Å¸Ã Â¤Â²Ã Â¤Â®Ã Â¤Â§Ã Â¥ÂÃ Â¤Â¯Ã Â¥â€¡ Ã Â¤Â¸Ã Â¤Â¾Ã Â¤â€¡Ã Â¤Â¨ Ã Â¤â€¡Ã Â¤Â¨ Ã Â¤â€¢Ã Â¤Â°Ã Â¤Â¾',
         email: 'Ã Â¤Ë†Ã Â¤Â®Ã Â¥â€¡Ã Â¤Â²',
+        emailOrGuestCode: 'Ã Â¤ÂÃ Â¤Â®Ã Â¥â€¹Ã Â¤Â² Ã Â¤Â¨Ã Â¤Â¿Ã Â¤Â¹Ã Â¤Â¾ Ã Â¤ÂªÃ Â¤Â¾Ã Â¤Â¹Ã Â¥â€¹Ã Â¤Â¨Ã Â¥Â‡ Ã Â¤ÂÃ Â¥â€¹Ã Â¤Â¡',
         password: 'Ã Â¤ÂªÃ Â¤Â¾Ã Â¤Â¸Ã Â¤ÂµÃ Â¤Â°Ã Â¥ÂÃ Â¤Â¡',
         remember: 'Ã Â¤Â²Ã Â¤â€¢Ã Â¥ÂÃ Â¤Â·Ã Â¤Â¾Ã Â¤Â¤ Ã Â¤Â Ã Â¥â€¡Ã Â¤ÂµÃ Â¤Â¾',
         forgot: 'Ã Â¤ÂªÃ Â¤Â¾Ã Â¤Â¸Ã Â¤ÂµÃ Â¤Â°Ã Â¥ÂÃ Â¤Â¡ Ã Â¤ÂµÃ Â¤Â¿Ã Â¤Â¸Ã Â¤Â°Ã Â¤Â²Ã Â¤Â¾Ã Â¤Â¤?',
