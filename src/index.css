@@ -1576,7 +1576,7 @@ h1, h2, h3, h4, h5, h6 {
   margin: 1rem 0 0;
   padding: 0.8rem 0;
   min-height: 5rem;
-  background: linear-gradient(135deg, #071b37 0%, #0f2e67 45%, #0b4dda 100%);
+  background: linear-gradient(135deg, #38BDF8 0%, #0EA5E9 55%, #34D399 100%);
   box-shadow: 0 20px 60px rgba(14, 30, 60, 0.2);
   overflow: visible;
 }
@@ -1587,7 +1587,7 @@ h1, h2, h3, h4, h5, h6 {
   top: 0;
   width: 3.2rem;
   height: 100%;
-  background: linear-gradient(180deg, rgba(14, 165, 233, 0.8), rgba(59, 130, 246, 0.8));
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.8), rgba(52, 211, 153, 0.8));
 }
 .home-hero-top-notices::before {
   left: -1.6rem;
