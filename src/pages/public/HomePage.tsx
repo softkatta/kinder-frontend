@@ -161,7 +161,9 @@ export default function HomePage() {
     <div className="home-page overflow-x-hidden">
       <div className="home-hero-top-notices">
         <PublicLiveBanner variant="bar" />
-        <HeroNoticeStrip notices={notices} fallback={h.admissionBanner} />
+        <div className="home-hero-top-notice-marquee">
+          <HeroNoticeStrip notices={notices} fallback={h.admissionBanner} />
+        </div>
       </div>
       <div className="home-hero-viewport">
         <HomeWelcomeBento
