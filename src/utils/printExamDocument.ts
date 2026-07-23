@@ -214,7 +214,7 @@ function certificateHtml(doc: ExamDocumentView): string {
 }
 
 const FALLBACK_CSS = `
-@page { size: A4 portrait; margin: 10mm; }
+@page { size: A4 portrait; margin: 4mm; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
   --brand-navy: #103f91;
@@ -232,6 +232,7 @@ body {
   print-color-adjust: exact;
   color: var(--ink-strong);
   background: #eff5ff;
+  padding: 0;
 }
 .doc {
   margin: 0 auto;
@@ -242,8 +243,8 @@ body {
   overflow: hidden;
 }
 .marksheet {
-  width: 190mm;
-  min-height: 270mm;
+  width: calc(210mm - 8mm);
+  min-height: calc(297mm - 8mm);
 }
 .sheet-bg {
   position: absolute;
@@ -260,8 +261,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 18px 18px 0;
+  gap: 14px;
+  padding: 20px 20px 0;
 }
 .sheet-brand {
   display: flex;
@@ -303,13 +304,13 @@ body {
   display: grid;
 }
 .school {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   line-height: 1.2;
   color: var(--brand-navy);
 }
 .school-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink-soft);
   margin-top: 3px;
   line-height: 1.3;
@@ -317,7 +318,7 @@ body {
   overflow-wrap: anywhere;
 }
 .school-meta-sub {
-  font-size: 10.5px;
+  font-size: 11.5px;
   opacity: 0.92;
 }
 .school-details {
@@ -335,8 +336,8 @@ body {
   background: #f1f7ff;
   color: var(--brand-royal);
   font-weight: 600;
-  font-size: 11px;
-  padding: 5px 10px;
+  font-size: 12px;
+  padding: 7px 12px;
   white-space: nowrap;
 }
 .pill.tone-good { background: #e9fcf7; border-color: #b8f0e4; color: #0f766e; }
@@ -346,25 +347,25 @@ body {
   position: relative;
   z-index: 1;
   text-align: center;
-  padding: 10px 18px 0;
+  padding: 14px 20px 0;
 }
-.title-wrap h1 { font-size: 28px; letter-spacing: 0.4px; }
+.title-wrap h1 { font-size: 36px; letter-spacing: 0.4px; }
 .title-wrap h1 { color: var(--brand-navy); }
-.title-wrap p { margin-top: 4px; color: var(--ink-soft); font-size: 12px; }
+.title-wrap p { margin-top: 6px; color: var(--ink-soft); font-size: 14px; }
 .grid {
   position: relative;
   z-index: 1;
-  margin: 14px 18px 0;
-  width: calc(100% - 36px);
+  margin: 16px 20px 0;
+  width: calc(100% - 40px);
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 14px;
   border: 1px solid #dbe3ef;
   background: #fff;
 }
 .grid th,
 .grid td {
   border: 1px solid #dbe3ef;
-  padding: 8px 10px;
+  padding: 10px 12px;
   text-align: left;
 }
 .grid th {
@@ -376,7 +377,7 @@ body {
 .summary-cards {
   position: relative;
   z-index: 1;
-  margin: 12px 18px 0;
+  margin: 14px 20px 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
@@ -387,15 +388,15 @@ body {
   padding: 10px;
   background: linear-gradient(180deg, #ffffff, #f2f9ff);
 }
-.summary-cards span { display: block; color: #64748b; font-size: 10px; margin-bottom: 4px; }
-.summary-cards strong { font-size: 15px; color: var(--brand-navy); }
+.summary-cards span { display: block; color: #64748b; font-size: 11px; margin-bottom: 4px; }
+.summary-cards strong { font-size: 19px; color: var(--brand-navy); }
 .remarks {
   position: relative;
   z-index: 1;
-  margin: 12px 18px 0;
-  font-size: 11.5px;
+  margin: 14px 20px 0;
+  font-size: 13px;
   line-height: 1.6;
-  padding: 9px 10px;
+  padding: 11px 12px;
   border-radius: 8px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -407,46 +408,46 @@ body {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  margin: 28px 18px 0;
+  margin: 36px 20px 0;
 }
 .sign-block {
   flex: 1;
   border-top: 1px solid #94a3b8;
   padding-top: 6px;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
   color: #334155;
 }
 .issued {
   position: relative;
   z-index: 1;
   text-align: center;
-  margin-top: 12px;
-  font-size: 10.5px;
+  margin-top: 14px;
+  font-size: 12px;
   color: #64748b;
 }
 
 .certificate {
-  width: 279mm;
-  min-height: 190mm;
+  width: calc(297mm - 8mm);
+  min-height: calc(210mm - 8mm);
   background: linear-gradient(155deg, #fffdf4 0%, #ffffff 45%, #edf5ff 100%);
 }
 .cert-frame {
-  margin: 8px;
-  min-height: calc(190mm - 16px);
+  margin: 4px;
+  min-height: calc(210mm - 16px);
   border: 2px solid var(--brand-gold);
-  border-radius: 14px;
-  padding: 5px;
+  border-radius: 16px;
+  padding: 6px;
   background:
     radial-gradient(circle at 8% 10%, rgba(16, 63, 145, 0.06), transparent 28%),
     radial-gradient(circle at 92% 88%, rgba(15, 156, 168, 0.08), transparent 35%),
     repeating-linear-gradient(45deg, rgba(200, 155, 60, 0.05), rgba(200, 155, 60, 0.05) 8px, transparent 8px, transparent 16px);
 }
 .cert-layer {
-  min-height: calc(190mm - 30px);
+  min-height: calc(210mm - 30px);
   border: 1px solid rgba(200, 155, 60, 0.7);
-  border-radius: 10px;
-  padding: 12px 18px;
+  border-radius: 12px;
+  padding: 14px 20px;
   display: flex;
   flex-direction: column;
   text-align: center;
@@ -460,53 +461,65 @@ body {
   border-radius: 8px;
   pointer-events: none;
 }
+.cert-layer::after {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border-radius: 10px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0 0, rgba(200, 155, 60, 0.2) 0, rgba(200, 155, 60, 0.2) 10px, transparent 11px),
+    radial-gradient(circle at 100% 0, rgba(200, 155, 60, 0.2) 0, rgba(200, 155, 60, 0.2) 10px, transparent 11px),
+    radial-gradient(circle at 0 100%, rgba(200, 155, 60, 0.2) 0, rgba(200, 155, 60, 0.2) 10px, transparent 11px),
+    radial-gradient(circle at 100% 100%, rgba(200, 155, 60, 0.2) 0, rgba(200, 155, 60, 0.2) 10px, transparent 11px);
+}
 .cert-ribbon {
   align-self: center;
   background: linear-gradient(90deg, var(--brand-navy), var(--brand-cyan));
   color: #fff;
   border-radius: 999px;
-  padding: 5px 14px;
-  font-size: 10px;
+  padding: 6px 18px;
+  font-size: 11px;
   letter-spacing: 1px;
   text-transform: uppercase;
   margin-bottom: 6px;
   box-shadow: 0 4px 10px rgba(16, 63, 145, 0.2);
 }
 .kicker {
-  margin-top: 8px;
+  margin-top: 10px;
   text-transform: uppercase;
   letter-spacing: 3px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--ink-soft);
 }
 .certificate h1 {
-  margin-top: 4px;
+  margin-top: 6px;
   font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: 46px;
+  font-size: 54px;
   color: #9a6f17;
 }
-.presented { margin-top: 8px; font-size: 14px; color: var(--ink-soft); }
+.presented { margin-top: 10px; font-size: 16px; color: var(--ink-soft); }
 .name {
-  margin-top: 6px;
-  font-size: 56px;
+  margin-top: 8px;
+  font-size: 64px;
   font-family: 'Georgia', 'Times New Roman', serif;
   color: #0b2f66;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 .body {
-  margin: 10px auto 0;
-  max-width: 235mm;
-  line-height: 1.7;
-  font-size: 18px;
+  margin: 12px auto 0;
+  max-width: 250mm;
+  line-height: 1.68;
+  font-size: 20px;
   color: #1e2f4c;
 }
 .facts {
-  margin: 14px auto 0;
+  margin: 18px auto 0;
   width: 100%;
-  max-width: 235mm;
+  max-width: 250mm;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 .facts > div {
   border: 1px solid #e2e8f0;
@@ -520,16 +533,16 @@ body {
   color: #64748b;
   margin-bottom: 3px;
 }
-.facts strong { font-size: 13px; }
+.facts strong { font-size: 16px; }
 .medal {
-  min-width: 68px;
+  min-width: 84px;
   border-radius: 999px;
   border: 1px solid var(--brand-gold);
   background: var(--brand-gold-soft);
   color: #7a5a0d;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 8px 10px;
+  padding: 9px 12px;
 }
 
 @media print {
@@ -541,7 +554,7 @@ body {
 
 function cssForDoc(type: ExamDocumentView['type']): string {
   if (type === 'certificate') {
-    return FALLBACK_CSS.replace('@page { size: A4 portrait; margin: 10mm; }', '@page { size: A4 landscape; margin: 9mm; }')
+    return FALLBACK_CSS.replace('@page { size: A4 portrait; margin: 4mm; }', '@page { size: A4 landscape; margin: 4mm; }')
   }
 
   return FALLBACK_CSS
