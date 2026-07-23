@@ -1574,21 +1574,34 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   gap: 1rem;
   margin: 0.75rem 0 0;
-  min-height: 4.8rem;
-  background: linear-gradient(90deg, rgba(251, 146, 161, 0.98), rgba(252, 211, 77, 0.98), rgba(168, 85, 247, 0.98));
-  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  clip-path: polygon(0 0, 100% 0, 100% 78%, calc(50% + 38px) 78%, 50% 100%, calc(50% - 38px) 78%, 0 78%);
+  min-height: 5rem;
+  padding: 0 0.75rem;
+  background: linear-gradient(120deg, rgba(251, 146, 161, 0.96), rgba(168, 85, 247, 0.96), rgba(59, 130, 246, 0.96));
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
+  border-bottom-left-radius: 1.25rem;
+  border-bottom-right-radius: 1.25rem;
+  overflow: visible;
+}
+.home-hero-top-notices::after {
+  content: '';
+  position: absolute;
+  bottom: -1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3.2rem;
+  height: 1.2rem;
+  background: inherit;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 4px 12px rgba(15, 23, 42, 0.12));
 }
 .home-hero-top-notice-marquee {
   display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   min-width: 0;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 1rem;
 }
 @media (min-width: 768px) {
   .home-hero-top-notices {
@@ -1599,9 +1612,8 @@ h1, h2, h3, h4, h5, h6 {
   background: transparent;
   color: #fff;
   padding: 0;
-  font-size: 0.975rem;
-  align-self: flex-start;
-  margin-top: 0.55rem;
+  font-size: 1rem;
+  align-self: center;
 }
 .home-hero-top-notices .home-hero-admission-viewport {
   max-width: 100%;
