@@ -1573,35 +1573,61 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   gap: 1rem;
-  margin: 0.75rem 0 0;
+  margin: 1rem 0 0;
+  padding: 0.8rem 0;
   min-height: 5rem;
-  padding: 0 0.75rem;
-  background: linear-gradient(120deg, rgba(251, 146, 161, 0.96), rgba(168, 85, 247, 0.96), rgba(59, 130, 246, 0.96));
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
-  border-bottom-left-radius: 1.25rem;
-  border-bottom-right-radius: 1.25rem;
+  background: linear-gradient(135deg, #071b37 0%, #0f2e67 45%, #0b4dda 100%);
+  box-shadow: 0 20px 60px rgba(14, 30, 60, 0.2);
   overflow: visible;
 }
+.home-hero-top-notices::before,
 .home-hero-top-notices::after {
   content: '';
   position: absolute;
-  bottom: -1rem;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 0;
   width: 3.2rem;
-  height: 1.2rem;
-  background: inherit;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
-  filter: drop-shadow(0 4px 12px rgba(15, 23, 42, 0.12));
+  height: 100%;
+  background: linear-gradient(180deg, rgba(14, 165, 233, 0.8), rgba(59, 130, 246, 0.8));
+}
+.home-hero-top-notices::before {
+  left: -1.6rem;
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+}
+.home-hero-top-notices::after {
+  right: -1.6rem;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 .home-hero-top-notice-marquee {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   min-width: 0;
   width: 100%;
-  max-width: 1200px;
+  max-width: 1100px;
   margin: 0 auto;
+  padding: 0.6rem 1.25rem;
+  background: linear-gradient(90deg, #0ea5e9 0%, #2563eb 100%);
+  border-radius: 999px;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+.home-hero-top-notice-marquee::before,
+.home-hero-top-notice-marquee::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 2.5rem;
+  height: 100%;
+  background: inherit;
+}
+.home-hero-top-notice-marquee::before {
+  left: -1.25rem;
+  clip-path: polygon(100% 0, 0 50%, 100% 100%);
+}
+.home-hero-top-notice-marquee::after {
+  right: -1.25rem;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 @media (min-width: 768px) {
   .home-hero-top-notices {
@@ -1613,7 +1639,6 @@ h1, h2, h3, h4, h5, h6 {
   color: #fff;
   padding: 0;
   font-size: 1rem;
-  align-self: center;
 }
 .home-hero-top-notices .home-hero-admission-viewport {
   max-width: 100%;
@@ -1621,12 +1646,12 @@ h1, h2, h3, h4, h5, h6 {
 .home-hero-top-notices .home-hero-admission-line {
   justify-content: center;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 .home-hero-top-notices .home-hero-admission-link {
   color: #ffffff;
   text-decoration: underline;
-  text-underline-offset: 0.25rem;
+  text-underline-offset: 0.2rem;
 }
 .home-hero-top-notices .public-live-inline-notice,
 .home-hero-top-notices > a {
