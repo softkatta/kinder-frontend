@@ -1771,11 +1771,12 @@ h1, h2, h3, h4, h5, h6 {
   animation-play-state: paused;
 }
 .home-hero-admission-line {
-  @apply flex shrink-0 items-center justify-center px-2 whitespace-nowrap overflow-hidden text-ellipsis;
+  @apply flex shrink-0 items-center justify-start whitespace-nowrap overflow-hidden text-ellipsis;
   height: 1.25rem;
   line-height: 1.25rem;
   width: 100%;
-  max-width: 100%;
+  min-width: 100%;
+  padding: 0 1rem;
 }
 @media (min-width: 640px) {
   .home-hero-admission-line {
