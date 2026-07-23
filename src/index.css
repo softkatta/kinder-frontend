@@ -1574,10 +1574,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 100vw;
   transform: translateX(-50%);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  justify-content: center;
   margin: 1.25rem 0 0;
   padding: 1rem 1.25rem;
   min-height: 5.5rem;
@@ -1588,14 +1585,21 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 30px 72px rgba(6, 18, 47, 0.30);
   overflow: visible;
 }
+.home-hero-top-notice-inner {
+  width: min(100%, 1180px);
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(380px, 1fr) minmax(220px, 320px);
+  gap: 1rem;
+  align-items: center;
+}
 .home-hero-top-notice-marquee {
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 1 1 640px;
   min-width: 280px;
-  margin: 0 auto;
-  padding: 0.95rem 1.7rem;
+  margin: 0;
+  padding: 0.95rem 1.5rem;
   background: rgba(12, 24, 54, 0.96);
   border-radius: 999px;
   border: 1px solid rgba(96, 165, 250, 0.16);
@@ -1607,9 +1611,8 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.8rem;
+  gap: 0.75rem;
   align-items: center;
-  flex: 0 0 auto;
 }
 .home-hero-top-cta-group .btn {
   min-width: 11rem;

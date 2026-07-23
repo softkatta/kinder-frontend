@@ -134,17 +134,19 @@ function PublicLayoutInner() {
 
       {isHomePage ? (
         <div className="home-hero-top-notices public-home-top-notices">
-          <PublicLiveBanner variant="bar" />
-          <div className="home-hero-top-notice-marquee">
-            <HeroNoticeStrip notices={homeNotices} fallback={t.home.admissionBanner} />
-          </div>
-          <div className="home-hero-top-cta-group">
-            <Link to="/admission" className="btn btn-primary">
-              {t.nav.applyNow}
-            </Link>
-            <Link to="/book-tour" className="btn btn-secondary">
-              {t.nav.bookTour}
-            </Link>
+          <div className="home-hero-top-notice-inner">
+            <PublicLiveBanner variant="bar" />
+            <div className="home-hero-top-notice-marquee">
+              <HeroNoticeStrip notices={homeNotices} fallback={t.home.admissionBanner} />
+            </div>
+            <div className="home-hero-top-cta-group">
+              <Link to="/admission" className="btn btn-primary">
+                {t.nav.applyNow}
+              </Link>
+              <Link to="/book-tour" className="btn btn-secondary">
+                {t.nav.bookTour}
+              </Link>
+            </div>
           </div>
         </div>
       ) : null}
