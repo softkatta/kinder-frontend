@@ -176,7 +176,7 @@ function certificateHtml(doc: ExamDocumentView): string {
   <div class="doc certificate">
     <div class="cert-frame">
       <div class="cert-layer">
-        <div class="cert-ribbon">Softkatt Little Stars Kindergarten</div>
+        <div class="cert-ribbon">Academic Excellence Award</div>
         <header class="cert-header">
           ${logo}
           <div class="school-details">
@@ -187,7 +187,6 @@ function certificateHtml(doc: ExamDocumentView): string {
           <div class="medal">${esc(doc.result_status?.toUpperCase() || 'PASS')}</div>
         </header>
 
-        <p class="kicker">Certificate</p>
         <h1>${title}</h1>
         <p class="presented">This is proudly presented to</p>
         <p class="name">${student}</p>
@@ -272,8 +271,8 @@ body {
   min-width: 0;
 }
 .logo-wrap {
-  width: 54px;
-  height: 54px;
+  width: 74px;
+  height: 74px;
   border-radius: 10px;
   border: 1px solid #cbd5e1;
   overflow: hidden;
@@ -286,7 +285,7 @@ body {
   height: 100%;
   object-fit: contain;
   object-position: center;
-  padding: 3px;
+  padding: 1px;
   background: #fff;
 }
 .logo-fallback {
@@ -429,12 +428,13 @@ body {
 
 .certificate {
   width: calc(297mm - 8mm);
-  min-height: calc(210mm - 8mm);
+  height: calc(210mm - 8mm);
   background: linear-gradient(155deg, #fffdf4 0%, #ffffff 45%, #edf5ff 100%);
+  overflow: hidden;
 }
 .cert-frame {
   margin: 4px;
-  min-height: calc(210mm - 16px);
+  height: calc(100% - 8px);
   border: 2px solid var(--brand-gold);
   border-radius: 16px;
   padding: 6px;
@@ -444,7 +444,7 @@ body {
     repeating-linear-gradient(45deg, rgba(200, 155, 60, 0.05), rgba(200, 155, 60, 0.05) 8px, transparent 8px, transparent 16px);
 }
 .cert-layer {
-  min-height: calc(210mm - 30px);
+  height: 100%;
   border: 1px solid rgba(200, 155, 60, 0.7);
   border-radius: 12px;
   padding: 14px 20px;
@@ -452,6 +452,7 @@ body {
   flex-direction: column;
   text-align: center;
   position: relative;
+  overflow: hidden;
 }
 .cert-layer::before {
   content: '';
@@ -493,15 +494,15 @@ body {
   color: var(--ink-soft);
 }
 .certificate h1 {
-  margin-top: 6px;
+  margin-top: 10px;
   font-family: 'Georgia', 'Times New Roman', serif;
-  font-size: 54px;
+  font-size: 50px;
   color: #9a6f17;
 }
 .presented { margin-top: 10px; font-size: 16px; color: var(--ink-soft); }
 .name {
   margin-top: 8px;
-  font-size: 64px;
+  font-size: 56px;
   font-family: 'Georgia', 'Times New Roman', serif;
   color: #0b2f66;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.65);
@@ -509,12 +510,12 @@ body {
 .body {
   margin: 12px auto 0;
   max-width: 250mm;
-  line-height: 1.68;
-  font-size: 20px;
+  line-height: 1.6;
+  font-size: 18px;
   color: #1e2f4c;
 }
 .facts {
-  margin: 18px auto 0;
+  margin: 14px auto 0;
   width: 100%;
   max-width: 250mm;
   display: grid;
@@ -534,6 +535,9 @@ body {
   margin-bottom: 3px;
 }
 .facts strong { font-size: 16px; }
+.certificate .footer {
+  margin: 18px 24px 0;
+}
 .medal {
   min-width: 84px;
   border-radius: 999px;
@@ -546,9 +550,7 @@ body {
 }
 
 @media print {
-  .certificate {
-    break-before: always;
-  }
+  .certificate { break-before: avoid; }
 }
 `
 
