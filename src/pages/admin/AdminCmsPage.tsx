@@ -321,7 +321,7 @@ export default function AdminCmsPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <Input label={`${formLabels.title} (English)`} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
             <Input
-              label={`${formLabels.title} (à¤®à¤°à¤¾à¤ à¥€)`}
+              label={`${formLabels.title} (मराठी)`}
               value={String(formMeta.title_mr ?? '')}
               onChange={(e) => setFormMeta({ ...formMeta, title_mr: e.target.value })}
             />
@@ -332,7 +332,7 @@ export default function AdminCmsPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <Textarea label={`${formLabels.summary} (English)`} rows={3} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
                 <Textarea
-                  label={`${formLabels.summary} (à¤®à¤°à¤¾à¤ à¥€)`}
+                  label={`${formLabels.summary} (मराठी)`}
                   rows={3}
                   value={String(formMeta.summary_mr ?? '')}
                   onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })}
@@ -341,7 +341,7 @@ export default function AdminCmsPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <Textarea label={`${formLabels.body} (English)`} rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
                 <Textarea
-                  label={`${formLabels.body} (à¤®à¤°à¤¾à¤ à¥€)`}
+                  label={`${formLabels.body} (मराठी)`}
                   rows={4}
                   value={String(formMeta.body_mr ?? '')}
                   onChange={(e) => setFormMeta({ ...formMeta, body_mr: e.target.value })}
@@ -353,7 +353,7 @@ export default function AdminCmsPage() {
             <div className="grid gap-3 md:grid-cols-2">
               <Textarea label={`${formLabels.summary} (English)`} rows={2} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
               <Textarea
-                label={`${formLabels.summary} (à¤®à¤°à¤¾à¤ à¥€)`}
+                label={`${formLabels.summary} (मराठी)`}
                 rows={2}
                 value={String(formMeta.summary_mr ?? '')}
                 onChange={(e) => setFormMeta({ ...formMeta, summary_mr: e.target.value })}
