@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, BookOpen, Image, Phone, GraduationCap } from 'lucide-react'
+import { Home, BookOpen, Image, Video, Phone, GraduationCap } from 'lucide-react'
 import { useT } from '@/i18n/LanguageContext'
 
 export function PublicMobileNav() {
@@ -9,6 +9,7 @@ export function PublicMobileNav() {
     { to: '/', label: t.nav.home, icon: Home, end: true },
     { to: '/programs', label: t.nav.programs, icon: BookOpen },
     { to: '/gallery', label: t.nav.gallery, icon: Image },
+    { to: '/videos', label: t.nav.videos, icon: Video },
     { to: '/admission', label: t.nav.admission, icon: GraduationCap },
     { to: '/contact', label: t.nav.contact, icon: Phone },
   ]

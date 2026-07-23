@@ -25,6 +25,13 @@ export const CMS_FORM_LABELS: Record<string, CmsFormLabels> = {
     image: 'Slide background photo',
     slug: 'Slug (optional)',
   },
+  video: {
+    title: 'Video title',
+    summary: 'Short description',
+    body: 'Video details',
+    image: 'Cover image (optional)',
+    slug: 'Slug (optional)',
+  },
   notice: {
     title: 'Notice text',
     summary: 'Summary',

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { publicApi } from '@/api/services'
 import { parseHighlights, toBlogPost, toCatalogItem, toEventItem, toJobDetail } from '@/utils/cmsNormalize'
 import { useT } from '@/i18n/LanguageContext'
@@ -18,7 +18,7 @@ function useLocaleFetcher<T>(
       .then((data) => setItems(data?.length ? data.map((raw) => mapFn(raw)) : []))
       .catch(() => setItems([]))
       .finally(() => setLoading(false))
-  }, [locale])
+  }, [fetcher, locale, mapFn])
 
   return { items, loading }
 }
@@ -27,14 +27,14 @@ export function useCmsList<T>(
   type: 'program' | 'facility' | 'activity' | 'event' | 'blog' | 'job',
   mapFn: (raw: Record<string, unknown>) => T,
 ) {
-  const fetchers = {
+  const fetchers = useMemo(() => ({
     program: (locale: string) => publicApi.programs(locale).then((r) => r.data.data ?? []),
     facility: (locale: string) => publicApi.facilities(locale).then((r) => r.data.data ?? []),
     activity: (locale: string) => publicApi.activities(locale).then((r) => r.data.data ?? []),
     event: (locale: string) => publicApi.events(locale).then((r) => r.data.data ?? []),
     blog: (locale: string) => publicApi.blog(locale).then((r) => r.data.data ?? []),
     job: (locale: string) => publicApi.jobs(locale).then((r) => r.data.data ?? []),
-  }
+  }), [])
   return useLocaleFetcher(fetchers[type], mapFn)
 }
 
@@ -54,7 +54,7 @@ function useCmsDetail<T>(
       .then((r) => setItem(mapFn(r.data.data)))
       .catch(() => setItem(null))
       .finally(() => setLoading(false))
-  }, [slug, locale])
+  }, [slug, locale, mapFn, type])
 
   return { item, loading }
 }

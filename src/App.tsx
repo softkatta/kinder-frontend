@@ -28,6 +28,7 @@ const FacilityDetailPage = lazy(() => import('@/pages/public/FacilityDetailPage'
 const ActivitiesPage = lazy(() => import('@/pages/public/ActivitiesPage'))
 const ActivityDetailPage = lazy(() => import('@/pages/public/ActivityDetailPage'))
 const GalleryPage = lazy(() => import('@/pages/public/GalleryPage'))
+const VideoGalleryPage = lazy(() => import('@/pages/public/VideoGalleryPage'))
 const EventsPage = lazy(() => import('@/pages/public/EventsPage'))
 const EventDetailPage = lazy(() => import('@/pages/public/EventDetailPage'))
 const ScanGatePage = lazy(() => import('@/pages/public/ScanGatePage'))
@@ -139,6 +140,7 @@ export default function App() {
                 <Route path="activities" element={<Shell><ActivitiesPage /></Shell>} />
                 <Route path="activities/:slug" element={<Shell><ActivityDetailPage /></Shell>} />
                 <Route path="gallery" element={<Shell><GalleryPage /></Shell>} />
+                <Route path="videos" element={<Shell><VideoGalleryPage /></Shell>} />
                 <Route path="events" element={<Shell><EventsPage /></Shell>} />
                 <Route path="events/:id" element={<Shell><EventDetailPage /></Shell>} />
                 {/* Mounted by PublicLayout LiveRouteKeepAlive so the player survives navigation */}

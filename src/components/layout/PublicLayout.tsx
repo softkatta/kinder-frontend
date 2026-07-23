@@ -51,6 +51,7 @@ function PublicLayoutInner() {
       children: [
         { to: '/staff', label: t.nav.staff },
         { to: '/gallery', label: t.nav.gallery },
+        { to: '/videos', label: t.nav.videos },
         { to: '/blog', label: t.nav.blog },
         { to: '/careers', label: t.nav.careers },
       ],
@@ -73,6 +74,7 @@ function PublicLayoutInner() {
     { to: '/events', label: t.nav.events },
     { to: '/live', label: t.nav.watchLive },
     { to: '/gallery', label: t.nav.gallery },
+    { to: '/videos', label: t.nav.videos },
     { to: '/blog', label: t.nav.blog },
     { to: '/admission', label: t.nav.admission },
     { to: '/contact', label: t.nav.contact },

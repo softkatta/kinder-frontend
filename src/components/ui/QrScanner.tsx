@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { Camera, ScanLine, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -37,7 +37,7 @@ export function QrScanner({
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const lastScanRef = useRef({ code: '', at: 0 })
 
-  const stop = async () => {
+  const stop = useCallback(async () => {
     if (scannerRef.current?.isScanning) {
       await scannerRef.current.stop().catch(() => {})
     }
@@ -45,7 +45,7 @@ export function QrScanner({
     setActive(false)
     const el = document.getElementById(regionId)
     if (el) el.innerHTML = ''
-  }
+  }, [regionId])
 
   const start = async () => {
     if (disabled || !canScan) return
@@ -86,7 +86,7 @@ export function QrScanner({
     }
   }
 
-  useEffect(() => () => { void stop() }, [])
+  useEffect(() => () => { void stop() }, [stop])
 
   if (!canScan) {
     return (

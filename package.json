@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build --mode production",
     "build:staging": "tsc -b && vite build --mode staging",
     "build:production": "tsc -b && vite build --mode production",
-    "lint": "oxlint",
+    "lint": "oxlint src",
+    "test:routes": "node scripts/verify-routes.mjs",
+    "verify": "npm run lint && npm run build && npm run test:routes",
     "preview": "vite preview"
   },
   "dependencies": {

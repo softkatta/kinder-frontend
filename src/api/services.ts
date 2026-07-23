@@ -19,6 +19,7 @@ export const publicApi = {
   facilities: (locale?: string) => api.get('/public/facilities', localeParams(locale)),
   activities: (locale?: string) => api.get('/public/activities', localeParams(locale)),
   gallery: (locale?: string) => api.get('/public/gallery', localeParams(locale)),
+  videos: (locale?: string) => api.get('/public/videos', localeParams(locale)),
   events: (locale?: string) => api.get('/public/events', localeParams(locale)),
   blog: (locale?: string) => api.get('/public/blog', localeParams(locale)),
   testimonials: (locale?: string) => api.get('/public/testimonials', localeParams(locale)),
@@ -68,10 +69,8 @@ export const studentApi = {
 }
 
 export const attendanceApi = {
-  mark: (data: Record<string, unknown>) => api.post('/attendance/mark', data),
   qrMark: (codeValue: string) => api.post('/attendance/qr-mark', { code_value: codeValue }),
   resolveScan: (code: string) => api.post('/scan/resolve', { code }),
-  teacherQrMark: (codeValue: string) => api.post('/attendance/teacher-qr-mark', { code_value: codeValue }),
   daily: (date?: string) => api.get('/attendance/daily', { params: { date } }),
   monthly: (studentId: number, month?: number, year?: number) =>
     api.get(`/attendance/student/${studentId}/monthly`, { params: { month, year } }),
@@ -98,7 +97,6 @@ export const paymentApi = {
     api.get('/payments/export', { params, responseType: 'blob' }),
   settings: () => api.get('/payments/settings'),
   updateSettings: (data: Record<string, unknown>) => api.put('/payments/settings', data),
-  submitOnline: (data: Record<string, unknown>) => api.post('/payments/submit', data),
 }
 
 export type SettingsProfile = {

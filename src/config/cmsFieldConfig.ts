@@ -72,6 +72,10 @@ export const CMS_META_FIELDS: Record<string, CmsFieldDef[]> = {
   gallery: [
     { key: 'album', label: 'Album Name', type: 'text', placeholder: 'e.g. Daily Life' },
   ],
+  video: [
+    { key: 'video_url', label: 'Video URL', type: 'text', placeholder: 'YouTube, Vimeo, or direct MP4 link', hint: 'Paste a public video link. YouTube and Vimeo are embedded; direct MP4 links play in the browser.' },
+    { key: 'album', label: 'Category', type: 'text', placeholder: 'e.g. Annual Day' },
+  ],
   faq: [],
   banner: [
     { key: 'title_rest', label: 'Heading rest (second line)', type: 'text', placeholder: 'e.g. Your Children', hint: 'Appears after the coloured heading accent' },

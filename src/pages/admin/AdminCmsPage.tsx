@@ -38,6 +38,7 @@ const CMS_TYPES = [
   { key: 'event', label: 'Events' },
   { key: 'blog', label: 'Blog' },
   { key: 'gallery', label: 'Gallery' },
+  { key: 'video', label: 'Video Gallery' },
   { key: 'faq', label: 'FAQs' },
   { key: 'job', label: 'Jobs / Careers' },
   { key: 'page', label: 'Legal Pages' },

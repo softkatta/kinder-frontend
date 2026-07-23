@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import type { AdminTableSelection } from '@/components/admin/AdminDataTable'
 
@@ -9,7 +9,10 @@ export function useLocalTableDelete<T>(
     getRowId?: (row: T) => string | number
   },
 ) {
-  const getRowId = options?.getRowId ?? ((row: T) => (row as { id: number }).id)
+  const getRowId = useMemo(
+    () => options?.getRowId ?? ((row: T) => (row as { id: number }).id),
+    [options?.getRowId],
+  )
 
   const [rows, setRows] = useState(initialData)
   const [selectedIds, setSelectedIds] = useState<Array<string | number>>([])

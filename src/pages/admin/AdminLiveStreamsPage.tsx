@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
   Radio, Plus, Play, Pause, Square, ChevronUp, ChevronDown, Eye, Pencil, Trash2,
@@ -128,21 +128,28 @@ export default function AdminLiveStreamsPage() {
   const trackedStreamId = linkedStreams.some((s) => s.id === selectedId) ? selectedId : null
   const selectedIdRef = useRef<number | null>(null)
   const loadSeqRef = useRef(0)
+  const selectedActiveCameraIds = useMemo(
+    () => selected?.active_camera_ids ?? [],
+    [selected?.active_camera_ids],
+  )
+  const selectedActiveCameraId = selected?.active_camera_id ?? null
+  const selectedLayoutMode = selected?.layout_mode
+  const activeCameraIdsKey = selected?.active_camera_ids?.join(',') ?? ''
 
   useEffect(() => {
     selectedIdRef.current = selectedId
   }, [selectedId])
 
   useEffect(() => {
-    if (!selected) {
+    if (!selectedId) {
       setLayoutDraftIds([])
       return
     }
-    const ids = selected.active_camera_ids?.length
-      ? selected.active_camera_ids
-      : (selected.active_camera_id ? [selected.active_camera_id] : [])
-    setLayoutDraftIds(ids.slice(0, layoutPaneCount(selected.layout_mode)))
-  }, [selected?.id, selected?.layout_mode, selected?.active_camera_id, selected?.active_camera_ids?.join(',')])
+    const ids = selectedActiveCameraIds.length
+      ? selectedActiveCameraIds
+      : (selectedActiveCameraId ? [selectedActiveCameraId] : [])
+    setLayoutDraftIds(ids.slice(0, layoutPaneCount(selectedLayoutMode)))
+  }, [selectedId, selectedActiveCameraIds, selectedActiveCameraId, selectedLayoutMode, activeCameraIdsKey])
 
   useEffect(() => {
     if (!selectedId) return
