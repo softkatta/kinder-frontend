@@ -186,8 +186,8 @@ export default function AdminMarksheetsPage() {
             Print dialog उघडेल — PDF save नाही. Printer select करून direct print करा. Print झाल्यानंतर record automatically marked होते.
           </p>
           <p className="mt-2 text-xs text-slate-500">
-            Certificate आणि Marksheet — <strong>Template Designer</strong> templates वापरतात (certificate: achivement-certificate, marksheet: default-marksheet).
-            Design बदलण्यासाठी Admin → Template Designer. Verification: <code className="text-violet-600">/verify/CERT-YYYY-####</code>
+            Certificate आणि Marksheet मध्ये system templates apply होतात (certificate: achivement-certificate, marksheet: default-marksheet).
+            Verification: <code className="text-violet-600">/verify/CERT-YYYY-####</code>
           </p>
         </div>
       </div>

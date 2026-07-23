@@ -73,8 +73,6 @@ const AdminGuestsPage = lazy(() => import('@/pages/admin/AdminGuestsPage'))
 const AdminGuestScanPage = lazy(() => import('@/pages/admin/AdminGuestScanPage'))
 const AdminLiveStreamsPage = lazy(() => import('@/pages/admin/AdminLiveStreamsPage'))
 const LiveStreamSetupGuidePage = lazy(() => import('@/pages/admin/LiveStreamSetupGuidePage'))
-const TemplateDesignerListPage = lazy(() => import('@/pages/admin/template-designer/TemplateDesignerListPage'))
-const TemplateDesignerEditorPage = lazy(() => import('@/pages/admin/template-designer/TemplateDesignerEditorPage'))
 
 const TeacherDashboard = lazy(() => import('@/pages/teacher/TeacherDashboard'))
 const TeacherAttendancePage = lazy(() => import('@/pages/teacher/TeacherAttendancePage'))
@@ -193,9 +191,6 @@ export default function App() {
                   <Route path="guests/scan" element={<Shell><AdminGuestScanPage /></Shell>} />
                   <Route path="live-streams" element={<Shell><AdminLiveStreamsPage /></Shell>} />
                   <Route path="live-streams/setup-guide" element={<Shell><LiveStreamSetupGuidePage /></Shell>} />
-                  <Route path="template-designer" element={<Shell><TemplateDesignerListPage /></Shell>} />
-                  <Route path="template-designer/new" element={<Shell><TemplateDesignerEditorPage /></Shell>} />
-                  <Route path="template-designer/:id/edit" element={<Shell><TemplateDesignerEditorPage /></Shell>} />
                   <Route path="notifications" element={<Shell><NotificationsPage /></Shell>} />
                   <Route path="qr-scanner" element={<Navigate to="/admin/attendance/qr" replace />} />
                 </Route>

@@ -1,6 +1,6 @@
 import { LayoutDashboard, Users, UserCog, Settings, ClipboardList, CreditCard,
   Globe, IdCard, Calendar, BookOpen, Bell, Sparkles, Star, Fingerprint,
-  GraduationCap, UserPlus, QrCode, Radio, BarChart3, Shield, Bus, LayoutTemplate,
+  GraduationCap, UserPlus, QrCode, Radio, BarChart3, Shield, Bus,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -75,7 +75,6 @@ export const adminPortalConfig: ErpPortalConfig = {
       ],
     },
     { to: '/admin/live-streams', label: 'Live Streams', icon: Radio },
-    { to: '/admin/template-designer', label: 'Template Designer', icon: LayoutTemplate },
   ],
   pageMeta: {
     '/admin': { title: 'Dashboard', desc: 'School overview & daily metrics' },
@@ -104,7 +103,6 @@ export const adminPortalConfig: ErpPortalConfig = {
     '/admin/live-streams': { title: 'Live Streams', desc: 'Multi-camera live event control' },
     '/admin/live-streams/setup-guide': { title: 'Live Stream Setup Guide', desc: 'Equipment, streaming methods, and ERP configuration' },
     '/admin/notifications': { title: 'Notifications', desc: 'Alerts and updates for your account' },
-    '/admin/template-designer': { title: 'Template Designer', desc: 'Create printable templates with backgrounds and variables' },
   },
 }
 

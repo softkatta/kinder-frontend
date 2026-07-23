@@ -384,27 +384,6 @@ export const examApi = {
     api.post(`/exam-results/${id}/printed`, { type }),
 }
 
-export const templateDesignerApi = {
-  categories: {
-    list: () => api.get('/template-designer/categories'),
-  },
-  variables: {
-    list: (category?: string) => api.get('/template-designer/variables', { params: category ? { category } : {} }),
-    sample: (params?: { student_id?: number; exam_result_id?: number; template_id?: number; category?: string }) =>
-      api.get('/template-designer/variables/sample', { params }),
-  },
-  templates: {
-    list: (params?: Record<string, unknown>) => api.get('/template-designer/templates', { params }),
-    get: (id: number) => api.get(`/template-designer/templates/${id}`),
-    create: (data: Record<string, unknown>) => api.post('/template-designer/templates', data),
-    update: (id: number, data: Record<string, unknown>) => api.put(`/template-designer/templates/${id}`, data),
-    delete: (id: number) => api.delete(`/template-designer/templates/${id}`),
-    preview: (id: number, params?: { student_id?: number; exam_result_id?: number }) =>
-      api.post(`/template-designer/templates/${id}/preview`, null, { params }),
-    generate: (id: number, data: Record<string, unknown>) => api.post(`/template-designer/templates/${id}/generate`, data, { responseType: 'blob' }),
-  },
-}
-
 export const guestApi = {
   list: (params?: { status?: string; search?: string }) => api.get('/guests', { params }),
   get: (id: number) => api.get(`/guests/${id}`),
